@@ -127,6 +127,10 @@ def _smoke_fake(reject_kind: str | None = None) -> FakeCdsBackend:
         def estimate_costs(dataset, request):
             return {"cost": 1, "limit": 10}
 
+        @staticmethod
+        def get_accepted_licences():
+            return [{"id": "licence-to-use-copernicus-products", "revision": 12}]
+
     fake.client = _Client()
     if reject_kind:
         spec = specs[0] if reject_kind == "pl" else specs[1]
@@ -142,7 +146,13 @@ def test_smoke_test_passes_when_everything_verifies(ct, monkeypatch):
     rep = json.loads(out.read_text())
     assert rep["ok"] is True and rep["download"]["downloaded"] == 2
     assert all(r["state"] == "verified" for r in rep["requests"])
-    assert set(rep["cost_estimates"]) == {"pl_global_day", "sl_global_day"}
+    assert set(rep["cost_estimates"]) == {
+        "pl_global_day",
+        "sl_global_day",
+        "pl_box_month",
+        "sl_box_month",
+    }
+    assert rep["accepted_licences"] == ["licence-to-use-copernicus-products (revision 12)"]
 
 
 def test_smoke_test_fails_when_a_request_is_rejected(ct, monkeypatch):

@@ -150,6 +150,43 @@ def cmd_export_manifest(args, paths: Paths) -> int:
     return 0
 
 
+def validation_sites() -> dict[str, tuple[float, float]]:
+    """``group/site`` → (lat, lon) for every site in configs/sites.yaml."""
+    return {
+        f"{group}/{name}": (float(s["lat"]), float(s["lon"]))
+        for group, sites in load_config("sites").items()
+        for name, s in sites.items()
+    }
+
+
+def cmd_build_landmask(args, paths: Paths) -> int:
+    """Land plus 1 km buffer at 30″ and the ERA5 cells kept (AGENTS.md "Coverage"; D20, D22)."""
+    from astroseeing.paths import probe_responsive
+    from astroseeing.terrain import landmask as lm
+
+    cfg = load_config("landmask")
+    mask = lm.build(buffer_m=cfg["buffer_m"], grid_deg=cfg["grid_deg"], measure=cfg["measure"])
+    summary = mask.summary(validation_sites())
+    mask.qc.log(log, context="landmask ")
+    missing = [n for n, s in summary["sites"].items() if not s["era5_cell_kept"]]
+    if args.summary_out:
+        p = Path(args.summary_out)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(summary, indent=2) + "\n")
+    print(json.dumps({k: v for k, v in summary.items() if k != "sites"}, indent=2))
+    if missing:
+        log.error("validation sites outside the kept cells: %s; not writing", missing)
+        return 1
+    if args.dry_run:
+        return 0
+    probe_responsive(paths.data_root)
+    out_dir = paths.data_root / cfg["store_dir"]
+    for key, res in lm.write_stores(mask, out_dir, cfg["stores"], summary).items():
+        state = "already present (identical)" if res.already_present else "written"
+        log.info("landmask %s: %s %s (sha256 %s)", key, res.path, state, res.content_sha256)
+    return 0
+
+
 def cmd_cds_smoke_test(args, paths: Paths) -> int:
     """Phase 1 step 2: one hour, small box, GRIB; record queue time, throughput, limits."""
     from astroseeing.download.downloader import Downloader
@@ -170,6 +207,13 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
         _write_report(args.out, report)
         log.error("authentication failed: %s — [ASK] Riley (token or licences)", e)
         return 2
+    try:
+        report["accepted_licences"] = sorted(
+            f"{lic.get('id')} (revision {lic.get('revision')})"
+            for lic in backend.client.get_accepted_licences()
+        )
+    except Exception as e:  # informational; the requests below are the real test
+        report["accepted_licences"] = {"error": str(e)}
 
     area = Area.around(-24.63, -70.40, 2)  # 5×5 points at Paranal
     day = _date(args.date)
@@ -229,6 +273,17 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
             )
         except Exception as e:
             report["cost_estimates"][f"{kind}_global_day"] = {"error": str(e)}
+    # Month-sized validation-box requests (D16): is a 31-day 5×5 box within the limits?
+    for kind in ("pl", "sl"):
+        (spec,) = plan_requests(
+            kind, "box", dt.date(2023, 1, 1), dt.date(2023, 1, 31), area, granularity="month"
+        )
+        try:
+            report["cost_estimates"][f"{kind}_box_month"] = backend.client.estimate_costs(
+                spec.dataset, spec.cds_request()
+            )
+        except Exception as e:
+            report["cost_estimates"][f"{kind}_box_month"] = {"error": str(e)}
     states = {r["key"]: r["state"] for r in report["requests"]}
     not_verified = {k: v for k, v in states.items() if v != "verified"}
     report["ok"] = not not_verified
@@ -289,6 +344,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser(
         "export-manifest", help="copy the manifest to /data/astro/manifest-exports"
     ).set_defaults(fn=cmd_export_manifest)
+
+    p = sub.add_parser(
+        "build-landmask", help="land + 1 km buffer (GLOBE 30″) and the ERA5 cells kept"
+    )
+    p.add_argument("--dry-run", action="store_true", help="compute and report; write nothing")
+    p.add_argument("--summary-out", default=str(REPO_ROOT / "reports" / "landmask_summary.json"))
+    p.set_defaults(fn=cmd_build_landmask)
 
     p = sub.add_parser("cds-smoke-test", help="phase 1 step 2: one hour, small box")
     p.add_argument("--date", default="2023-06-21")
