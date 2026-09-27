@@ -1,6 +1,6 @@
 # Phase 1 plan
 
-- **Status:** draft for Riley's approval (AGENTS.md phase 1 step 1: "share it with Riley, then start").
+- **Status:** approved by Riley (D16, D19, D20); work continues on the CT. Measured CDS numbers and the download-schedule question are in §6.0 (2026-09-27).
 - **Written:** 2026-09-27, from a cloud session with no access to the CT, `/data`, `/staging` or the CDS.
 - **Decision log:** `docs/decisions.md` (D1–D21). **Commands for the CT:** `docs/ct_runbook.md`.
 - **Tags:** *[estimate]* = my arithmetic, to be replaced by measurements; **[ASK]** = needs Riley.
@@ -60,7 +60,7 @@ Details in D15 and RESEARCH.md (all edits dated 2026-09-27):
 | 5 | Update this plan with measured queue time, throughput and cost limits | agent | step 4 | revised §6 |
 | 6 | Read Haslebacher's code: inputs, periods, levels | agent | step 2 | their data volume → **[ASK]** if over 50 GB |
 | 7 | Land mask (1 km + 1 km buffer) and cell list; check the 367,051 estimate | agent | source decided: `global-land-mask` (D20) | `static/landmask` + report |
-| 8 | Downloads for validation boxes (§6 table), month-sized requests (D16), in this order: Paranal (O&S + ESO 2021–2025), Timau/Eltari, Bi's 7 sites, TMT, Haslebacher | CT | smoke test done | Zarr stores + manifest |
+| 8 | Downloads for validation boxes (§6 table), month-sized requests (D16) split to the CDS limit (D23), in this order: Paranal (O&S + ESO 2021–2025), Timau/Eltari, Bi's 7 sites, TMT, Haslebacher. **Paranal running since 2026-09-27; the rest waits for the §6.0 decision [ASK]** | CT | smoke test done | Zarr stores + manifest |
 | 9 | Reproductions, one notebook each: Haslebacher (their code, then ours) → Bi → Priyatikanto → O&S | agent | 6, 8 | notebooks + golden tests |
 | 10 | Model levels (ERA5 complete): ~1 year, 3 boxes (Paranal, Mauna Kea, La Palma) | CT | licence | pl-vs-ml experiment |
 | 11 | Experiments (AGENTS phase 1 step 5) | agent | 8–10 | one recommendation each |
@@ -83,7 +83,22 @@ Proposed before any reproduction runs, so they can't be tuned to the results:
 | O&S | Not reproducible exactly (06/18 UT forecasts, SCIDAR). In O&S mode (K = 6), our Paranal medians are within ±0.1″ of their ECMWF column: 0.62″ total, 0.41″ free atmosphere, 0.45″ ground layer (Table 3), over the SCIDAR campaign dates. |
 | Calibration (ESO 2021–2025, TMT) | On held-out years/sites, nightly-median bias ≤ 0.10″ for free atmosphere and ≤ 0.15″ for total. Report RMSE and r but don't gate on them (O&S found r = 0.64 and 0.30). |
 
-## 6. Data volumes and requests *[estimate]*
+## 6. Data volumes and requests
+
+### 6.0 Measured on the CT, 2026-09-27 (supersedes the estimates below where they differ) **[ASK]**
+
+Sources: `reports/cds_smoke_test.json`, the first Paranal downloads, decisions D23–D24; details in `reports/ct_first_run.md` §7–8.
+
+- **CDS cost = number of fields** (variables × levels × hours × days), whatever the area. Limits: 60,000 per request (pressure levels), 121,000 (single levels). A month of a 5×5 box with 29 levels × 5 variables is 107,880, so each month is **2 pressure-level requests + 1 single-level request** (D23).
+- **Processing speed: 31.3 fields/s** (52,200 fields in 1,669 s; first measurement), **one request at a time**; the CDS rejects queued requests beyond about 5 per dataset. Processing, not bandwidth, is the bottleneck for boxes: a 5×5 box costs the CDS as much as the whole globe per field.
+- **Bytes: 0.60 MB per 5×5 box-day** (GRIB1, 16-bit; ~153 B per field), vs 0.8 MB estimated. Volume is not a concern: the plan's list is ~11 GB.
+- **Time: the plan's list is ~72 M pressure-level fields ≈ 27 days of CDS processing**, vs "1–3.5 days" below. Over the 24 h threshold, so the schedule needs Riley's decision. Options (`reports/ct_first_run.md` §8):
+  - **A (as planned):** 72 M fields, ~27 days, 11 GB.
+  - **B (recommended):** shared rectangles for co-located sites (Chile: Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; Tibet/Qinghai: Bi's five western sites); `cc` only where cloud work is planned; Priyatikanto's 20 years sampled 1 day in 4. 35 M fields, ~13 days, ~54 GB of GRIB.
+  - **C:** B plus night hours only for the DIMM/MASS calibration targets (ESO, TMT). ~24 M fields, ~9 days; needs an exception to "validation boxes keep all hours".
+- **Running meanwhile:** the Paranal 5×5 box (O&S 2016-04..2018-01 and ESO 2021–2025; 2,497 box-days, ~3.2 CDS-days). It is in every option. Nothing else is queued.
+
+### 6.1 Original estimates (cloud session) *[estimate]*
 
 **What this data is for.** Before scaling up, phase 1 checks our seeing calculation against published papers and observatory measurements (AGENTS.md phase 1 step 4). That needs ERA5 weather profiles only at those sites, for the periods the papers or instruments cover. A **validation box** is the small patch of ERA5 grid we download around one site: 5×5 grid points (about 110 km across), with hourly pressure-level profiles (temperature, wind, geopotential and cloud fraction on 29 levels) and single-level fields (cloud cover, surface pressure, winds, heat flux, …).
 
@@ -120,7 +135,8 @@ Status after Riley's answers on 2026-09-27:
 
 1. **Request size (D16): month-sized requests for validation boxes, approved** by Riley; `plan-box` defaults to `month`.
 2. **Tolerances (§5): approved** by Riley (D19).
-3. **Haslebacher volume:** nothing to decide yet. Once their code is read on the CT, I'll report how much ERA5 it needs, and ask if it's over 50 GB.
+3. **Haslebacher volume [ASK]:** read on the CT (D27). Their outputs need ERA5 1979–2020 at 8 sites (~330 M CDS fields, months of processing) *and* their in-situ seeing, which isn't published. Proposed instead: their code vs ours on our ERA5 (done for one hour: agreement 9.4e-7, `reports/haslebacher2022_code_vs_code.json`; to repeat on a month), plus Table 4's lower levels from ERA5 surface pressure.
+8. **Download schedule [ASK]:** §6.0 (options A/B/C).
 4. **RESEARCH.md edits (D15):** listed for Riley; no decision needed unless he disagrees with one.
 5. **GitHub push access: fixed** by Riley; the branch is pushed and PR #1 is open.
 6. **Land-mask source: `global-land-mask`**, approved and checked (D20). Note: floating ice shelves count as sea.
