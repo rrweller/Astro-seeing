@@ -141,8 +141,11 @@ def snapshot(
     retryable = permanent = 0
     problem_events: list[str] = []
     for r in rows:
+        # Everything unfinished counts, including requests the CDS has done but that
+        # still await local verify/ingest (a slight overestimate of CDS time, never zero
+        # while work is pending).
         retry = r["state"] == "failed" and r["attempts"] < max_attempts
-        if r["state"] in ("planned", "submitted") or retry:
+        if r["state"] in PENDING or retry:
             left += request_fields(json.loads(r["request_json"]))
         fin = r["cds_finished_at"]
         if fin and dt.datetime.fromisoformat(fin).astimezone(dt.UTC) >= since:

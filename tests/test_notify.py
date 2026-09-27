@@ -227,3 +227,11 @@ def test_a_queue_with_only_held_requests_is_not_finished(m):
     m.hold("sl/x")
     st = WatchState(last_daily=NOW.date().isoformat())
     assert run(m, st) == []
+
+
+def test_fields_left_include_downloaded_and_verified(m):
+    """Copilot review of PR #2: pending work must never show zero fields left."""
+    before = snapshot(m, NOW).fields_left
+    set_state(m, 1, "downloaded")
+    set_state(m, 2, "verified")
+    assert snapshot(m, NOW).fields_left == before
