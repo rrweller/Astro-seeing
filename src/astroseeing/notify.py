@@ -48,6 +48,9 @@ def ntfy_url(env_file: Path = DEFAULT_ENV) -> str:
     """The ntfy topic URL from $ASTRO_NTFY_URL or ``env_file`` (never logged)."""
     url = os.environ.get("ASTRO_NTFY_URL")
     if not url and env_file.is_file():
+        mode = env_file.stat().st_mode & 0o777
+        if mode & 0o077:  # the topic URL is the only thing keeping the topic private
+            raise PermissionError(f"{env_file} has mode {oct(mode)}; run `chmod 600 {env_file}`")
         for line in env_file.read_text().splitlines():
             if line.startswith("NTFY_URL="):
                 url = line.split("=", 1)[1].strip()
@@ -134,7 +137,8 @@ def snapshot(
     failed_examples = []
     retryable = permanent = 0
     for r in rows:
-        if r["state"] in ("planned", "submitted"):
+        retry = r["state"] == "failed" and r["attempts"] < max_attempts
+        if r["state"] in ("planned", "submitted") or retry:
             left += request_fields(json.loads(r["request_json"]))
         fin = r["cds_finished_at"]
         if fin and dt.datetime.fromisoformat(fin).astimezone(dt.UTC) >= since:

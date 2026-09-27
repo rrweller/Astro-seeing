@@ -216,3 +216,8 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Smoke-test report:** the split-month cost estimates were added with the current code (estimate calls only: 55,680 and 52,200 of 60,000), marked as added after the original run.
 - **First-run report:** the systemd text now describes the D32 services.
 - **Who:** agent (fixes), Copilot (findings).
+- **Second round (4 more findings, all addressed):**
+  - the site-box mask compares longitudes modulo 360, and ingest refuses loudly (a failure, not a silent empty store) if an area's mask doesn't select exactly its site-box points;
+  - `notify.env` must be mode 600, like `~/.cdsapirc`;
+  - `build-landmask --dry-run` writes no summary unless `--summary-out` is given;
+  - the finish estimate counts failed requests that will be retried.

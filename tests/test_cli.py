@@ -233,3 +233,15 @@ def test_build_landmask_site_checks(ct, monkeypatch, sites, code):
     out = ct / "summary.json"
     assert cli.main(["build-landmask", "--dry-run", "--summary-out", str(out)]) == code
     assert json.loads(out.read_text())["sites"].keys() == sites.keys()
+
+
+def test_build_landmask_dry_run_writes_nothing_by_default(ct, monkeypatch):
+    """Copilot review of PR #2: --dry-run must not rewrite reports/landmask_summary.json."""
+    from astroseeing.terrain import landmask
+
+    stub = _StubMask({"a": {"globe_land": True, "era5_cell_kept": True}})
+    monkeypatch.setattr(landmask, "build", lambda **kw: stub)
+    written = []
+    monkeypatch.setattr(cli.Path, "write_text", lambda self, *a, **k: written.append(self))
+    assert cli.main(["build-landmask", "--dry-run"]) == 0
+    assert written == []

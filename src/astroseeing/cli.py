@@ -267,6 +267,9 @@ def cmd_export_manifest(args, paths: Paths) -> int:
     return 0
 
 
+DEFAULT_LANDMASK_SUMMARY = str(REPO_ROOT / "reports" / "landmask_summary.json")
+
+
 def validation_sites() -> dict[str, tuple[float, float]]:
     """``group/site`` → (lat, lon) for every site in configs/sites.yaml."""
     return {
@@ -290,8 +293,9 @@ def cmd_build_landmask(args, paths: Paths) -> int:
     # a site whose listed coordinates are at sea is a finding about the coordinates.
     inconsistent = [n for n, s in sites.items() if s["globe_land"] and not s["era5_cell_kept"]]
     at_sea = [n for n, s in sites.items() if not s["globe_land"]]
-    if args.summary_out:
-        p = Path(args.summary_out)
+    summary_out = args.summary_out or (None if args.dry_run else DEFAULT_LANDMASK_SUMMARY)
+    if summary_out:
+        p = Path(summary_out)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({k: v for k, v in summary.items() if k != "sites"}, indent=2))
@@ -508,8 +512,16 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser(
         "build-landmask", help="land + 1 km buffer (GLOBE 30″) and the ERA5 cells kept"
     )
-    p.add_argument("--dry-run", action="store_true", help="compute and report; write nothing")
-    p.add_argument("--summary-out", default=str(REPO_ROOT / "reports" / "landmask_summary.json"))
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="compute and print; write no stores (and no summary unless --summary-out is given)",
+    )
+    p.add_argument(
+        "--summary-out",
+        default=None,
+        help=f"JSON summary path (default without --dry-run: {DEFAULT_LANDMASK_SUMMARY})",
+    )
     p.set_defaults(fn=cmd_build_landmask)
 
     p = sub.add_parser("cds-smoke-test", help="phase 1 step 2: one hour, small box")

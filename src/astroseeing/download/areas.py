@@ -44,15 +44,20 @@ class ValidationArea:
         )
 
     def cell_mask(self, lat: np.ndarray, lon: np.ndarray) -> np.ndarray:
-        """True at grid points (lat × lon) inside any site box."""
+        """True at grid points (lat × lon) inside any site box.
+
+        Longitudes may come in either convention (−180..180 or 0..360: the CDS may
+        return 289.0 for −71.0); they are compared modulo 360.
+        """
         la = np.asarray(lat, float)[:, None]
         lo = np.asarray(lon, float)[None, :]
         eps = 1e-6
         out = np.zeros((la.size, lo.size), dtype=bool)
         for b in self.boxes().values():
+            east_of_west = np.mod(lo - b.west + eps, 360.0) - eps  # 0 at the west edge
             out |= (
-                (la <= b.north + eps) & (la >= b.south - eps) & (lo >= b.west - eps)
-                & (lo <= b.east + eps)
+                (la <= b.north + eps) & (la >= b.south - eps)
+                & (east_of_west <= (b.east - b.west) + eps)
             )  # fmt: skip
         return out
 
@@ -108,7 +113,16 @@ def mask_fn(req, dec) -> tuple[np.ndarray | None, None]:
     """Ingest/cleanup hook: site-box mask for areas, grid layout for small boxes."""
     area = area_for_region(req.region)
     if area is not None:
-        return area.cell_mask(dec.lat, dec.lon), None
+        mask = area.cell_mask(dec.lat, dec.lon)
+        want = area.points()[0].size
+        if int(mask.sum()) != want:
+            # Never store a partial or empty area silently (e.g. an unexpected grid).
+            raise ValueError(
+                f"{req.key}: site-box mask selects {int(mask.sum())} grid points, expected "
+                f"{want} for area {area.name!r}; grid lat {dec.lat[0]}..{dec.lat[-1]}, "
+                f"lon {dec.lon[0]}..{dec.lon[-1]}"
+            )
+        return mask, None
     npts = dec.lat.size * dec.lon.size
     if npts <= MAX_UNMASKED_POINTS:
         return None, None

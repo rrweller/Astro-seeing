@@ -9,7 +9,7 @@ import pytest
 
 from astroseeing.download.requests import Area, plan_requests
 from astroseeing.manifest import Manifest
-from astroseeing.notify import WatchState, check_once, request_fields, snapshot
+from astroseeing.notify import WatchState, check_once, ntfy_url, request_fields, snapshot
 
 AREA = Area.around(-24.63, -70.40, half_width_cells=1)
 NOW = dt.datetime(2026, 10, 1, 7, 0, tzinfo=dt.UTC)
@@ -166,3 +166,25 @@ def test_state_round_trip(tmp_path):
     p.write_text("{not json")
     assert WatchState.load(p) == WatchState()
     assert json.loads(json.dumps(st.__dict__))
+
+
+def test_notify_env_must_not_be_readable_by_others(tmp_path, monkeypatch):
+    """Copilot review of PR #2: the topic URL is what keeps the topic private."""
+    monkeypatch.delenv("ASTRO_NTFY_URL", raising=False)
+    env = tmp_path / "notify.env"
+    env.write_text("NTFY_URL=https://ntfy.sh/example\n")
+    env.chmod(0o644)
+    with pytest.raises(PermissionError, match="chmod 600"):
+        ntfy_url(env)
+    env.chmod(0o600)
+    assert ntfy_url(env) == "https://ntfy.sh/example"
+
+
+def test_fields_left_include_failed_requests_that_will_be_retried(m):
+    """Copilot review of PR #2: otherwise the ETA comes too early after a failure."""
+    before = snapshot(m, NOW).fields_left
+    set_state(m, 1, "failed", last_error="timeout")
+    assert snapshot(m, NOW).fields_left == before
+    m.conn.execute("UPDATE requests SET attempts=5 WHERE id=1")
+    m.conn.commit()
+    assert snapshot(m, NOW).fields_left == before - 12_648  # given up: not left any more

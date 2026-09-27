@@ -136,3 +136,20 @@ def test_undeclared_large_request_is_refused_not_failed(tmp_path, monkeypatch):
     assert out == {"ingested": 0, "already_present": 0, "failed": 0, "refused_unmasked": 1}
     assert m.get(rid).state == "refused" and m.retry_failed() == 0
     m.close()
+
+
+def test_mask_is_the_same_in_either_longitude_convention():
+    """Copilot review of PR #2: the CDS may return 289.0 for -71.0."""
+    a = TWO.area
+    lat = np.arange(a.north, a.south - 1e-9, -0.25)
+    lon = np.arange(a.west, a.east + 1e-9, 0.25)
+    assert np.array_equal(TWO.cell_mask(lat, lon), TWO.cell_mask(lat, np.mod(lon, 360.0)))
+
+
+def test_a_partial_or_empty_area_mask_fails_loudly(monkeypatch):
+    monkeypatch.setattr(ar, "load_areas", lambda: {"two": TWO})
+    a = TWO.area
+    shifted = SimpleNamespace(lat=np.arange(a.north, a.south - 1e-9, -0.25) + 5.0,
+                              lon=np.arange(a.west, a.east + 1e-9, 0.25))  # fmt: skip
+    with pytest.raises(ValueError, match="expected 50"):
+        ar.mask_fn(SimpleNamespace(region="two", key="k"), shifted)
