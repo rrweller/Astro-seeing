@@ -1,0 +1,9 @@
+[Unit]
+Description=astro-seeing: export the SQLite manifest to /data/astro/manifest-exports
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/astro-seeing
+# A hung NFS mount must not block forever (AGENTS.md "Environment").
+TimeoutStartSec=15min
+ExecStart=%h/.pixi/bin/pixi run astro export-manifest
