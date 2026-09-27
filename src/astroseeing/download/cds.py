@@ -22,6 +22,16 @@ PENDING = ("accepted", "running")
 FAILED = ("failed", "rejected")
 GONE = ("dismissed", "deleted")
 
+#: The CDS rejects a job outright when a user has too many queued for one dataset
+#: (seen on the CT, 2026-09-27: 24 of 29 simultaneous submissions rejected with
+#: "Number queued requests for this dataset is temporarily limited. Please configure
+#: your scripts accordingly"). That is transient: the request is planned again.
+QUEUE_LIMIT_MESSAGE = "queued requests for this dataset is temporarily limited"
+
+
+def is_queue_limit_rejection(error: str | None) -> bool:
+    return bool(error) and QUEUE_LIMIT_MESSAGE in error.lower()
+
 
 @dataclass
 class RemoteInfo:
@@ -90,6 +100,10 @@ class DatastoresBackend:
                 remote.results_ready  # noqa: B018 - raises with the server's message
             except ProcessingFailedError as e:
                 info.error = str(e)
+            except Exception as e:  # rejected jobs raise HTTPError (400) instead
+                info.error = f"{type(e).__name__}: {e}"
+            if info.error is None:
+                info.error = f"cds status {status} (no message)"
         if status == DONE:
             info.content_length = self.client.get_results(request_id).content_length
         return info

@@ -191,6 +191,46 @@ def test_never_more_than_max_active_in_flight(env):
     assert m.by_state("planned", limit=0) == []
 
 
+def test_queue_limit_rejection_is_planned_again(env):
+    """A CDS "queued requests ... temporarily limited" rejection is transient."""
+    m, fake = env["m"], env["fake"]
+    fake.behaviour[FakeCdsBackend.req_key(env["specs"][0].cds_request())] = "queue_limit"
+    drain(env["dl"])
+    assert m.counts() == {"downloaded": 3} and fake.submits == 4
+    assert len(fake.deleted) == 4  # the rejected job too, as a courtesy
+    assert m.by_state("downloaded")[0].attempts == 0  # not counted as a failure
+
+
+def test_real_backend_reads_the_message_of_a_rejected_job():
+    """Rejected jobs raise requests.HTTPError, not ProcessingFailedError (seen on the CT)."""
+    import requests
+
+    from astroseeing.download.cds import DatastoresBackend, is_queue_limit_rejection
+
+    class _Remote:
+        status = "rejected"
+
+        @property
+        def results_ready(self):
+            raise requests.HTTPError(
+                "400 Client Error: Bad Request\nThe job has been rejected\nNumber queued "
+                "requests for this dataset is temporarily limited. Please configure your "
+                "scripts accordingly"
+            )
+
+    class _Client:
+        @staticmethod
+        def get_remote(request_id):
+            return _Remote()
+
+    backend = object.__new__(DatastoresBackend)
+    backend.client = _Client()
+    info = backend.info("abc")
+    assert info.status == "rejected" and "HTTPError" in info.error
+    assert is_queue_limit_rejection(info.error)
+    assert not is_queue_limit_rejection("cost limits exceeded")
+
+
 def test_cds_rejection_is_recorded_and_retryable(env):
     m, fake, dl = env["m"], env["fake"], env["dl"]
     fake.behaviour[FakeCdsBackend.req_key(env["specs"][0].cds_request())] = "reject"

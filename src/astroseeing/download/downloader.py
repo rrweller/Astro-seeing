@@ -21,7 +21,14 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from astroseeing.download.cds import DONE, FAILED, GONE, PENDING, CdsBackend
+from astroseeing.download.cds import (
+    DONE,
+    FAILED,
+    GONE,
+    PENDING,
+    CdsBackend,
+    is_queue_limit_rejection,
+)
 from astroseeing.manifest import Manifest, Request, utcnow
 
 log = logging.getLogger(__name__)
@@ -116,6 +123,19 @@ class Downloader:
         if info.status in PENDING:
             return
         if info.status in FAILED:
+            if is_queue_limit_rejection(info.error):
+                # Too many queued at the CDS for this dataset: plan it again (transient).
+                s.resubmit += 1
+                self.m.transition(
+                    req.id,
+                    ["submitted"],
+                    "planned",
+                    detail=f"cds {info.status}: queue limit",
+                    cds_request_id=None,
+                )
+                log.warning("%s rejected by the CDS queue limit; planned again", req.key)
+                self._delete_remote(req.cds_request_id)
+                return
             s.failed += 1
             self.m.fail(req.id, ["submitted"], f"cds {info.status}: {info.error}")
             return
@@ -163,7 +183,10 @@ class Downloader:
         s.downloaded += 1
         log.info("downloaded %s: %d bytes, %.1f s, sha256 %s", req.key, size, seconds, digest[:12])
         if self.delete_remote:
-            try:
-                self.backend.delete(req.cds_request_id)
-            except Exception as e:  # cleanup at the CDS is a courtesy, not required
-                log.warning("could not delete remote %s: %s", req.cds_request_id, e)
+            self._delete_remote(req.cds_request_id)
+
+    def _delete_remote(self, request_id: str) -> None:
+        try:
+            self.backend.delete(request_id)
+        except Exception as e:  # cleanup at the CDS is a courtesy, not required
+            log.warning("could not delete remote %s: %s", request_id, e)
