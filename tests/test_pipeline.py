@@ -231,6 +231,17 @@ def test_real_backend_reads_the_message_of_a_rejected_job():
     assert not is_queue_limit_rejection("cost limits exceeded")
 
 
+def test_held_requests_are_not_submitted_until_released(env):
+    m, fake = env["m"], env["fake"]
+    assert m.hold("pl/") == 2 and m.counts() == {"held": 2, "planned": 1}
+    drain(env["dl"])
+    assert fake.submits == 1 and m.counts() == {"held": 2, "downloaded": 1}
+    assert m.hold("pl/") == 0  # only planned requests can be held
+    assert m.release("pl/paranal/2023-06-20") == 1
+    drain(env["dl"])
+    assert m.counts() == {"held": 1, "downloaded": 2}
+
+
 def test_cds_rejection_is_recorded_and_retryable(env):
     m, fake, dl = env["m"], env["fake"], env["dl"]
     fake.behaviour[FakeCdsBackend.req_key(env["specs"][0].cds_request())] = "reject"

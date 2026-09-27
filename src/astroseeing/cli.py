@@ -144,6 +144,18 @@ def cmd_retry_failed(args, paths: Paths) -> int:
     return 0
 
 
+def cmd_hold(args, paths: Paths) -> int:
+    n = _manifest(paths).hold(args.prefix)
+    log.info("held %d planned requests with keys starting %r", n, args.prefix)
+    return 0
+
+
+def cmd_release(args, paths: Paths) -> int:
+    n = _manifest(paths).release(args.prefix)
+    log.info("released %d held requests with keys starting %r", n, args.prefix)
+    return 0
+
+
 def cmd_export_manifest(args, paths: Paths) -> int:
     out = _manifest(paths).export(paths.manifest_exports)
     log.info("exported manifest to %s", out)
@@ -347,6 +359,13 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("retry-failed", help="move failed requests back to planned")
     p.add_argument("--max-attempts", type=int, default=5)
     p.set_defaults(fn=cmd_retry_failed)
+
+    p = sub.add_parser("hold", help="pause planned requests whose key starts with PREFIX")
+    p.add_argument("prefix", help="e.g. pl/paranal/2021 (keys are kind/region/period)")
+    p.set_defaults(fn=cmd_hold)
+    p = sub.add_parser("release", help="move held requests whose key starts with PREFIX to planned")
+    p.add_argument("prefix")
+    p.set_defaults(fn=cmd_release)
 
     sub.add_parser(
         "export-manifest", help="copy the manifest to /data/astro/manifest-exports"
