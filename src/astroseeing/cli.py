@@ -156,6 +156,27 @@ def cmd_release(args, paths: Paths) -> int:
     return 0
 
 
+def cmd_notify(args, paths: Paths) -> int:
+    from astroseeing.notify import ntfy_url, send_ntfy
+
+    send_ntfy(ntfy_url(), args.message, title=args.title)
+    log.info("notification sent")
+    return 0
+
+
+def cmd_notify_watch(args, paths: Paths) -> int:
+    from astroseeing.notify import watch
+
+    log.info("watching downloads; checking every %.0f s", args.interval)
+    watch(
+        paths,
+        interval_s=args.interval,
+        stall_hours=args.stall_hours,
+        daily_hour_utc=args.daily_hour_utc,
+    )
+    return 0
+
+
 def cmd_export_manifest(args, paths: Paths) -> int:
     out = _manifest(paths).export(paths.manifest_exports)
     log.info("exported manifest to %s", out)
@@ -359,6 +380,16 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("retry-failed", help="move failed requests back to planned")
     p.add_argument("--max-attempts", type=int, default=5)
     p.set_defaults(fn=cmd_retry_failed)
+
+    p = sub.add_parser("notify", help="send one notification (ntfy; ~/.config/astro/notify.env)")
+    p.add_argument("message")
+    p.add_argument("--title", default="astro-seeing")
+    p.set_defaults(fn=cmd_notify)
+    p = sub.add_parser("notify-watch", help="notify on finish, problems and daily progress")
+    p.add_argument("--interval", type=float, default=600.0, help="seconds between checks")
+    p.add_argument("--stall-hours", type=float, default=3.0)
+    p.add_argument("--daily-hour-utc", type=int, default=6)
+    p.set_defaults(fn=cmd_notify_watch)
 
     p = sub.add_parser("hold", help="pause planned requests whose key starts with PREFIX")
     p.add_argument("prefix", help="e.g. pl/paranal/2021 (keys are kind/region/period)")
