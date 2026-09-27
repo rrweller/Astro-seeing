@@ -5,7 +5,7 @@ ERA5 reanalysis profiles (seeing and cloud) and Copernicus DEM terrain.
 
 - **Start here:** `AGENTS.md` (mission, rules, phases) and `docs/RESEARCH.md` (physics, sources).
 - **Current plan:** `reports/phase1_plan.md`. **Decisions:** `docs/decisions.md`.
-- **Running on the CT:** `docs/ct_runbook.md`.
+- **Running on the CT:** `docs/handoff_ct.md` (start here on the CT) and `docs/ct_runbook.md`.
 
 ## Quick start
 

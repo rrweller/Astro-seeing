@@ -94,6 +94,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Options:** day-sized requests (AGENTS.md) or month-sized for small boxes.
 - **Evidence:** phase 1 needs roughly 20,000 box-days (see `reports/phase1_plan.md`); at one request per day per dataset that is about 40,000 CDS requests, each queued separately. A 5×5-point month of pressure levels is 29 × 5 × 24 × 31 ≈ 108,000 fields; whether the CDS accepts that is what the smoke test's cost estimate will tell.
 - **Choice:** code supports both (`--granularity month`); the default stays `day` until Riley decides.
+- **Decided 2026-09-27 (Riley): month-sized requests for validation boxes.** `astro plan-box` now defaults to `month` (`configs/era5.yaml: request.validation_box_granularity`); global and regional runs stay one day per request. AGENTS.md still says "day-sized requests"; the exception for boxes is proposed in `reports/phase1_plan.md` §9 for Riley to add. If the CDS rejects a month-sized box request (cost limits), fall back to `--granularity day` and record it.
 - **Who:** Riley.
 
 ### D17. Missing values in ERA5 GRIB

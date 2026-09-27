@@ -261,7 +261,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--start", required=True)
     p.add_argument("--end", required=True)
     p.add_argument("--kinds", default="pl,sl", help="comma list of pl, sl, static")
-    p.add_argument("--granularity", choices=("day", "month"), default="day")
+    p.add_argument(
+        "--granularity",
+        choices=("day", "month"),
+        default=load_config("era5")["request"]["validation_box_granularity"],
+        help="request size (default from configs/era5.yaml: month for validation boxes, D16)",
+    )
     p.add_argument("--hours", default="", help="comma list of UTC hours (default all 24)")
     p.set_defaults(fn=cmd_plan_box)
 

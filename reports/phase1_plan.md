@@ -2,7 +2,7 @@
 
 - **Status:** draft for Riley's approval (AGENTS.md phase 1 step 1: "share it with Riley, then start").
 - **Written:** 2026-09-27, from a cloud session with no access to the CT, `/data`, `/staging` or the CDS.
-- **Decision log:** `docs/decisions.md` (D1–D20). **Commands for the CT:** `docs/ct_runbook.md`.
+- **Decision log:** `docs/decisions.md` (D1–D21). **Commands for the CT:** `docs/ct_runbook.md`.
 - **Tags:** *[estimate]* = my arithmetic, to be replaced by measurements; **[ASK]** = needs Riley.
 
 ---
@@ -15,7 +15,7 @@
 - **Checked against the PDFs:** several RESEARCH.md details changed (§3 below). The Bi et al. PDF could not be fetched here, because MDPI refuses this container.
 - **Not done (needs the CT):** fetch the papers there, clone Haslebacher's code, the CDS smoke test, and every data task. Scripts and exact commands are in `docs/ct_runbook.md`.
 - **Push:** the session could not push to GitHub (no write access). The work is on branch `claude/awesome-goodall-yadxpa` as local commits and in a git bundle; `docs/ct_runbook.md` §0 covers both.
-- **Needs you first:** the request size for validation boxes (D16, §8 item 1) is the one open question that blocks the data work.
+- **Riley's answers (2026-09-27):** month-sized requests for validation boxes (D16), tolerances approved (D19), land mask from `global-land-mask` (D20). Work continues on the CT (`docs/handoff_ct.md`).
 
 ## 2. What exists now
 
@@ -60,7 +60,7 @@ Details in D15 and RESEARCH.md (all edits dated 2026-09-27):
 | 5 | Update this plan with measured queue time, throughput and cost limits | agent | step 4 | revised §6 |
 | 6 | Read Haslebacher's code: inputs, periods, levels | agent | step 2 | their data volume → **[ASK]** if over 50 GB |
 | 7 | Land mask (1 km + 1 km buffer) and cell list; check the 367,051 estimate | agent | source decided: `global-land-mask` (D20) | `static/landmask` + report |
-| 8 | Downloads for validation boxes (§6 table), in this order: Paranal (O&S + ESO 2021–2025), Timau/Eltari, Bi's 7 sites, TMT, Haslebacher | CT | D16 decided | Zarr stores + manifest |
+| 8 | Downloads for validation boxes (§6 table), month-sized requests (D16), in this order: Paranal (O&S + ESO 2021–2025), Timau/Eltari, Bi's 7 sites, TMT, Haslebacher | CT | smoke test done | Zarr stores + manifest |
 | 9 | Reproductions, one notebook each: Haslebacher (their code, then ours) → Bi → Priyatikanto → O&S | agent | 6, 8 | notebooks + golden tests |
 | 10 | Model levels (ERA5 complete): ~1 year, 3 boxes (Paranal, Mauna Kea, La Palma) | CT | licence | pl-vs-ml experiment |
 | 11 | Experiments (AGENTS phase 1 step 5) | agent | 8–10 | one recommendation each |
@@ -118,7 +118,7 @@ Box = 5×5 ERA5 points around a site (the Timau box, 24 points, also covers Elta
 
 Status after Riley's answers on 2026-09-27:
 
-1. **[ASK] D16, still open:** may validation boxes use month-sized requests (~1,310 jobs instead of ~39,900)? See §6 for what a box and a request are.
+1. **Request size (D16): month-sized requests for validation boxes, approved** by Riley; `plan-box` defaults to `month`.
 2. **Tolerances (§5): approved** by Riley (D19).
 3. **Haslebacher volume:** nothing to decide yet. Once their code is read on the CT, I'll report how much ERA5 it needs, and ask if it's over 50 GB.
 4. **RESEARCH.md edits (D15):** listed for Riley; no decision needed unless he disagrees with one.

@@ -99,6 +99,8 @@ def test_cli_exit_codes_report_failures(ct, monkeypatch):
         "sl",
         "--hours",
         "0",
+        "--granularity",
+        "day",  # two one-day requests, so one can fail and one can succeed
     ]
     assert cli.main(args) == 0
     fake = _fake_from_manifest(ct / "state" / "manifest.sqlite")
@@ -165,3 +167,14 @@ def test_config_lookup_order(tmp_path, monkeypatch):
         assert config.load_config("era5") == {"grid_deg": 0.5}
     finally:
         config.load_config.cache_clear()
+
+
+def test_plan_box_defaults_to_month_sized_requests(ct):
+    """D16: validation boxes use one request per month."""
+    args = ["plan-box", "--region", "m", "--lat", "-24.63", "--lon", "-70.40",
+            "--start", "2023-01-30", "--end", "2023-02-02", "--kinds", "pl"]  # fmt: skip
+    assert cli.main(args) == 0
+    m = Manifest(ct / "state" / "manifest.sqlite")
+    keys = [r[0] for r in m.conn.execute("SELECT key FROM requests ORDER BY id")]
+    m.close()
+    assert keys == ["pl/m/2023-01", "pl/m/2023-02"]

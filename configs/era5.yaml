@@ -55,6 +55,8 @@ datasets:
 request:
   data_format: grib
   download_format: unarchived
-  # Request granularity. AGENTS.md asks for day-sized requests; for tiny validation
-  # boxes month-sized requests may be far kinder to the CDS queue [ASK Riley].
-  granularity: day
+  # Request size. Validation boxes: one month per request (Riley approved,
+  # 2026-09-27, decision D16). Global and regional runs: one day per request
+  # (AGENTS.md "day-sized requests").
+  validation_box_granularity: month
+  global_granularity: day

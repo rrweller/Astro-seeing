@@ -1,8 +1,9 @@
-# CT runbook: commands for Riley to run on CT 350
+# CT runbook: commands to run on CT 350
 
 These are the steps from phase 1 that need the real machine (`/data`, `/staging`,
-CDS credentials). Run them in order, as your normal user, in `tmux` for anything
-long. Every command is safe to re-run: nothing under `/data` is deleted or
+CDS credentials). Claude Code on the CT runs them (see `docs/handoff_ct.md`);
+only the credential steps need Riley. Run them in order, as the normal user, in
+`tmux` for anything long. Every command is safe to re-run: nothing under `/data` is deleted or
 overwritten.
 
 Paths below assume the repo is cloned at `~/astro-seeing`. If it lives
@@ -10,18 +11,13 @@ elsewhere, change `WorkingDirectory=` in `scripts/systemd/*.service` too.
 
 ## 0. Get the code
 
-The cloud session could not push to GitHub (no write access for that session),
-so the branch may reach you as a git bundle instead. Pick the one that applies:
+The bootstrap is merged into `main`. Day-to-day work happens on the `dev`
+branch; `main` only receives checkpoints that Riley approves.
 
 ```bash
-# (a) if branch claude/awesome-goodall-yadxpa is on GitHub
 git clone https://github.com/rrweller/Astro-seeing ~/astro-seeing
-cd ~/astro-seeing && git checkout claude/awesome-goodall-yadxpa
-
-# (b) from the bundle file (astro-seeing-phase1.bundle)
-git clone -b claude/awesome-goodall-yadxpa astro-seeing-phase1.bundle ~/astro-seeing
-cd ~/astro-seeing && git remote set-url origin https://github.com/rrweller/Astro-seeing
-git push -u origin claude/awesome-goodall-yadxpa     # pushes the work to GitHub
+cd ~/astro-seeing
+git switch dev 2>/dev/null || { git switch -c dev && git push -u origin dev; }
 ```
 
 ## 1. Bootstrap (about 5 minutes)
@@ -81,13 +77,14 @@ dataset would cost (no download). Output: `reports/cds_smoke_test.json`.
 - Commit the report (`git add reports/cds_smoke_test.json && git commit -m "CDS smoke test"`)
   or send it to me; the phase 1 plan's volume and time numbers get updated from it.
 
-## 4. After the smoke test: a first validation box (only after Riley OKs granularity)
+## 4. After the smoke test: a first validation box
 
-Example, not to run yet (see `reports/phase1_plan.md` §6, decision D16):
+Validation boxes use one request per month (decision D16; `plan-box` defaults to
+`month`). Check the smoke test's cost estimates first. Example:
 
 ```bash
 pixi run astro plan-box --region paranal --lat -24.63 --lon -70.40 \
-    --start 2023-06-01 --end 2023-06-30 --kinds pl,sl,static --granularity month
+    --start 2023-06-01 --end 2023-06-30 --kinds pl,sl,static
 pixi run astro status
 pixi run astro download --max-active 4      # resumable; Ctrl-C is safe
 pixi run astro verify
