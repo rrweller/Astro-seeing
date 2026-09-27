@@ -21,6 +21,10 @@ line-length = 100
 target-version = "py312"
 extend-exclude = ["external", "papers", "notebooks"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["astroseeing"]
+known-local-folder = ["fakes"]
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF", "SIM"]
 ignore = [
