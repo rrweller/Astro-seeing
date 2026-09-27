@@ -1,0 +1,147 @@
+{
+  "globe_land_area_fraction": 0.2890527453347914,
+  "globe_land_or_buffer_area_fraction": 0.2913121210094171,
+  "globe_cells_land": 309568712,
+  "globe_cells_added_by_buffer": 2599877,
+  "era5_cells_total": 1038240,
+  "era5_cells_with_land": 365100,
+  "era5_cells_kept": 366604,
+  "era5_cells_kept_fraction": 0.35310140237324705,
+  "era5_cells_kept_south_of_60S": 99904,
+  "cells_kept_at_0.5deg": 95715,
+  "cells_kept_at_1.0deg": 25742,
+  "sites": {
+    "bi2023/da_qaidam": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "bi2023/haikou": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 618
+    },
+    "bi2023/rongcheng": {
+      "globe_land": false,
+      "globe_land_or_buffer": false,
+      "era5_cell_kept": false,
+      "era5_cell_land_cells": 0
+    },
+    "bi2023/ali": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "bi2023/daocheng": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "bi2023/muztagh_ata": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "bi2023/lenghu": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "priyatikanto2026/timau": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 868
+    },
+    "priyatikanto2026/eltari_radiosonde": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 839
+    },
+    "haslebacher2022/mauna_kea": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "haslebacher2022/paranal": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 710
+    },
+    "haslebacher2022/la_silla": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "haslebacher2022/cerro_tololo": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "haslebacher2022/la_palma": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 286
+    },
+    "haslebacher2022/siding_spring": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "haslebacher2022/sutherland": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "haslebacher2022/san_pedro_martir": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "tmt2009/cerro_tolar": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "tmt2009/cerro_armazones": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "tmt2009/cerro_tolonchar": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "tmt2009/san_pedro_martir": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    },
+    "tmt2009/mauna_kea_13n": {
+      "globe_land": true,
+      "globe_land_or_buffer": true,
+      "era5_cell_kept": true,
+      "era5_cell_land_cells": 900
+    }
+  }
+}
