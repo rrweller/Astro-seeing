@@ -72,10 +72,11 @@ class Downloader:
         s = StepSummary()
         for req in self.m.by_state("submitted"):
             self._poll(req, s)
-        active = len(self.m.by_state("submitted"))
-        for req in self.m.by_state("planned", limit=max(0, self.max_active - active)):
-            self._submit(req)
-            s.submitted += 1
+        free = self.max_active - len(self.m.by_state("submitted"))
+        if free > 0:
+            for req in self.m.by_state("planned", limit=free):
+                self._submit(req)
+                s.submitted += 1
         s.pending = len(self.m.by_state("submitted"))
         return s
 

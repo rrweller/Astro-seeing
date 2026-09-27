@@ -178,6 +178,19 @@ def test_resume_after_crash_does_not_resubmit(env):
     assert m.counts() == {"downloaded": 3}
 
 
+def test_never_more_than_max_active_in_flight(env):
+    """Regression (found on the CT, 2026-09-27): with max_active jobs still queued at
+    the CDS, the next step asked for ``limit=0`` planned requests, which by_state took
+    as "no limit", and submitted everything that was planned."""
+    m, fake = env["m"], env["fake"]
+    fake.polls_to_finish = 10  # jobs stay queued for several steps
+    for _ in range(4):
+        env["dl"].step()
+        assert len(m.by_state("submitted")) <= 2
+    assert fake.submits == 2 and len(m.by_state("planned")) == 1
+    assert m.by_state("planned", limit=0) == []
+
+
 def test_cds_rejection_is_recorded_and_retryable(env):
     m, fake, dl = env["m"], env["fake"], env["dl"]
     fake.behaviour[FakeCdsBackend.req_key(env["specs"][0].cds_request())] = "reject"

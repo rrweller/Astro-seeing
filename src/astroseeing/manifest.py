@@ -210,8 +210,8 @@ class Manifest:
 
     def by_state(self, *states: str, limit: int | None = None) -> list[Request]:
         q = f"SELECT * FROM requests WHERE state IN ({','.join('?' * len(states))}) ORDER BY id"
-        if limit:
-            q += f" LIMIT {int(limit)}"
+        if limit is not None:  # LIMIT 0 means none (an earlier `if limit:` made it "all")
+            q += f" LIMIT {max(0, int(limit))}"
         return [Request.from_row(r) for r in self.conn.execute(q, states)]
 
     def counts(self) -> dict[str, int]:
