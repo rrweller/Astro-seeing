@@ -262,6 +262,11 @@ def cmd_notify_watch(args, paths: Paths) -> int:
 
 
 def cmd_export_manifest(args, paths: Paths) -> int:
+    from astroseeing.paths import probe_responsive
+
+    # A hung NFS mount blocks in uninterruptible I/O, which no timeout can stop: check
+    # the NAS answers (in a child process with a timeout) before writing to it.
+    probe_responsive(paths.data_root, timeout_s=60)
     out = _manifest(paths).export(paths.manifest_exports)
     log.info("exported manifest to %s", out)
     return 0

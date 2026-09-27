@@ -85,14 +85,14 @@ Proposed before any reproduction runs, so they can't be tuned to the results:
 
 ## 6. Data volumes and requests
 
-### 6.0 Measured on the CT, 2026-09-27 (supersedes the estimates below where they differ) **[ASK]**
+### 6.0 Measured on the CT, 2026-09-27 (supersedes the estimates below where they differ); schedule decided: option C (D31)
 
 Sources: `reports/cds_smoke_test.json`, the first Paranal downloads, decisions D23–D24; details in `reports/ct_first_run.md` §7–8.
 
 - **CDS cost = number of fields** (variables × levels × hours × days), whatever the area. Limits: 60,000 per request (pressure levels), 121,000 (single levels). A month of a 5×5 box with 29 levels × 5 variables is 107,880, so each month is **2 pressure-level requests + 1 single-level request** (D23).
 - **Processing speed: 26.4 fields/s** on average (9 half-month files of 52,200 fields, 27–45 min each; single levels 16.9 fields/s), **one request at a time per user, across datasets**; the CDS rejects queued requests beyond about 5 per dataset. Processing, not bandwidth, is the bottleneck for boxes: a 5×5 box costs the CDS as much as the whole globe per field.
 - **Bytes: 0.60 MB per 5×5 box-day** (GRIB1, 16-bit; ~153 B per field), vs 0.8 MB estimated. Volume is not a concern: the plan's list is ~11 GB.
-- **Time: the plan's list is ~72 M pressure-level fields ≈ 37 days of CDS processing including single levels**, vs "1–3.5 days" below. Over the 24 h threshold, so the schedule needs Riley's decision. Options (`reports/ct_first_run.md` §8):
+- **Time: the plan's list is ~72 M pressure-level fields ≈ 37 days of CDS processing including single levels**, vs "1–3.5 days" below. That was over the 24 h threshold, so Riley chose among these options (history; `reports/ct_first_run.md` §8):
   - **A (as planned):** 72 M fields, ~37 days, 11 GB.
   - **B (recommended):** shared rectangles for co-located sites (Chile: Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; Tibet/Qinghai: Bi's five western sites); `cc` only where cloud work is planned; Priyatikanto's 20 years sampled 1 day in 4. 35 M fields, ~18 days, ~54 GB of GRIB.
   - **C:** B plus night hours only for the DIMM/MASS calibration targets (ESO, TMT). ~24 M fields, ~12 days; needs an exception to "validation boxes keep all hours".

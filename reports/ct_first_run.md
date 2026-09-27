@@ -105,6 +105,8 @@ What happened:
 
 ## 9. Questions for Riley
 
+*As asked on 2026-09-27. Answers: D28 (Haslebacher scope, land mask, splitting, root, ESO) and D31 (option C). Still open: the Bi et al. PDF, the TMT login, the CDS key and the PR to `main`.*
+
 ### Decisions needed now
 
 **1. How to handle the slow downloads (the most important one)**
@@ -116,6 +118,7 @@ What happened:
   - **C:** B + night hours only where all comparisons are at night: ~10 days (needs an exception to "validation boxes keep all hours");
   - **D:** C + 2 years of ESO calibration and only the TMT campaign years: ~8 days.
 - **What I need:** reply **A, B, C or D**. With B, C or D, the Paranal 2021–2025 part (about 18 h from starting) gets replaced by the shared Chile download.
+- **Answered: option C** (Riley, D31). Queued 2026-09-27; see `reports/phase1_plan.md` §6.0. The options above are kept as the record of the choice.
 
 **2. What counts as "reproducing" Haslebacher et al.**
 

@@ -5,6 +5,8 @@
 Description=astro-seeing: ERA5 download, verify and ingest loop
 Wants=network-online.target
 After=network-online.target
+# Never run against an unmounted /data (writes would land on the empty mountpoint).
+RequiresMountsFor=/data/astro
 
 [Service]
 Type=simple
