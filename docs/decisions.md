@@ -176,3 +176,15 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Download schedule:** not decided. Riley asked for a review of the CDS speed first: parallel requests, larger requests, the effect on the global run, and how Haslebacher et al. got 42 years.
 - **Later:** Bi et al. PDF (Riley will upload it), TMT login, CDS key rotation, PR to `main`.
 - **Who:** Riley.
+
+### D29. Download review (Riley asked: parallel requests, larger requests, the global run, Haslebacher's 42 years)
+- **Facts (2026-09-27 evening; RESEARCH §7):** one processing slot per user shared by ERA5 pressure and single levels; one account per user (CDS terms, Art. 2); requests are already 87% of the 60,000-field limit and time scales with fields, not requests (overhead ~10–15 s). The single-level **time-series product runs in its own slot, takes seconds, and matches our data**. The mirrors (NCAR, Google) are whole-globe per hour. Bandwidth 21–47 MB/s.
+- **Consequences:** larger requests and extra accounts won't help. Single levels for validation should come from the time-series product (except lcc/mcc/hcc, zust, ishf and tcwv, needed only for the cloud-layer and W71 experiments), so the slot is used only for pressure levels. The global run is ~7.1 M fields (~3.3 days of CDS processing) plus ~13 TB of transfer (~3–7 days at the measured bandwidth); it is not worse than phase 1.
+- **Haslebacher et al.'s 42 years:** their scripts send one request per pressure level per year (4 variables, ~35,000 fields) for each site box, and start ~27 downloads at once (one terminal per level), on the old CDS (replaced in September 2024). With today's one slot, that plan is ~5 months for us.
+- **Choice:** pending Riley (options in `reports/ct_first_run.md` §8). ERA5-complete (MARS) as a possible second slot is untested: its cost estimator returned HTTP 500s, and a real test is a tape request that can take hours.
+- **Who:** agent (facts); Riley (choice).
+
+### D30. Land mask: GLOBE for choosing ERA5 cells; the 30 m Copernicus DEM for pixels (phase 2)
+- **Evidence (2026-09-27):** of 22 small islands tested, all from 1 km² up are in the mask (Tromelin 1.0, Surtsey 1.3, Howland, Baker, Johnston, Nightingale, Jarvis, Pitcairn, Clipperton, Midway, Wake, … St Helena, Christmas Island); only Rockall (a 0.001 km² rock) is missing. But GLOBE places some small islands kilometres off: **Norfolk Island is drawn ~9 km east** of its true position (GLOBE centroid 29.027° S 168.043° E vs 29.03° S 167.95° E). Its ERA5 cell is still kept.
+- **Choice:** keep GLOBE + 1 km for selecting ERA5 cells (robust at 25 km scale). For the pixel-level mask in phase 2, use the Copernicus DEM (30 m, which we process anyway) and add any island it has that GLOBE lacks to the cell selection. Meets Riley's requirement (D28): land plus a small sea buffer, including small islands.
+- **Who:** agent (provisional).
