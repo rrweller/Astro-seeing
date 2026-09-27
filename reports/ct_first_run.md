@@ -99,7 +99,7 @@ What happened:
   - B: nothing scientific. It means bigger files, plus sampling Timau's 20 years, which I'd check against one full year.
   - C: daytime hours at sites compared only at night. Our product is night-only anyway, but it needs an exception to the AGENTS.md rule that validation boxes keep all hours.
   - D: smaller calibration samples, though still thousands of matched night hours. The 5-year global run gives all years for every site later, so the calibration can be re-checked then.
-- **The global run is not worse.** ~7.1 M fields is ~3.3 days of CDS processing (a global field costs the same as a box field), and ~13 TB to transfer is ~3–7 days at the measured 21–47 MB/s. The mirrors have no queue, so they're an option for it later (a new source, so I'd ask first).
+- **The global run is not worse.** ~7.1 M fields is ~3.1 days of CDS processing (a global field costs the same as a box field), and ~13 TB to transfer is ~3–7 days at the measured 21–47 MB/s. The mirrors have no queue, so they're an option for it later (a new source, so I'd ask first).
 - **Haslebacher's 42 years:** their scripts start ~27 downloads at once (one per pressure level, one year per request) on the old CDS, replaced in September 2024. With one slot today that is ~5 months.
 - **Disk now:** `/data/astro` 28 MB; `/staging/grib` ~80 MB (raw GRIB kept until the first reproduction confirms the stores).
 
