@@ -96,6 +96,15 @@ Sources: `reports/cds_smoke_test.json`, the first Paranal downloads, decisions D
   - **A (as planned):** 72 M fields, ~37 days, 11 GB.
   - **B (recommended):** shared rectangles for co-located sites (Chile: Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; Tibet/Qinghai: Bi's five western sites); `cc` only where cloud work is planned; Priyatikanto's 20 years sampled 1 day in 4. 35 M fields, ~18 days, ~54 GB of GRIB.
   - **C:** B plus night hours only for the DIMM/MASS calibration targets (ESO, TMT). ~24 M fields, ~12 days; needs an exception to "validation boxes keep all hours".
+- **Chosen: option C** (Riley, D31). Queued 2026-09-27 21:45 UTC, in this order:
+  - Paranal 2016-04..2018-01 (running);
+  - static fields for the 5 areas;
+  - Chile 2021–2025, night hours 23–11 UTC, all 5 variables (60 requests, 3.44 M fields);
+  - Timau/Eltari 2002–2021, every 4th day, 37 levels, z/t/u/v (240 requests, 6.77 M);
+  - Tibet 2017-03..2020-12, z/t/u/v (92 requests, 3.90 M);
+  - Haikou 2018-03..04 and Rongcheng 2018-11 (6 requests, 0.25 M).
+
+  Estimated finish ~6 October. TMT waits for the login (campaign dates). Single levels come from the time-series product (to be built; it doesn't use the CDS slot). Riley gets phone notifications (ntfy) on finish, on problems and daily.
 - **Running meanwhile:** the Paranal 5×5 box (O&S 2016-04..2018-01 and ESO 2021–2025; 2,497 box-days, ~4.5 CDS-days). It is in every option. Nothing else is queued.
 
 ### 6.1 Original estimates (cloud session) *[estimate]*

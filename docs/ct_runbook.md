@@ -103,3 +103,29 @@ systemctl --user start astro-download@download.service         # resumable downl
 journalctl --user -u astro-download@download -f
 sudo loginctl enable-linger "$USER"   # keep user services running after logout
 ```
+
+## 6. Validation areas, holds and notifications (added 2026-09-27)
+
+On this CT everything runs as root from `/home/astro-seeing`; pixi and tmux are in
+`/root/.pixi/bin` (add it to `PATH` in non-interactive shells).
+
+```bash
+# Plan downloads for an area in configs/validation_areas.yaml (prints fields and CDS time)
+pixi run astro plan-area chile --start 2021-01-01 --end 2025-12-31 --kinds pl --hours night
+pixi run astro plan-area timau --start 2002-01-01 --end 2021-12-31 --kinds pl \
+    --variables z,t,u,v --levels 37 --day-step 4
+
+# Pause, resume or drop planned requests by key prefix (kind/region/period)
+pixi run astro hold pl/paranal/202
+pixi run astro release pl/paranal/202
+pixi run astro cancel pl/paranal/202 --reason "superseded by the Chile area"
+
+# Long-running loops (tmux sessions)
+tmux new -d -s boxes  'bash scripts/run_boxes.sh 2>&1 | tee -a logs/run_boxes.log'
+tmux new -d -s notify 'pixi run astro notify-watch 2>&1 | tee -a logs/notify_watch.log'
+pixi run astro notify "test message"   # one-off; topic URL in ~/.config/astro/notify.env
+```
+
+The watcher sends ntfy messages on finish, on problems (failures, 3 h without
+progress, the download loop stopped, NAS not answering) and a daily summary at
+06:00 UTC. Its memory is `~/.local/state/astro/notify_state.json`.
