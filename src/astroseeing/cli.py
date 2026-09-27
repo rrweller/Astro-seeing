@@ -222,6 +222,12 @@ def cmd_plan_area(args, paths: Paths) -> int:
     return 0
 
 
+def cmd_requeue_refused(args, paths: Paths) -> int:
+    n = _manifest(paths).requeue_refused(args.prefix)
+    log.info("requeued %d refused requests with keys starting %r", n, args.prefix)
+    return 0
+
+
 def cmd_hold(args, paths: Paths) -> int:
     n = _manifest(paths).hold(args.prefix)
     log.info("held %d planned requests with keys starting %r", n, args.prefix)
@@ -483,6 +489,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("prefix")
     p.add_argument("--reason", required=True)
     p.set_defaults(fn=cmd_cancel)
+
+    p = sub.add_parser("requeue-refused", help="move refused requests back to verified")
+    p.add_argument("prefix")
+    p.set_defaults(fn=cmd_requeue_refused)
 
     p = sub.add_parser("hold", help="pause planned requests whose key starts with PREFIX")
     p.add_argument("prefix", help="e.g. pl/paranal/2021 (keys are kind/region/period)")

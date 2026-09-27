@@ -10,7 +10,8 @@ lives outside git in ``~/.config/astro/notify.env`` (``NTFY_URL=...``, mode 600)
 * **finished**: nothing left to download, verify or ingest (held requests are
   paused on purpose and don't count);
 * **problems**: requests that failed ``max_attempts`` times (earlier failures are
-  retried by ``scripts/run_boxes.sh``); no progress for ``stall_hours``; the download
+  retried by ``scripts/run_boxes.sh``) or were refused by ingest (D18); no progress
+  for ``stall_hours``; a request sitting at the CDS for ``stuck_hours``; the download
   loop not running while work remains; the NAS not answering;
 * **daily progress**: once a day after ``daily_hour_utc``: done / left / failed,
   and an estimated finish from the fields the CDS processed in the last 24 h.
@@ -88,6 +89,9 @@ class Snapshot:
     #: Wall-clock seconds from the first start to the last finish of the requests
     #: finished in the last 24 h (the span that work actually took).
     span_24h_s: float = 0.0
+    refused: int = 0  # verified but not stored (D18): needs a person
+    #: Keys of requests submitted to the CDS more than ``stuck_hours`` ago.
+    stuck: list[str] = field(default_factory=list)
 
     @property
     def done(self) -> int:
@@ -101,18 +105,29 @@ class Snapshot:
         return now + dt.timedelta(seconds=self.fields_left / rate)
 
 
-def snapshot(m: Manifest, now: dt.datetime, max_attempts: int = 5) -> Snapshot:
+def snapshot(
+    m: Manifest, now: dt.datetime, max_attempts: int = 5, stuck_hours: float = 12.0
+) -> Snapshot:
     counts = m.counts()
     rows = m.conn.execute(
-        "SELECT key, state, attempts, request_json, created_at, updated_at, cds_started_at,"
-        " cds_finished_at, last_error FROM requests"
+        "SELECT key, state, attempts, request_json, created_at, updated_at, submitted_at,"
+        " cds_started_at, cds_finished_at, last_error FROM requests"
     ).fetchall()
-    # Progress = a request finishing a download (or later), or new work being planned.
-    # Retries of failing requests also touch updated_at, so they must not count: during
-    # a CDS outage the loop keeps retrying without progressing.
+    # Progress = a request finishing a download (or later), or pending work being
+    # planned. Retries of failing requests also touch updated_at, and so do holds and
+    # cancellations; none of them is progress (during a CDS outage the loop keeps
+    # retrying without progressing).
     stamps = [r["updated_at"] for r in rows if r["state"] in PROGRESS]
-    stamps += [r["created_at"] for r in rows]
+    stamps += [r["created_at"] for r in rows if r["state"] in PENDING]
     last = max((dt.datetime.fromisoformat(t) for t in stamps), default=None)
+    stuck = [
+        r["key"]
+        for r in rows
+        if r["state"] == "submitted"
+        and r["submitted_at"]
+        and (now - dt.datetime.fromisoformat(r["submitted_at"])).total_seconds()
+        > stuck_hours * 3600
+    ]
     left = done24 = 0
     since = now - dt.timedelta(hours=24)
     starts, ends = [], []
@@ -142,6 +157,8 @@ def snapshot(m: Manifest, now: dt.datetime, max_attempts: int = 5) -> Snapshot:
         fields_done_24h=done24,
         failed_examples=failed_examples,
         span_24h_s=(max(ends) - min(starts)).total_seconds() if starts and ends else 0.0,
+        refused=counts.get("refused", 0),
+        stuck=stuck,
     )
 
 
@@ -149,7 +166,9 @@ def snapshot(m: Manifest, now: dt.datetime, max_attempts: int = 5) -> Snapshot:
 class WatchState:
     last_daily: str = ""
     failed_reported: int = 0
+    refused_reported: int = 0
     stall_alerted_at: str = ""
+    stuck_alerted_at: str = ""
     loop_alerted_at: str = ""
     nas_alerted_at: str = ""
     finished_reported: bool = False
@@ -189,6 +208,7 @@ def check_once(
     realert_hours: float = 12.0,
     daily_hour_utc: int = 6,
     max_attempts: int = 5,
+    stuck_hours: float = 12.0,
     loop_running: Callable[[], bool] = download_loop_running,
 ) -> list[str]:
     """One round of checks; returns the messages sent (for tests and logs)."""
@@ -198,7 +218,7 @@ def check_once(
         send(msg, title, priority)
         sent.append(msg)
 
-    s = snapshot(m, now, max_attempts)
+    s = snapshot(m, now, max_attempts, stuck_hours)
 
     if data_root is not None:
         try:
@@ -216,6 +236,21 @@ def check_once(
                f"look ({s.failed} in total). {example}")  # fmt: skip
         emit(msg, "astro-seeing: failures", "high")
     state.failed_reported = s.failed
+
+    if s.refused > state.refused_reported:
+        emit(f"Problem: {s.refused - state.refused_reported} downloaded request(s) were "
+             "refused by ingest (not a declared validation area, D18) and need a look.",
+             "astro-seeing: refused", "high")  # fmt: skip
+    state.refused_reported = s.refused
+
+    if s.stuck:
+        if _hours_since(state.stuck_alerted_at, now) >= realert_hours:
+            emit(f"Problem: {len(s.stuck)} request(s) submitted to the CDS more than "
+                 f"{stuck_hours:.0f} h ago are not done, e.g. {s.stuck[0]}.",
+                 "astro-seeing: stuck at the CDS", "high")  # fmt: skip
+            state.stuck_alerted_at = now.isoformat()
+    else:
+        state.stuck_alerted_at = ""
 
     if s.pending:
         state.finished_reported = False
@@ -237,7 +272,7 @@ def check_once(
     elif not state.finished_reported and s.done:
         held = s.counts.get("held", 0)
         msg = (f"Finished: all queued downloads are stored and verified ({s.done} requests; "
-               f"{s.failed} failed; {held} on hold).")  # fmt: skip
+               f"{s.failed} failed; {s.refused} refused; {held} on hold).")  # fmt: skip
         emit(msg, "astro-seeing: downloads finished", "high")
         state.finished_reported = True
 

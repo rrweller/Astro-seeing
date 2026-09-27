@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import given, settings
+from hypothesis import assume, given, settings
 from hypothesis import strategies as st
 
 from astroseeing.ingest.store import Prepared, read_store, write_store_atomic
@@ -222,8 +222,12 @@ def built():
 @settings(max_examples=200, deadline=None)
 @given(lat=st.floats(-89.99, 89.99), lon=st.floats(-179.99, 179.99))
 def test_our_land_array_agrees_with_the_package_lookup(lat, lon):
+    """Away from cell edges. A point exactly on an edge (e.g. lat 0.0, lon 98.25, found by
+    hypothesis) belongs to two cells, and the package's float division picks either."""
     from global_land_mask import globe
 
+    for x in (lat, lon):
+        assume(abs(x * lm.GLOBE_CELLS_PER_DEG - round(x * lm.GLOBE_CELLS_PER_DEG)) > 1e-6)
     land, _ = _land()
     i = int((90.0 - lat) * lm.GLOBE_CELLS_PER_DEG)
     j = int((lon + 180.0) * lm.GLOBE_CELLS_PER_DEG)

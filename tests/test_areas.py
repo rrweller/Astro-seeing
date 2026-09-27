@@ -13,7 +13,7 @@ from astroseeing.config import load_config
 from astroseeing.download import areas as ar
 from astroseeing.download.downloader import Downloader
 from astroseeing.download.requests import plan_requests
-from astroseeing.ingest.pipeline import ingest_pending, verify_pending
+from astroseeing.ingest.pipeline import RefusedUnmasked, ingest_pending, verify_pending
 from astroseeing.ingest.store import read_store
 from astroseeing.manifest import Manifest
 
@@ -45,7 +45,7 @@ def test_mask_fn_areas_small_boxes_and_refusal(monkeypatch):
     small = SimpleNamespace(lat=np.arange(5.0), lon=np.arange(5.0))
     assert ar.mask_fn(SimpleNamespace(region="paranal", key="k"), small) == (None, None)
     big = SimpleNamespace(lat=np.arange(12.0), lon=np.arange(12.0))
-    with pytest.raises(ValueError, match="not a declared validation area"):
+    with pytest.raises(RefusedUnmasked, match="not a declared validation area"):
         ar.mask_fn(SimpleNamespace(region="elsewhere", key="k"), big)
 
 
@@ -113,4 +113,26 @@ def test_area_ingest_stores_only_the_site_boxes(tmp_path, monkeypatch):
     assert attrs["layout"] == "cells"
     assert arrays["t"].shape == (2, 2, 50)  # time, level, the 50 site-box cells
     assert arrays["cell_lat"].size == 50
+    m.close()
+
+
+def test_undeclared_large_request_is_refused_not_failed(tmp_path, monkeypatch):
+    """Copilot review of PR #2: a refusal must not be retried like a transient failure."""
+    monkeypatch.setattr(ar, "load_areas", lambda: {})
+    m = Manifest(tmp_path / "state" / "m.sqlite")
+    big = TWO.area  # 60 points, but not declared: pretend the cap is lower
+    monkeypatch.setattr(ar, "MAX_UNMASKED_POINTS", 25)
+    spec = plan_requests("pl", "somewhere", dt.date(2023, 6, 20), dt.date(2023, 6, 20), big,
+                         variables=("temperature",), levels=(500,), hours=(0,))[0]  # fmt: skip
+    fake = FakeCdsBackend({FakeCdsBackend.req_key(spec.cds_request()): spec.expected()},
+                          polls_to_finish=1)  # fmt: skip
+    rid = m.add_request(spec)
+    dl = Downloader(m, fake, tmp_path / "staging" / "grib")
+    for _ in range(5):
+        dl.step()
+    verify_pending(m)
+    (tmp_path / "data").mkdir()
+    out = ingest_pending(m, tmp_path / "data", {}, mask_fn=ar.mask_fn)
+    assert out == {"ingested": 0, "already_present": 0, "failed": 0, "refused_unmasked": 1}
+    assert m.get(rid).state == "refused" and m.retry_failed() == 0
     m.close()

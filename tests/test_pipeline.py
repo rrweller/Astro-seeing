@@ -531,12 +531,14 @@ def test_ingest_refuses_large_requests_without_a_mask(tmp_path):
     verify_pending(m)
     out = ingest_pending(m, tmp_path / "data", {})
     assert out["refused_unmasked"] == 1 and out["ingested"] == 0
-    assert m.get(rid).state == "verified"
+    # Refused is its own state: not a failure (never retried) and not pending work.
+    assert m.get(rid).state == "refused" and m.get(rid).attempts == 0
     assert not (tmp_path / "data" / "era5").exists()
 
     def land_and_night(req, dec):
         return np.ones((dec.lat.size, dec.lon.size), bool), np.ones((dec.times.size, 144), bool)
 
+    assert m.requeue_refused("sl/") == 1 and m.get(rid).state == "verified"
     assert ingest_pending(m, tmp_path / "data", {}, mask_fn=land_and_night)["ingested"] == 1
     m.close()
 

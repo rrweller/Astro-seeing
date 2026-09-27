@@ -105,6 +105,35 @@ def test_retries_without_progress_still_count_as_a_stall(m):
     assert [t for t, _, _ in run(m, st)] == ["astro-seeing: stalled"]
 
 
+def test_a_request_stuck_at_the_cds_is_reported_despite_other_progress(m):
+    """Copilot review of PR #2: other requests finishing must not hide a stuck one."""
+    long_ago = (NOW - dt.timedelta(hours=13)).isoformat(timespec="seconds")
+    set_state(m, 1, "submitted", submitted_at=long_ago)
+    set_state(m, 2, "ingested")  # progress 10 minutes ago
+    st = WatchState(last_daily=NOW.date().isoformat())
+    sent = run(m, st)
+    assert [t for t, _, _ in sent] == ["astro-seeing: stuck at the CDS"]
+    assert "sl/x/2023-01" in sent[0][2]
+    assert run(m, st) == []  # re-alerts only after 12 h
+
+
+def test_held_and_cancelled_requests_do_not_reset_the_stall_clock(m):
+    old = (NOW - dt.timedelta(hours=5)).isoformat(timespec="seconds")
+    m.conn.execute("UPDATE requests SET created_at=?", (old,))
+    m.conn.commit()
+    m.hold("sl/x/2023-02")  # touches updated_at now
+    m.cancel("sl/x/2023-03", "test")
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert [t for t, _, _ in run(m, st)] == ["astro-seeing: stalled"]
+
+
+def test_refused_requests_are_reported_once(m):
+    set_state(m, 1, "refused")
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert [t for t, _, _ in run(m, st)] == ["astro-seeing: refused"]
+    assert run(m, st) == []
+
+
 def test_daily_progress_once_per_day_with_eta(m):
     set_state(m, 1, "ingested", cds_started_at=(NOW - dt.timedelta(hours=3)).isoformat(),
               cds_finished_at=(NOW - dt.timedelta(hours=2)).isoformat())  # fmt: skip

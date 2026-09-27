@@ -19,7 +19,7 @@ import numpy as np
 
 from astroseeing.config import load_config
 from astroseeing.download.requests import Area
-from astroseeing.ingest.pipeline import MAX_UNMASKED_POINTS
+from astroseeing.ingest.pipeline import MAX_UNMASKED_POINTS, RefusedUnmasked
 
 
 @dataclass(frozen=True)
@@ -112,7 +112,6 @@ def mask_fn(req, dec) -> tuple[np.ndarray | None, None]:
     npts = dec.lat.size * dec.lon.size
     if npts <= MAX_UNMASKED_POINTS:
         return None, None
-    raise ValueError(
-        f"{req.key}: {npts} grid points and not a declared validation area; "
-        "refusing to store it unmasked (D18)"
+    raise RefusedUnmasked(
+        f"{npts} grid points and not a declared validation area; not stored unmasked"
     )

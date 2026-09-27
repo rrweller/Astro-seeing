@@ -207,3 +207,12 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - `scripts/run_boxes.sh` retries failed requests up to 5 times, counts retryable failures as unfinished, and backs off 10 min when a round makes no progress, so a CDS or network outage neither stops nor spins the loop.
   - The watcher alerts only when a request has used up its 5 attempts (earlier failures are retried), and it never says "finished" while a retry is pending. Stalls (3 h without progress), a stopped loop and an unresponsive NAS still alert.
 - **Who:** agent, on Riley's instruction.
+
+### D33. Copilot review of PR #2 (first round, 4 findings, all addressed)
+- **Refusals (amends D18):** a request that mustn't be stored unmasked now moves to a new **`refused`** state instead of staying `verified`. It is not a failure (never retried or re-downloaded) and not pending work, so the unattended loop doesn't wait on it; the watcher reports it; `astro requeue-refused` puts it back to `verified` once a mask exists. Mask functions signal it with `RefusedUnmasked`.
+- **Stale requests:**
+  - the watcher's stall clock counts only real progress (a finished download or later) and the plan times of *pending* requests, so holds, cancellations and retries don't hide a stall;
+  - a separate alert fires for any request sitting at the CDS for more than 12 h.
+- **Smoke-test report:** the split-month cost estimates were added with the current code (estimate calls only: 55,680 and 52,200 of 60,000), marked as added after the original run.
+- **First-run report:** the systemd text now describes the D32 services.
+- **Who:** agent (fixes), Copilot (findings).

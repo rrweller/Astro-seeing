@@ -24,7 +24,7 @@ Claude Code on the CT, continuing from the cloud bootstrap (`docs/handoff_ct.md`
 | Tools installed | pixi 0.81.0 (user-level installer, runbook §1), tmux 3.7c from conda-forge via `pixi global` (in `~/.pixi`; no `apt`, no system change) |
 | Git | `gh` logged in as rrweller, credential helper set; `dev` created from `main` and pushed |
 
-`systemctl --user` has no user manager for root (no lingering), so long jobs run in tmux with logs in `logs/` (D26). The systemd units use `%h/astro-seeing` = `/root/astro-seeing`, which doesn't exist here.
+`systemctl --user` has no user manager for root (no lingering), so user units don't work here, and the old units' `%h/astro-seeing` would be `/root/astro-seeing`, which doesn't exist (D26). **Update (D32):** the long jobs now run as system-level services with the real path: `astro-boxes`, `astro-notify` and the nightly `astro-manifest-export` timer (`scripts/systemd/system/`, installed by `scripts/install_services.sh`). They need no open session and restart after a reboot.
 
 ## 2. Bootstrap
 

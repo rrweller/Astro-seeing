@@ -38,6 +38,7 @@ STATES = (
     "raw_deleted",
     "failed",
     "cancelled",  # planned or held, then dropped on purpose (astro cancel); never submitted
+    "refused",  # verified but not stored: no suitable mask (D18); astro requeue-refused
 )
 
 SCHEMA = """
@@ -314,6 +315,15 @@ class Manifest:
         for r in self.by_state("planned", "held"):
             if r.key.startswith(key_prefix):
                 self.transition(r.id, ["planned", "held"], "cancelled", detail=reason)
+                n += 1
+        return n
+
+    def requeue_refused(self, key_prefix: str) -> int:
+        """Move refused requests back to verified (e.g. once a mask exists for them)."""
+        n = 0
+        for r in self.by_state("refused"):
+            if r.key.startswith(key_prefix):
+                self.transition(r.id, ["refused"], "verified", detail="requeued")
                 n += 1
         return n
 
