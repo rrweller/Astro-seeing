@@ -1,0 +1,52 @@
+# --- Never commit (AGENTS.md "Secrets and licences") ---
+.cdsapirc
+*.cdsapirc
+.ecmwfdatastoresrc
+*.token
+*.key
+.env
+.env.*
+papers/
+external/
+
+# --- Data (never in git) ---
+data/
+*.grib
+*.grib1
+*.grib2
+*.grb
+*.grb2
+*.idx
+*.nc
+*.zarr/
+*.zarr.zip
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.bsp
+*.tif
+*.tiff
+*.npz
+*.parquet
+cache/
+.cache/
+
+# --- Logs and run state ---
+logs/*
+!logs/.gitkeep
+
+# --- Environment / tooling ---
+.pixi/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.ipynb_checkpoints/
+.venv/
+.DS_Store

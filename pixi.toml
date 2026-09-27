@@ -1,0 +1,39 @@
+[workspace]
+name = "astro-seeing"
+description = "Good astronomical viewing nights per year from ERA5 profiles and Copernicus DEM terrain"
+authors = ["Riley Weller"]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+requires-pixi = ">=0.50"
+
+[dependencies]
+python = "3.13.*"
+numpy = ">=2.1"
+scipy = ">=1.14"
+pandas = ">=2.2"
+xarray = ">=2025.6"
+zarr = ">=3.1"
+numcodecs = ">=0.16"
+eccodes = ">=2.40"
+python-eccodes = "*"
+cfgrib = ">=0.9.15"
+skyfield = ">=1.53"
+cdsapi = ">=0.7.7"
+ecmwf-datastores-client = ">=0.4"
+pyyaml = ">=6"
+requests = ">=2.32"
+pypdf = ">=5"
+matplotlib-base = ">=3.9"
+# dev / test
+pytest = ">=8"
+hypothesis = ">=6.100"
+ruff = ">=0.8"
+
+[pypi-dependencies]
+astroseeing = { path = ".", editable = true }
+
+[tasks]
+test = "pytest"
+test-fast = "pytest -m 'not slow'"
+lint = "ruff check . && ruff format --check ."
+fmt = "ruff format . && ruff check --fix ."
