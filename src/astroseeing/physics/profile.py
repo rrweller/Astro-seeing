@@ -45,6 +45,9 @@ class Cn2Model:
         ``m_form="dtdz"`` uses M = A(P/T²)(∂T/∂z + γ) (Bi et al.);
         ``m_form="dtheta"`` uses M = −A(P/T²)∂θ/∂z (Priyatikanto et al. as printed).
       * ``"osborn_sarazin"``: O&S eq. 7 with constant ``k``.
+
+    ``state_at``: where each slab's T, P and θ are taken (``"mid"``, D3; or
+    ``"lower"``, the lower level, as Haslebacher et al. 2022 do).
     """
 
     kind: str = "osborn_sarazin"
@@ -57,12 +60,20 @@ class Cn2Model:
     stratosphere: Hmnsp99Coefficients = HMNSP99_STRATOSPHERE
     tropopause_p_max_hpa: float = 500.0
     theta_p0_hpa: float = 1000.0
+    state_at: str = "mid"
 
 
 #: Bi et al. 2023 as described in docs/RESEARCH.md §3.1/§4.4.
 BI2023_MODEL = Cn2Model(kind="tatarskii", a=TATARSKII_A, gamma=BI_GAMMA, m_form="dtdz")
 #: Osborn & Sarazin 2018 with their Paranal constant.
 OS2018_MODEL = Cn2Model(kind="osborn_sarazin", a=OS_A, k=OS_K)
+#: Haslebacher et al. 2022 "seeing model" before calibration, as their code computes
+#: it (commit 1da3712): O&S eq. 13 with k = 1, T/P/θ at each slab's lower level, and
+#: |∂θ/∂z| in N² (so unstable layers count, D5 "abs"). They calibrate seeing, not J,
+#: afterwards (docs/RESEARCH.md §3.4, D27).
+HASLEBACHER2022_MODEL = Cn2Model(
+    kind="osborn_sarazin", a=OS_A, k=1.0, unstable="abs", state_at="lower"
+)
 
 
 @dataclass
@@ -99,6 +110,7 @@ def compute_profile(
         surface_pressure_hpa=surface_pressure_hpa,
         surface_height_m=surface_height_m,
         p0_hpa=model.theta_p0_hpa,
+        state_at=model.state_at,
     )
     qc = QCCounts().merge(slabs.qc)
     tropo = None

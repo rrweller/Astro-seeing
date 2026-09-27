@@ -436,3 +436,52 @@ def test_priyatikanto_variants_differ_as_expected():
 def test_seeing_is_zero_turbulence_safe():
     assert math.isinf(float(optics.fried_r0(0.0)))
     assert float(optics.seeing_arcsec(0.0)) == 0.0
+
+
+# --- Haslebacher et al. 2022 discretisation (D27) ------------------------------------
+
+
+def _haslebacher_loop(z, t, u, v, p):
+    """Their eqs. 13–16 as described in the paper and code notes (docs/RESEARCH.md §3.4),
+    written independently: for each slab i→i+1, P, T and θ at level i, differences to
+    level i+1, Δz = z_{i+1} − z_i, N² with |Δθ|, k = 1; J = Σ Cₙ² Δz."""
+    g, a = K.G0, 80e-6
+    j = 0.0
+    for i in range(len(p) - 1):
+        th0 = t[i] * (1000.0 / p[i]) ** 0.286
+        th1 = t[i + 1] * (1000.0 / p[i + 1]) ** 0.286
+        dz = z[i + 1] - z[i]
+        e = ((u[i + 1] - u[i]) / dz) ** 2 + ((v[i + 1] - v[i]) / dz) ** 2
+        big_l = math.sqrt(2 * e / (g / th0 * abs(th1 - th0) / dz))
+        cn2 = (a * p[i] / (t[i] * th0)) ** 2 * big_l ** (4 / 3) * ((th1 - th0) / dz) ** 2
+        j += cn2 * dz
+    return j
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    dt=hnp.arrays(np.float64, 29, elements=st.floats(-3.0, 3.0)),
+    du=hnp.arrays(np.float64, 29, elements=st.floats(-8.0, 8.0)),
+    dv=hnp.arrays(np.float64, 29, elements=st.floats(-8.0, 8.0)),
+)
+def test_haslebacher_mode_matches_their_equations(dt, du, dv):
+    """Includes unstable slabs (random T perturbations of ±3 K make some Δθ < 0)."""
+    from astroseeing.physics.profile import HASLEBACHER2022_MODEL
+
+    p = ERA5_LEVELS_HPA
+    z, t, u, v = std_column(p)
+    t, u, v = t + dt, u + du, v + dv
+    want = _haslebacher_loop(z, t, u, v, p)
+    got = compute_profile(z, t, u, v, p, model=HASLEBACHER2022_MODEL).J
+    assert float(got) == pytest.approx(want, rel=1e-12)
+
+
+def test_state_at_lower_takes_the_lower_level():
+    z, t, u, v = std_column(ERA5_LEVELS_HPA)
+    s = column.prepare_slabs(z, t, u, v, ERA5_LEVELS_HPA, state_at="lower")
+    assert s.state_at == "lower"
+    assert np.array_equal(s.t_mid, t[:-1]) and np.array_equal(s.p_mid, ERA5_LEVELS_HPA[:-1])
+    m = column.prepare_slabs(z, t, u, v, ERA5_LEVELS_HPA)
+    assert m.state_at == "mid" and np.array_equal(m.dthetadz, s.dthetadz)  # same gradients
+    with pytest.raises(ValueError, match="state_at"):
+        column.prepare_slabs(z, t, u, v, ERA5_LEVELS_HPA, state_at="upper")
