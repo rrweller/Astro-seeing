@@ -116,7 +116,7 @@ Measured: **26.4 fields/s for pressure levels (average of 9 files) and 16.9 for 
 
 - **What's going on.** You approved "reproduce their published numbers (skill scores to ±0.01)". Having read their code, that isn't possible:
   - their scores compare ERA5 with observatory seeing measurements they got privately and never published;
-  - their numbers use 42 years (1979–2020) at 8 sites, which at the measured speed is roughly a year of server time.
+  - their numbers use 42 years (1979–2020) at 8 sites, which at the measured speed is about five months of server time.
 - **What I can do instead:**
   - (a) show that our code gives the same numbers as theirs on the same weather data. Done for one hour: they agree to within 1 part in a million. I'd repeat it on a full month;
   - (b) check their Table 4 (the lowest pressure level used at each site) from ERA5 surface pressure. That's cheap;
