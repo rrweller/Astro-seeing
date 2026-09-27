@@ -119,3 +119,10 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - Land area 28.905% of Earth; 365,088 ERA5 0.25° cells contain land before the 1 km buffer (RESEARCH §8 estimated 28.91% and 367,051 with the buffer).
 - **Choice:** use `global-land-mask`, add the GLOBE citation to product attributions, and treat ice shelves as sea unless Riley wants them included (they would need another source).
 - **Who:** Riley approved the source ("use the global-land-mask package assuming it works well for our case"); the checks above are the agent's.
+
+### D21. Second Copilot review of PR #1
+- **Re-ingesting identical data:** if a store with byte-identical content already exists, it is kept with its original provenance (the run that wrote it); the manifest now records that provenance, plus this run's git commit and config hash under `this_run`. A config or code change that alters the content is refused (never overwritten without Riley). Rejected alternative: treating any provenance change as a conflict, which would make every re-run after an unrelated commit fail.
+- **Empty land masks:** a request with no land cells produces a valid empty store (zero-length `cell` dimension; chunks and shards forced to ≥ 1), not a crash.
+- **Smoke test:** exits 1 unless every smoke request ends `verified`; the report includes the download summary and an `ok` flag.
+- **Configs in the wheel:** `configs/*.yaml` are packaged as `astroseeing/configs`. Lookup order is `$ASTRO_CONFIG_DIR`, then the repo checkout, then the packaged copy. Logs go to `$ASTRO_LOG_DIR`, else `logs/` in a checkout, else the state directory. Checked by building the wheel and loading the configs from a clean virtualenv.
+- **Who:** agent.

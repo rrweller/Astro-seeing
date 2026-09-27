@@ -10,6 +10,7 @@ import argparse
 import datetime as dt
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -21,9 +22,19 @@ from astroseeing.provenance import REPO_ROOT, git_state, software_versions
 log = logging.getLogger("astro")
 
 
+def log_dir() -> Path:
+    """``$ASTRO_LOG_DIR``, else ``logs/`` in the repo checkout, else the state directory."""
+    env = os.environ.get("ASTRO_LOG_DIR")
+    if env:
+        return Path(env)
+    if (REPO_ROOT / "pyproject.toml").is_file():
+        return REPO_ROOT / "logs"
+    return Paths.from_env().state_dir / "logs"
+
+
 def _setup_logging(verbose: bool) -> None:
-    logs = REPO_ROOT / "logs"
-    logs.mkdir(exist_ok=True)
+    logs = log_dir()
+    logs.mkdir(parents=True, exist_ok=True)
     fmt = "%(asctime)sZ %(levelname)s %(name)s: %(message)s"
     logging.Formatter.converter = time.gmtime
     handlers = [
@@ -171,7 +182,8 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
     ids = [m.add_request(s) for s in specs]
     dl = Downloader(m, backend, paths.grib_dir, max_active=len(specs))
     t0 = time.monotonic()
-    dl.run(poll_seconds=args.poll, max_seconds=args.timeout_hours * 3600)
+    summary = dl.run(poll_seconds=args.poll, max_seconds=args.timeout_hours * 3600)
+    report["download"] = summary.__dict__
     report["wall_seconds"] = round(time.monotonic() - t0, 1)
     report["verify"] = verify_pending(m)
     report["requests"] = []
@@ -217,9 +229,15 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
             )
         except Exception as e:
             report["cost_estimates"][f"{kind}_global_day"] = {"error": str(e)}
+    states = {r["key"]: r["state"] for r in report["requests"]}
+    not_verified = {k: v for k, v in states.items() if v != "verified"}
+    report["ok"] = not not_verified
     _write_report(args.out, report)
     log.info("smoke test report written to %s", args.out)
-    return 0 if report["verify"].get("failed", 0) == 0 else 1
+    if not_verified:
+        log.error("smoke test incomplete; requests not verified: %s", not_verified)
+        return 1
+    return 0
 
 
 def _write_report(path: str, report: dict) -> None:

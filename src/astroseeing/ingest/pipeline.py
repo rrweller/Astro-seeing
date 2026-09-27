@@ -136,7 +136,12 @@ def ingest_pending(
             "layout": attrs["layout"],
             "qc": res.qc.as_dict(),
         }
-        m.add_ingest(f["id"], res.path, True, report, prov, res.content_sha256)
+        if res.already_present:
+            # The manifest records the provenance the store carries (the run that
+            # wrote it); this run's identity is noted alongside.
+            report["this_run"] = {"git": prov["git"], "config_hash": prov["config_hash"]}
+            log.info("%s: identical store already present; keeping its provenance", req.key)
+        m.add_ingest(f["id"], res.path, True, report, res.provenance or prov, res.content_sha256)
         m.transition(req.id, ["verified"], "ingested", detail=str(res.path))
         out["already_present" if res.already_present else "ingested"] += 1
     return out

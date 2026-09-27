@@ -16,6 +16,10 @@ astro = "astroseeing.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/astroseeing"]
 
+[tool.hatch.build.targets.wheel.force-include]
+# Ship the YAML configs inside the wheel (config.py falls back to them).
+"configs" = "astroseeing/configs"
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

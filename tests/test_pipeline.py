@@ -508,3 +508,37 @@ def test_one_bad_request_does_not_stop_cleanup(env):
     out = cleanup_raw(m, tmp / "staging")
     assert out == {"deleted": 2, "recovered": 0, "skipped": 0, "failed": 1}
     assert bad.exists() and m.get(env["ids"][0]).state == "ingested"
+
+
+def test_reingest_keeps_the_stores_own_provenance(env):
+    """An identical store is kept; the manifest records the provenance the store carries."""
+    m, tmp = _ingested(env)
+    first = json.loads(
+        m.conn.execute("SELECT provenance_json FROM ingests ORDER BY id LIMIT 1").fetchone()[0]
+    )
+    # A second manifest (e.g. rebuilt state) ingests the same requests with another config.
+    m2 = Manifest(tmp / "state2" / "manifest.sqlite")
+    for s in env["specs"]:
+        m2.add_request(s)
+    drain(Downloader(m2, env["fake"], tmp / "staging2" / "grib", max_active=3))
+    verify_pending(m2)
+    out = ingest_pending(m2, tmp / "data", {"config": "changed"})
+    assert out["already_present"] == 3 and out["ingested"] == 0
+    row = m2.conn.execute(
+        "SELECT provenance_json, report_json FROM ingests ORDER BY id LIMIT 1"
+    ).fetchone()
+    stored, report = json.loads(row[0]), json.loads(row[1])
+    assert stored["config_hash"] == first["config_hash"]
+    assert report["this_run"]["config_hash"] != first["config_hash"]
+    m2.close()
+
+
+def test_all_ocean_mask_gives_an_empty_valid_store(tmp_path):
+    dec = _decoded(tmp_path)
+    prep = prepare(dec, np.zeros((3, 3), bool), np.zeros((24, 0), bool))
+    assert prep.data["t"].shape == (24, 29, 0)
+    res = write_store_atomic(tmp_path / "empty.zarr", prep, {})
+    arrays, attrs = read_store(res.path)
+    assert arrays["t"].shape == (24, 29, 0) and arrays["cell_index"].shape == (0,)
+    assert attrs["qc"]["cells_dropped_not_land"]["count"] == 9
+    assert write_store_atomic(tmp_path / "empty.zarr", prep, {}).already_present

@@ -122,7 +122,8 @@ def choose_chunks(
     target: int = TARGET_CHUNK_BYTES,
 ) -> tuple[int, ...]:
     """Keep time and level whole; halve the largest spatial dim until ≤ ``target`` bytes."""
-    chunks = list(shape)
+    # Zarr chunks must be ≥ 1 even along a zero-length dimension (e.g. no land cells).
+    chunks = [max(1, s) for s in shape]
     spatial = [i for i, d in enumerate(dims) if d in SPLITTABLE_DIMS]
     while np.prod(chunks) * itemsize > target and any(chunks[i] > 1 for i in spatial):
         i = max(spatial, key=lambda j: chunks[j])
@@ -137,7 +138,7 @@ def choose_shards(shape: tuple[int, ...], chunks: tuple[int, ...]) -> tuple[int,
     the array itself need not fill the shard (e.g. 721 latitudes in 23-row chunks
     → a 736-row shard).
     """
-    return tuple(-(-s // c) * c for s, c in zip(shape, chunks, strict=True))
+    return tuple(max(1, -(-s // c)) * c for s, c in zip(shape, chunks, strict=True))
 
 
 def _fsync_tree(root: Path) -> None:
@@ -165,7 +166,7 @@ def _write(path: Path, prep: Prepared, attrs: dict[str, Any]) -> None:
             name,
             shape=arr.shape,
             dtype=arr.dtype,
-            chunks=arr.shape,
+            chunks=tuple(max(1, n) for n in arr.shape),  # ≥ 1 even when empty
             dimension_names=dims,
             attributes={"units": TIME_UNITS, "calendar": "proleptic_gregorian"}
             if name == "time"
@@ -262,6 +263,9 @@ class WriteResult:
     content_sha256: str
     already_present: bool
     qc: QCCounts
+    #: Provenance stored in the store's attributes. For an already-present store this
+    #: is the run that wrote it, not the current one.
+    provenance: dict[str, Any] | None = None
 
 
 def write_store_atomic(final: Path, prep: Prepared, attrs: dict[str, Any]) -> WriteResult:
@@ -270,7 +274,9 @@ def write_store_atomic(final: Path, prep: Prepared, attrs: dict[str, Any]) -> Wr
     if final.exists():
         _, existing = read_store(final)
         if existing.get("content_sha256") == digest and not compare_store(final, prep):
-            return WriteResult(final, digest, True, prep.qc)
+            # Byte-identical data: keep the store and its original provenance, which
+            # truthfully records the run that wrote it (never rewritten without Riley).
+            return WriteResult(final, digest, True, prep.qc, existing.get("provenance"))
         raise FileExistsError(f"{final} exists with different content; not overwriting (ASK Riley)")
     final.parent.mkdir(parents=True, exist_ok=True)
     tmp = final.parent / f".{final.name}.tmp-{uuid.uuid4().hex[:12]}"
@@ -293,4 +299,4 @@ def write_store_atomic(final: Path, prep: Prepared, attrs: dict[str, Any]) -> Wr
     problems = compare_store(final, prep)
     if problems:
         raise OSError(f"verification of {final} after rename failed: {problems}")
-    return WriteResult(final, digest, False, prep.qc)
+    return WriteResult(final, digest, False, prep.qc, attrs.get("provenance"))

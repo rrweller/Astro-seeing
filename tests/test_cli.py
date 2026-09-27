@@ -108,3 +108,60 @@ def test_cli_exit_codes_report_failures(ct, monkeypatch):
     monkeypatch.setattr(cli, "_backend", lambda: fake)
     assert cli.main(["download", "--poll", "0"]) == 1  # one CDS rejection
     assert cli.main(["verify"]) == 1  # one file missing a message
+
+
+def _smoke_fake(reject_kind: str | None = None) -> FakeCdsBackend:
+    import datetime as dt
+
+    from astroseeing.download.requests import Area, plan_requests
+
+    area, day = Area.around(-24.63, -70.40, 2), dt.date(2023, 6, 21)
+    specs = [plan_requests(k, "s", day, day, area, hours=(0,))[0] for k in ("pl", "sl")]
+    fake = FakeCdsBackend({FakeCdsBackend.req_key(s.cds_request()): s.expected() for s in specs})
+    fake.check_authentication = lambda: {"id": "fake"}
+
+    class _Client:
+        @staticmethod
+        def estimate_costs(dataset, request):
+            return {"cost": 1, "limit": 10}
+
+    fake.client = _Client()
+    if reject_kind:
+        spec = specs[0] if reject_kind == "pl" else specs[1]
+        fake.behaviour[FakeCdsBackend.req_key(spec.cds_request())] = "reject"
+    return fake
+
+
+def test_smoke_test_passes_when_everything_verifies(ct, monkeypatch):
+    fake = _smoke_fake()
+    monkeypatch.setattr(cli, "_backend", lambda: fake)
+    out = ct / "smoke.json"
+    assert cli.main(["cds-smoke-test", "--out", str(out), "--poll", "0"]) == 0
+    rep = json.loads(out.read_text())
+    assert rep["ok"] is True and rep["download"]["downloaded"] == 2
+    assert all(r["state"] == "verified" for r in rep["requests"])
+    assert set(rep["cost_estimates"]) == {"pl_global_day", "sl_global_day"}
+
+
+def test_smoke_test_fails_when_a_request_is_rejected(ct, monkeypatch):
+    fake = _smoke_fake(reject_kind="pl")
+    monkeypatch.setattr(cli, "_backend", lambda: fake)
+    out = ct / "smoke.json"
+    assert cli.main(["cds-smoke-test", "--out", str(out), "--poll", "0"]) == 1
+    rep = json.loads(out.read_text())
+    assert rep["ok"] is False and rep["download"]["failed"] == 1
+    states = {r["key"].split("/")[0]: r["state"] for r in rep["requests"]}
+    assert states == {"pl": "failed", "sl": "verified"}
+
+
+def test_config_lookup_order(tmp_path, monkeypatch):
+    from astroseeing import config
+
+    assert config.config_dir() == config.REPO_CONFIG_DIR  # source checkout
+    (tmp_path / "era5.yaml").write_text("grid_deg: 0.5\n")
+    monkeypatch.setenv("ASTRO_CONFIG_DIR", str(tmp_path))
+    config.load_config.cache_clear()
+    try:
+        assert config.load_config("era5") == {"grid_deg": 0.5}
+    finally:
+        config.load_config.cache_clear()
