@@ -145,7 +145,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Who:** agent (provisional); Riley to confirm, since D16's fallback said "day".
 
 ### D24. CDS concurrency: at most 4 in flight; queue-limit rejections are transient
-- **Evidence:** the first real run submitted 29 requests at once (a downloader bug: `limit=0` meant "no limit"; fixed in fa1c95a with a regression test). The CDS accepted 5 and rejected 24 with "Number queued requests for this dataset is temporarily limited. Please configure your scripts accordingly". Of the 5 accepted, the CDS ran one at a time. I found no published per-user limit, so these are observations, not documented limits.
+- **Evidence:** the first real run submitted 29 requests at once (a downloader bug: `limit=0` meant "no limit"; fixed in fa1c95a with a regression test). The CDS accepted 5 and rejected 24 with "Number queued requests for this dataset is temporarily limited. Please configure your scripts accordingly". Of the 5 accepted, the CDS ran one at a time, and a single-level request submitted while a pressure-level one ran stayed queued for 15 minutes: one running request per user across datasets. The first half-month pressure-level chunk (52,200 fields) ran 1,669 s (31.3 fields/s). I found no published per-user limit, so these are observations, not documented limits.
 - **Choice:** keep `--max-active 4` (below the observed 5 accepted). A rejection carrying that message sends the request back to `planned` (the remote job is deleted); any other rejection still fails the request. Rejected jobs raise `requests.HTTPError`, not `ProcessingFailedError`; the backend now records the server's message either way (previously the downloader kept polling dead jobs).
 - **Who:** agent.
 
