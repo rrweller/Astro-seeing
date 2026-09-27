@@ -456,6 +456,8 @@ Their seeing data include La Palma (IAC/ING, 2004–2019), Siding Spring (AAT, 1
 
 **Other inputs**
 - **Land mask:** `global-land-mask` (GLOBE 1 km, MIT licence) or OSM land polygons (ODbL, attribution required). Add a 1 km buffer. Our numbers are in §8.
+  - **Chosen: `global-land-mask` v1.0.0** (Riley, 2026-09-27; decision D20). GLOBE's unrestricted version has "no copyright or security distribution restrictions" (NOAA NCEI ETOPO page). Cite: National Geophysical Data Center, 1999, GLOBE v.1, Hastings & Dunbar, doi:10.7289/V52R3PMS.
+  - Checked: lakes count as land, floating ice shelves as sea. Land is 28.905% of Earth, and 365,088 ERA5 cells contain land before the buffer, consistent with the §8 estimates.
 - **Skyfield:** the solar-position library (`almanac.dark_twilight_day` for tests).
 - **TMT site-testing database:** https://sitedata.tmt.org. Free; login needed to download.
 - **ESO ambient conditions database:** https://archive.eso.org/cms/eso-data/ambient-conditions.html (La Silla, Paranal, Chajnantor; query forms).

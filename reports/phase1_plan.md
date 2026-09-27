@@ -2,7 +2,7 @@
 
 - **Status:** draft for Riley's approval (AGENTS.md phase 1 step 1: "share it with Riley, then start").
 - **Written:** 2026-09-27, from a cloud session with no access to the CT, `/data`, `/staging` or the CDS.
-- **Decision log:** `docs/decisions.md` (D1–D17). **Commands for the CT:** `docs/ct_runbook.md`.
+- **Decision log:** `docs/decisions.md` (D1–D20). **Commands for the CT:** `docs/ct_runbook.md`.
 - **Tags:** *[estimate]* = my arithmetic, to be replaced by measurements; **[ASK]** = needs Riley.
 
 ---
@@ -15,7 +15,7 @@
 - **Checked against the PDFs:** several RESEARCH.md details changed (§3 below). The Bi et al. PDF could not be fetched here, because MDPI refuses this container.
 - **Not done (needs the CT):** fetch the papers there, clone Haslebacher's code, the CDS smoke test, and every data task. Scripts and exact commands are in `docs/ct_runbook.md`.
 - **Push:** the session could not push to GitHub (no write access). The work is on branch `claude/awesome-goodall-yadxpa` as local commits and in a git bundle; `docs/ct_runbook.md` §0 covers both.
-- **Needs you first:** the four [ASK]s in §8, of which the request granularity (D16) and the tolerances (§5) block the data work.
+- **Needs you first:** the request size for validation boxes (D16, §8 item 1) is the one open question that blocks the data work.
 
 ## 2. What exists now
 
@@ -59,7 +59,7 @@ Details in D15 and RESEARCH.md (all edits dated 2026-09-27):
 | 4 | CDS smoke test | CT | Riley: `~/.cdsapirc`, licences | `reports/cds_smoke_test.json` |
 | 5 | Update this plan with measured queue time, throughput and cost limits | agent | step 4 | revised §6 |
 | 6 | Read Haslebacher's code: inputs, periods, levels | agent | step 2 | their data volume → **[ASK]** if over 50 GB |
-| 7 | Land mask (1 km + 1 km buffer) and cell list; check the 367,051 estimate | agent | **[ASK]** source: `global-land-mask` (MIT, GLOBE-based) or OSM land polygons (ODbL) | `static/landmask` + report |
+| 7 | Land mask (1 km + 1 km buffer) and cell list; check the 367,051 estimate | agent | source decided: `global-land-mask` (D20) | `static/landmask` + report |
 | 8 | Downloads for validation boxes (§6 table), in this order: Paranal (O&S + ESO 2021–2025), Timau/Eltari, Bi's 7 sites, TMT, Haslebacher | CT | D16 decided | Zarr stores + manifest |
 | 9 | Reproductions, one notebook each: Haslebacher (their code, then ours) → Bi → Priyatikanto → O&S | agent | 6, 8 | notebooks + golden tests |
 | 10 | Model levels (ERA5 complete): ~1 year, 3 boxes (Paranal, Mauna Kea, La Palma) | CT | licence | pl-vs-ml experiment |
@@ -84,6 +84,10 @@ Proposed before any reproduction runs, so they can't be tuned to the results:
 | Calibration (ESO 2021–2025, TMT) | On held-out years/sites, nightly-median bias ≤ 0.10″ for free atmosphere and ≤ 0.15″ for total. Report RMSE and r but don't gate on them (O&S found r = 0.64 and 0.30). |
 
 ## 6. Data volumes and requests *[estimate]*
+
+**What this data is for.** Before scaling up, phase 1 checks our seeing calculation against published papers and observatory measurements (AGENTS.md phase 1 step 4). That needs ERA5 weather profiles only at those sites, for the periods the papers or instruments cover. A **validation box** is the small patch of ERA5 grid we download around one site: 5×5 grid points (about 110 km across), with hourly pressure-level profiles (temperature, wind, geopotential and cloud fraction on 29 levels) and single-level fields (cloud cover, surface pressure, winds, heat flux, …).
+
+**What a request is.** A request is one job submitted to the Copernicus Climate Data Store (CDS). The CDS queues every job separately, so the number of jobs sets how long the downloads take. AGENTS.md specifies one request per day of data. For a whole-globe day (~7 GB) that's right, but a box-day is under 1 MB, so the queue wait would dominate. Asking for a month per request fetches exactly the same data in ~30× fewer jobs, with the same checks and verification.
 
 Box = 5×5 ERA5 points around a site (the Timau box, 24 points, also covers Eltari). Per box-day: pressure levels (29 levels × 5 variables × 24 h) plus single levels (17 variables × 24 h) ≈ 3,900 GRIB1 messages of ~200 bytes ≈ **0.8 MB** (synthetic GRIB of the same shape: 158 bytes per message; real ERA5 headers to be measured by the smoke test).
 
@@ -112,12 +116,14 @@ Box = 5×5 ERA5 points around a site (the Timau box, 24 points, also covers Elta
 
 ## 8. Questions for Riley
 
-1. **[ASK] D16:** may validation boxes use month-sized requests (~1,310 jobs instead of ~39,900)?
-2. **[ASK] §5 tolerances:** approve or change them before any reproduction runs.
-3. **[ASK] Haslebacher volume:** once their code is read, if it needs more than 50 GB I'll come back with numbers.
-4. **Please confirm the RESEARCH.md edits** (D15), especially the O&S 1 km split and Haslebacher's 0.976.
-5. **GitHub push access** for the cloud sessions, or push the bundle from the CT (runbook §0).
-6. **[ASK] Land-mask source** (task 7): `global-land-mask` (MIT package, GLOBE 1 km data) or OSM land polygons (ODbL, attribution required). I'd use `global-land-mask`; check its data terms first.
+Status after Riley's answers on 2026-09-27:
+
+1. **[ASK] D16, still open:** may validation boxes use month-sized requests (~1,310 jobs instead of ~39,900)? See §6 for what a box and a request are.
+2. **Tolerances (§5): approved** by Riley (D19).
+3. **Haslebacher volume:** nothing to decide yet. Once their code is read on the CT, I'll report how much ERA5 it needs, and ask if it's over 50 GB.
+4. **RESEARCH.md edits (D15):** listed for Riley; no decision needed unless he disagrees with one.
+5. **GitHub push access: fixed** by Riley; the branch is pushed and PR #1 is open.
+6. **Land-mask source: `global-land-mask`**, approved and checked (D20). Note: floating ice shelves count as sea.
 7. **Later:** the TMT database login (task 12).
 
 ## 9. Proposed AGENTS.md changes (for Riley to make, if agreed)

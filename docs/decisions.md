@@ -105,3 +105,17 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Evidence:** AGENTS.md "What gets stored": only land cells (with the 1 km buffer) and night hours; validation boxes keep all hours. The land mask is not built yet (its source is an open [ASK]). Copilot's review of PR #1 flagged that the CLI would store any request unmasked.
 - **Choice:** without a mask function, `ingest_pending` stores only requests of at most 121 grid points (11×11, i.e. validation boxes). Larger requests stay in `verified`, are logged and counted (`refused_unmasked`), and the CLI exits non-zero. Cleanup refuses to delete the raw file of a `cells`-layout store unless it is given the same mask function. `download`, `verify`, `ingest` and `cleanup-raw` now exit non-zero when anything failed, so systemd and scripts see it.
 - **Who:** agent (provisional).
+
+### D19. Reproduction tolerances approved
+- **Choice:** the tolerances in `reports/phase1_plan.md` §5 are fixed before any reproduction runs (Bi ±0.05″ on medians and quartiles; Priyatikanto 0.79″ ± 0.03″; O&S ±0.1″ on the Table 3 ECMWF medians; Haslebacher: their published precision, and ≤0.1% between our code and theirs; calibration bias ≤0.10″ free atmosphere, ≤0.15″ total on held-out data).
+- **Who:** Riley, 2026-09-27 ("I think the tolerances are fine").
+
+### D20. Land-mask source: `global-land-mask`
+- **Options:** `global-land-mask` (PyPI) or OSM land polygons (ODbL).
+- **Evidence (checked 2026-09-27):**
+  - Package v1.0.0, MIT licence. Its mask is NOAA GLOBE 1 km (30″) elevation, with GLOBE's no-data cells as sea; shape 21600 × 43200, nearest-neighbour lookup.
+  - GLOBE data terms: the "Unrestricted" version has "no copyright or security distribution restrictions" (NOAA NCEI ETOPO page, which covers GLOBE). Cite: National Geophysical Data Center, 1999, Global Land One-kilometer Base Elevation (GLOBE) v.1, Hastings & Dunbar, doi:10.7289/V52R3PMS.
+  - Behaviour: every validation site tested is land (Paranal, Mauna Kea 13N, La Palma, Timau, Lenghu, Dome C, South Pole), as are small islands (Tristan da Cunha, Easter Island, Lord Howe) and lakes (Superior, Caspian, Titicaca, Qinghai, Victoria, Great Salt Lake). Open ocean is sea. **Floating ice shelves (e.g. the Ross Ice Shelf) are sea.**
+  - Land area 28.905% of Earth; 365,088 ERA5 0.25° cells contain land before the 1 km buffer (RESEARCH §8 estimated 28.91% and 367,051 with the buffer).
+- **Choice:** use `global-land-mask`, add the GLOBE citation to product attributions, and treat ice shelves as sea unless Riley wants them included (they would need another source).
+- **Who:** Riley approved the source ("use the global-land-mask package assuming it works well for our case"); the checks above are the agent's.
