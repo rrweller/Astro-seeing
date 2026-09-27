@@ -79,12 +79,26 @@ class RequestSpec:
     # --- identity -------------------------------------------------------------
     @property
     def period_label(self) -> str:
+        """``YYYY-MM-DD`` (one day), ``YYYY-MM`` (a whole month), else ``first_last``."""
         d0, d1 = self.dates[0], self.dates[-1]
         if d0 == d1:
             return d0.isoformat()
-        if (d0.year, d0.month) == (d1.year, d1.month):
-            return f"{d0:%Y-%m}" if len(self.dates) > 1 else d0.isoformat()
-        return f"{d0.isoformat()}_{d1.isoformat()}"
+        whole_month = (
+            d0.day == 1
+            and (d1 + dt.timedelta(days=1)).day == 1
+            and (d0.year, d0.month) == (d1.year, d1.month)
+            and len(self.dates) == d1.day
+        )
+        return f"{d0:%Y-%m}" if whole_month else f"{d0.isoformat()}_{d1.isoformat()}"
+
+    @property
+    def fields_per_day(self) -> int:
+        """CDS cost of one day: variables × levels × hours (the CDS counts fields)."""
+        return len(self.variables) * (len(self.levels) if self.levels else 1) * len(self.hours)
+
+    @property
+    def n_fields(self) -> int:
+        return self.fields_per_day * len(self.dates)
 
     @property
     def key(self) -> str:
@@ -164,6 +178,23 @@ class RequestSpec:
         }
 
 
+def max_fields(kind: str) -> int:
+    """CDS per-request cost limit for a dataset kind (configs/era5.yaml, D23)."""
+    return int(load_config("era5")["request"]["max_fields"][kind])
+
+
+def _split_to_limit(days: list[dt.date], per_day: int, limit: int) -> list[list[dt.date]]:
+    """The fewest near-equal contiguous chunks of ``days`` with at most ``limit`` fields each."""
+    if len(days) * per_day <= limit:
+        return [days]
+    max_days = limit // per_day
+    if max_days < 1:
+        raise ValueError(f"one day is {per_day} fields, over the CDS limit of {limit}")
+    n = -(-len(days) // max_days)
+    size = -(-len(days) // n)
+    return [days[i : i + size] for i in range(0, len(days), size)]
+
+
 def plan_requests(
     kind: str,
     region: str,
@@ -174,8 +205,14 @@ def plan_requests(
     variables: tuple[str, ...] | None = None,
     levels: tuple[int, ...] | None = None,
     hours: tuple[int, ...] = ALL_HOURS,
+    split: bool = True,
 ) -> list[RequestSpec]:
-    """Split [start, end] (inclusive) into day- or month-sized requests."""
+    """Split [start, end] (inclusive) into day- or month-sized requests.
+
+    With ``split`` (the default), any request over the CDS cost limit for its dataset
+    (:func:`max_fields`) is cut into the fewest near-equal runs of days under it; a
+    whole month of 5×5-box pressure levels (107,880 fields) becomes two requests.
+    """
     cfg = load_config("era5")["datasets"][kind]
     variables = tuple(variables or cfg["variables"].keys())
     if kind == "pl":
@@ -193,6 +230,9 @@ def plan_requests(
             groups.append([d])
         else:
             groups[-1].append(d)
+    if split:
+        per_day = len(variables) * (len(levels) if kind == "pl" else 1) * len(hours)
+        groups = [c for g in groups for c in _split_to_limit(g, per_day, max_fields(kind))]
     return [
         RequestSpec(
             kind=kind,

@@ -279,17 +279,18 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
             )
         except Exception as e:
             report["cost_estimates"][f"{kind}_global_day"] = {"error": str(e)}
-    # Month-sized validation-box requests (D16): is a 31-day 5×5 box within the limits?
+    # Month-sized validation-box requests (D16): is a 31-day 5×5 box within the limits,
+    # and is each chunk of the split plan (D23)?
+    jan = (dt.date(2023, 1, 1), dt.date(2023, 1, 31))
     for kind in ("pl", "sl"):
-        (spec,) = plan_requests(
-            kind, "box", dt.date(2023, 1, 1), dt.date(2023, 1, 31), area, granularity="month"
-        )
-        try:
-            report["cost_estimates"][f"{kind}_box_month"] = backend.client.estimate_costs(
-                spec.dataset, spec.cds_request()
-            )
-        except Exception as e:
-            report["cost_estimates"][f"{kind}_box_month"] = {"error": str(e)}
+        whole = plan_requests(kind, "box", *jan, area, granularity="month", split=False)
+        chunks = plan_requests(kind, "box", *jan, area, granularity="month")
+        for name, specs_ in ((f"{kind}_box_month", whole), (f"{kind}_box_month_split", chunks)):
+            try:
+                est = [backend.client.estimate_costs(s.dataset, s.cds_request()) for s in specs_]
+                report["cost_estimates"][name] = est[0] if len(est) == 1 else est
+            except Exception as e:
+                report["cost_estimates"][name] = {"error": str(e)}
     states = {r["key"]: r["state"] for r in report["requests"]}
     not_verified = {k: v for k, v in states.items() if v != "verified"}
     report["ok"] = not not_verified

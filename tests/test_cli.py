@@ -151,7 +151,10 @@ def test_smoke_test_passes_when_everything_verifies(ct, monkeypatch):
         "sl_global_day",
         "pl_box_month",
         "sl_box_month",
+        "pl_box_month_split",
+        "sl_box_month_split",
     }
+    assert len(rep["cost_estimates"]["pl_box_month_split"]) == 2  # 16 + 15 days
     assert rep["accepted_licences"] == ["licence-to-use-copernicus-products (revision 12)"]
 
 
@@ -180,14 +183,22 @@ def test_config_lookup_order(tmp_path, monkeypatch):
 
 
 def test_plan_box_defaults_to_month_sized_requests(ct):
-    """D16: validation boxes use one request per month."""
+    """D16: validation boxes use one request per month; D23: pressure levels are split
+    in two per month to stay under the CDS limit of 60,000 fields per request."""
     args = ["plan-box", "--region", "m", "--lat", "-24.63", "--lon", "-70.40",
-            "--start", "2023-01-30", "--end", "2023-02-02", "--kinds", "pl"]  # fmt: skip
+            "--start", "2023-01-01", "--end", "2023-02-28", "--kinds", "pl,sl"]  # fmt: skip
     assert cli.main(args) == 0
     m = Manifest(ct / "state" / "manifest.sqlite")
     keys = [r[0] for r in m.conn.execute("SELECT key FROM requests ORDER BY id")]
     m.close()
-    assert keys == ["pl/m/2023-01", "pl/m/2023-02"]
+    assert keys == [
+        "pl/m/2023-01-01_2023-01-16",
+        "pl/m/2023-01-17_2023-01-31",
+        "pl/m/2023-02-01_2023-02-14",
+        "pl/m/2023-02-15_2023-02-28",
+        "sl/m/2023-01",
+        "sl/m/2023-02",
+    ]
 
 
 class _StubMask:

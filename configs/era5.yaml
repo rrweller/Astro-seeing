@@ -60,3 +60,12 @@ request:
   # (AGENTS.md "day-sized requests").
   validation_box_granularity: month
   global_granularity: day
+  # CDS per-request cost limits. The CDS counts fields (variables x levels x hours x
+  # days), whatever the area; measured with estimate_costs on 2026-09-27
+  # (reports/cds_smoke_test.json). Longer requests are split into the fewest
+  # near-equal runs of days under the limit (D23): a month of 5x5-box pressure
+  # levels (107,880 fields) becomes two requests.
+  max_fields:
+    pl: 60000
+    sl: 121000
+    static: 121000
