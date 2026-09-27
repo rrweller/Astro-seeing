@@ -148,7 +148,12 @@ def test_full_pipeline_happy_path(env):
     assert "Copernicus Climate Change Service" in ds.attrs["attribution"]
     assert ds.level.values[0] == 1000 and ds.level.values[-1] == 50
     # raw files are deleted only now, and only from staging
-    assert cleanup_raw(m, tmp / "staging") == {"deleted": 3, "skipped": 0}
+    assert cleanup_raw(m, tmp / "staging") == {
+        "deleted": 3,
+        "recovered": 0,
+        "skipped": 0,
+        "failed": 0,
+    }
     assert m.counts() == {"raw_deleted": 3}
     assert not list((tmp / "staging" / "grib").glob("*.grib"))
 
@@ -310,7 +315,7 @@ def test_cleanup_refuses_files_outside_staging(env):
     ingest_pending(m, tmp / "data", {})
     elsewhere = tmp / "elsewhere"
     elsewhere.mkdir()
-    assert cleanup_raw(m, elsewhere) == {"deleted": 0, "skipped": 3}
+    assert cleanup_raw(m, elsewhere) == {"deleted": 0, "recovered": 0, "skipped": 3, "failed": 0}
     assert len(list((tmp / "staging" / "grib").glob("*.grib"))) == 3
 
 
@@ -326,7 +331,7 @@ def test_cleanup_refuses_when_store_was_tampered(env):
     arr = g["t"]
     arr[0, 0, 0, 0] = arr[0, 0, 0, 0] + 1.0
     out = cleanup_raw(m, tmp / "staging")
-    assert out == {"deleted": 2, "skipped": 1}
+    assert out == {"deleted": 2, "recovered": 0, "skipped": 1, "failed": 0}
     assert Path(m.current_file(req.id)["path"]).exists()
 
 
@@ -390,3 +395,116 @@ def test_missing_cloud_base_height_is_expected_and_counted(tmp_path):
     arrays, attrs = read_store(res.path)
     assert int(np.isnan(arrays["cbh"]).sum()) == 4
     assert attrs["qc"]["grib_missing_values_cbh"]["count"] == 4
+
+
+# --- review follow-ups (PR #1) ----------------------------------------------------------
+
+
+def _ingested(env):
+    m, dl, tmp = env["m"], env["dl"], env["tmp"]
+    drain(dl)
+    verify_pending(m)
+    assert ingest_pending(m, tmp / "data", {})["ingested"] == 3
+    return m, tmp
+
+
+def test_shards_are_whole_chunks_for_the_global_grid():
+    from astroseeing.ingest.store import choose_shards
+
+    shape = (24, 29, 721, 1440)
+    chunks = choose_chunks(shape, ("time", "level", "latitude", "longitude"))
+    assert 721 % chunks[2] != 0  # the case the review found
+    shards = choose_shards(shape, chunks)
+    assert all(sh % c == 0 and sh >= s for sh, c, s in zip(shards, chunks, shape, strict=True))
+
+
+def test_write_with_chunks_that_do_not_divide_the_array(tmp_path, monkeypatch):
+    import zarr
+
+    from astroseeing.ingest.store import Prepared
+    from astroseeing.qc import QCCounts
+
+    rng = np.random.default_rng(0)
+    shape = (2, 3, 37, 41)
+    prep = Prepared(
+        dims=("time", "level", "latitude", "longitude"),
+        coords={
+            "time": (("time",), np.array([0, 3600], dtype=np.int64)),
+            "level": (("level",), np.array([1000.0, 500.0, 50.0])),
+            "latitude": (("latitude",), np.linspace(10, 1, 37)),
+            "longitude": (("longitude",), np.linspace(0, 10, 41)),
+        },
+        data={"t": rng.normal(250, 10, shape).astype(np.float32)},
+        qc=QCCounts(),
+    )
+    monkeypatch.setattr("astroseeing.ingest.store.TARGET_CHUNK_BYTES", 4096)
+    res = write_store_atomic(tmp_path / "odd.zarr", prep, {})
+    arr = zarr.open_group(str(res.path), mode="r", zarr_format=3)["t"]
+    assert any(s % c for s, c in zip(shape, arr.chunks, strict=True))  # non-dividing chunks
+    np.testing.assert_array_equal(arr[...], prep.data["t"])
+
+
+def test_ingest_refuses_large_requests_without_a_mask(tmp_path):
+    m = Manifest(tmp_path / "state" / "m.sqlite")
+    (tmp_path / "data").mkdir()
+    big = Area(0.0, 0.0, -2.75, 2.75)  # 12×12 = 144 points > 121
+    spec = plan_requests(
+        "sl", "region", dt.date(2023, 6, 20), dt.date(2023, 6, 20), big, hours=(0,)
+    )[0]
+    fake = FakeCdsBackend({FakeCdsBackend.req_key(spec.cds_request()): spec.expected()})
+    rid = m.add_request(spec)
+    drain(Downloader(m, fake, tmp_path / "staging" / "grib"))
+    verify_pending(m)
+    out = ingest_pending(m, tmp_path / "data", {})
+    assert out["refused_unmasked"] == 1 and out["ingested"] == 0
+    assert m.get(rid).state == "verified"
+    assert not (tmp_path / "data" / "era5").exists()
+
+    def land_and_night(req, dec):
+        return np.ones((dec.lat.size, dec.lon.size), bool), np.ones((dec.times.size, 144), bool)
+
+    assert ingest_pending(m, tmp_path / "data", {}, mask_fn=land_and_night)["ingested"] == 1
+    m.close()
+
+
+def test_cleanup_recovers_after_crash_between_delete_and_manifest_update(env):
+    m, tmp = _ingested(env)
+    for rid in env["ids"]:  # simulate: files deleted, process died before the manifest write
+        Path(m.current_file(rid)["path"]).unlink()
+    out = cleanup_raw(m, tmp / "staging")
+    assert out == {"deleted": 0, "recovered": 3, "skipped": 0, "failed": 0}
+    assert m.counts() == {"raw_deleted": 3}
+    assert all(m.latest_file(rid)["deleted_at"] for rid in env["ids"])
+
+
+def test_cleanup_recovery_refuses_a_tampered_store(env):
+    import zarr
+
+    m, tmp = _ingested(env)
+    req = m.get(env["ids"][0])
+    Path(m.current_file(req.id)["path"]).unlink()
+    g = zarr.open_group(str(store_path(tmp / "data", req)), mode="r+", zarr_format=3)
+    g["t"][0, 0, 0, 0] = g["t"][0, 0, 0, 0] + 1.0
+    out = cleanup_raw(m, tmp / "staging")
+    assert out == {"deleted": 2, "recovered": 0, "skipped": 1, "failed": 0}
+    assert m.get(req.id).state == "ingested"
+
+
+def test_cleanup_recovers_recorded_deletion_without_state_change(env):
+    m, tmp = _ingested(env)
+    rid = env["ids"][0]
+    f = m.current_file(rid)
+    Path(f["path"]).unlink()
+    m.conn.execute("UPDATE files SET deleted_at='2026-09-27T00:00:00+00:00' WHERE id=?", (f["id"],))
+    out = cleanup_raw(m, tmp / "staging")
+    assert out["recovered"] == 1 and out["deleted"] == 2
+    assert m.get(rid).state == "raw_deleted"
+
+
+def test_one_bad_request_does_not_stop_cleanup(env):
+    m, tmp = _ingested(env)
+    bad = Path(m.current_file(env["ids"][0])["path"])
+    bad.write_bytes(bad.read_bytes()[:100])  # corrupt, still present
+    out = cleanup_raw(m, tmp / "staging")
+    assert out == {"deleted": 2, "recovered": 0, "skipped": 0, "failed": 1}
+    assert bad.exists() and m.get(env["ids"][0]).state == "ingested"

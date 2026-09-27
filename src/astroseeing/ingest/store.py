@@ -130,6 +130,16 @@ def choose_chunks(
     return tuple(int(c) for c in chunks)
 
 
+def choose_shards(shape: tuple[int, ...], chunks: tuple[int, ...]) -> tuple[int, ...]:
+    """One shard per array: the array shape rounded up to a whole number of chunks.
+
+    Zarr v3 requires shard dimensions to be multiples of the inner chunk dimensions;
+    the array itself need not fill the shard (e.g. 721 latitudes in 23-row chunks
+    → a 736-row shard).
+    """
+    return tuple(-(-s // c) * c for s, c in zip(shape, chunks, strict=True))
+
+
 def _fsync_tree(root: Path) -> None:
     for dirpath, _dirs, files in os.walk(root):
         for f in files:
@@ -164,13 +174,13 @@ def _write(path: Path, prep: Prepared, attrs: dict[str, Any]) -> None:
         a[...] = arr
     comp = [BloscCodec(cname="zstd", clevel=5, shuffle="shuffle")]
     for name, arr in prep.data.items():
-        chunks = choose_chunks(arr.shape, prep.dims, arr.dtype.itemsize)
+        chunks = choose_chunks(arr.shape, prep.dims, arr.dtype.itemsize, TARGET_CHUNK_BYTES)
         a = g.create_array(
             name,
             shape=arr.shape,
             dtype=arr.dtype,
             chunks=chunks,
-            shards=arr.shape,
+            shards=choose_shards(arr.shape, chunks),
             compressors=comp,
             fill_value=np.nan,
             dimension_names=prep.dims,
@@ -185,6 +195,45 @@ def read_store(path: Path) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
     g = zarr.open_group(str(path), mode="r", zarr_format=3)
     arrays = {name: np.asarray(a[...]) for name, a in g.arrays()}
     return arrays, dict(g.attrs)
+
+
+COORD_NAMES = frozenset(
+    {"time", "level", "latitude", "longitude", "cell_lat", "cell_lon", "cell_index"}
+)
+
+
+def load_prepared(path: Path) -> Prepared:
+    """Rebuild a :class:`Prepared` from a store (arrays, dimension names, QC attribute)."""
+    import zarr
+
+    g = zarr.open_group(str(path), mode="r", zarr_format=3)
+    coords: dict[str, tuple[tuple[str, ...], np.ndarray]] = {}
+    data: dict[str, np.ndarray] = {}
+    dims: tuple[str, ...] = ()
+    for name, a in g.arrays():
+        arr_dims = tuple(a.metadata.dimension_names or ())
+        if name in COORD_NAMES:
+            coords[name] = (arr_dims, np.asarray(a[...]))
+        else:
+            data[name] = np.asarray(a[...])
+            dims = arr_dims
+    return Prepared(
+        dims=dims, coords=coords, data=data, qc=QCCounts.from_dict(g.attrs.get("qc", {}))
+    )
+
+
+def self_check_store(path: Path, expected_sha256: str) -> list[str]:
+    """Check a store against a recorded content hash without the source GRIB."""
+    import zarr
+
+    problems = []
+    digest = load_prepared(path).content_sha256()
+    if digest != expected_sha256:
+        problems.append(f"content sha256 {digest} != recorded {expected_sha256}")
+    attr = zarr.open_group(str(path), mode="r", zarr_format=3).attrs.get("content_sha256")
+    if attr != expected_sha256:
+        problems.append("content_sha256 attribute differs from the recorded value")
+    return problems
 
 
 def compare_store(path: Path, prep: Prepared) -> list[str]:

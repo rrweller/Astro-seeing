@@ -60,7 +60,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 
 ### D10. Zarr layout for ingested ERA5
 - **Options:** one store per request, per month, or per year; append vs write-once.
-- **Choice (phase 1):** one Zarr v3 store per manifest request at `/data/astro/era5/{kind}/{region}/{period}.zarr`, written once to a temp directory, read back bit-for-bit, fsynced, renamed, and read back again. Never overwritten (same content → no-op; different content → error). float32 (GRIB is 16-bit packed, so nothing is lost), Blosc zstd level 5 with byte shuffle, chunks ≤ 4 MB with time and level whole, one shard per array (one file per variable per request). No consolidated metadata (not in the v3 spec). A `cells` layout (land cells plus a counted night mask) is implemented for phase 2/3. Whether day-sized stores are right for the global run is a phase 2 decision.
+- **Choice (phase 1):** one Zarr v3 store per manifest request at `/data/astro/era5/{kind}/{region}/{period}.zarr`, written once to a temp directory, read back bit-for-bit, fsynced, renamed, and read back again. Never overwritten (same content → no-op; different content → error). float32 (GRIB is 16-bit packed, so nothing is lost), Blosc zstd level 5 with byte shuffle, chunks ≤ 4 MB with time and level whole, one shard per array (one file per variable per request); the shard is the array shape rounded up to whole chunks, because Zarr v3 needs shards to be multiples of chunks (e.g. 721 latitudes → 23-row chunks → 736-row shard; found in PR review). No consolidated metadata (not in the v3 spec). A `cells` layout (land cells plus a counted night mask) is implemented for phase 2/3. Whether day-sized stores are right for the global run is a phase 2 decision.
 - **Who:** agent (provisional).
 
 ### D11. Manifest location and export
@@ -69,7 +69,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Who:** agent (provisional).
 
 ### D12. Raw GRIB deletion
-- **Choice:** delete a raw GRIB only if it is under the staging directory, its ingest is recorded as verified, and the store still matches the arrays rebuilt from that GRIB bit-for-bit at deletion time. Nothing under `/data` is ever deleted by code.
+- **Choice:** delete a raw GRIB only if it is under the staging directory, its ingest is recorded as verified, and the store still matches the arrays rebuilt from that GRIB bit-for-bit at deletion time. The file row and the `raw_deleted` state are then written in one transaction. If a run dies between deleting the file and that write, the next run checks the store against its recorded content hash and finishes the transition (or skips it if the check fails). Nothing under `/data` is ever deleted by code.
 - **Who:** agent.
 
 ### D13. c_p
@@ -98,4 +98,10 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 
 ### D17. Missing values in ERA5 GRIB
 - **Choice:** a bitmap-missing value fails verification, except for variables where missing is physically expected. For now that is only `cbh` (no cloud → no cloud base). Those counts are recorded as warnings, decoded to NaN, and stored in the Zarr `qc` attribute (`grib_missing_values_<var>`). The grid-size check uses `numberOfDataPoints`, because `numberOfValues` excludes missing points (found by the test). If the smoke test shows other variables with legitimate gaps, they get added here explicitly, never silently.
+- **Who:** agent (provisional).
+
+### D18. No unmasked ingest outside validation boxes
+- **Options:** let the CLI ingest any request on the full grid, or require the land/night mask for anything that is not a validation box.
+- **Evidence:** AGENTS.md "What gets stored": only land cells (with the 1 km buffer) and night hours; validation boxes keep all hours. The land mask is not built yet (its source is an open [ASK]). Copilot's review of PR #1 flagged that the CLI would store any request unmasked.
+- **Choice:** without a mask function, `ingest_pending` stores only requests of at most 121 grid points (11×11, i.e. validation boxes). Larger requests stay in `verified`, are logged and counted (`refused_unmasked`), and the CLI exits non-zero. Cleanup refuses to delete the raw file of a `cells`-layout store unless it is given the same mask function. `download`, `verify`, `ingest` and `cleanup-raw` now exit non-zero when anything failed, so systemd and scripts see it.
 - **Who:** agent (provisional).

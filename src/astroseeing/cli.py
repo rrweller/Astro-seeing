@@ -93,29 +93,37 @@ def cmd_download(args, paths: Paths) -> int:
     max_s = args.max_hours * 3600 if args.max_hours else None
     s = dl.run(poll_seconds=args.poll, max_seconds=max_s)
     log.info("download finished: %s", s)
+    if s.failed:
+        log.error("%d request(s) failed in this run; see `astro status`", s.failed)
+        return 1
     return 0
 
 
 def cmd_verify(args, paths: Paths) -> int:
     from astroseeing.ingest.pipeline import verify_pending
 
-    log.info("verify: %s", verify_pending(_manifest(paths)))
-    return 0
+    out = verify_pending(_manifest(paths))
+    log.info("verify: %s", out)
+    return 1 if out["failed"] else 0
 
 
 def cmd_ingest(args, paths: Paths) -> int:
     from astroseeing.ingest.pipeline import ingest_pending
 
+    # No land/night mask is wired in yet (the land-mask source is an open [ASK]), so
+    # only validation boxes are ingested; larger requests are refused and counted.
     cfg = {"era5": load_config("era5"), "layout": "grid"}
-    log.info("ingest: %s", ingest_pending(_manifest(paths), paths.data_root, cfg))
-    return 0
+    out = ingest_pending(_manifest(paths), paths.data_root, cfg)
+    log.info("ingest: %s", out)
+    return 1 if out["failed"] or out["refused_unmasked"] else 0
 
 
 def cmd_cleanup_raw(args, paths: Paths) -> int:
     from astroseeing.ingest.pipeline import cleanup_raw
 
-    log.info("cleanup: %s", cleanup_raw(_manifest(paths), paths.staging))
-    return 0
+    out = cleanup_raw(_manifest(paths), paths.staging)
+    log.info("cleanup: %s", out)
+    return 1 if out["failed"] or out["skipped"] else 0
 
 
 def cmd_retry_failed(args, paths: Paths) -> int:

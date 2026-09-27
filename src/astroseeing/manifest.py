@@ -227,6 +227,22 @@ class Manifest:
         increment_attempts: bool = False,
         **fields: Any,
     ) -> None:
+        with self.tx() as c:
+            self._transition(
+                c, request_id, from_states, to_state, detail, increment_attempts, fields
+            )
+
+    def _transition(
+        self,
+        c: sqlite3.Connection,
+        request_id: int,
+        from_states: Iterable[str],
+        to_state: str,
+        detail: str | None,
+        increment_attempts: bool,
+        fields: dict[str, Any],
+    ) -> None:
+        """Compare-and-set state change plus event row; caller holds the transaction."""
         if to_state not in STATES:
             raise ValueError(to_state)
         from_states = tuple(from_states)
@@ -239,17 +255,16 @@ class Manifest:
             f"UPDATE requests SET state=?, updated_at=?{sets}"
             f" WHERE id=? AND state IN ({placeholders})"
         )
-        with self.tx() as c:
-            cur = c.execute(sql, (to_state, now, *fields.values(), request_id, *from_states))
-            if cur.rowcount != 1:
-                state = c.execute("SELECT state FROM requests WHERE id=?", (request_id,)).fetchone()
-                raise StateError(
-                    f"request {request_id}: expected {from_states}, found {state and state[0]}"
-                )
-            c.execute(
-                "INSERT INTO events (request_id, at, event, detail) VALUES (?,?,?,?)",
-                (request_id, now, to_state, detail),
+        cur = c.execute(sql, (to_state, now, *fields.values(), request_id, *from_states))
+        if cur.rowcount != 1:
+            state = c.execute("SELECT state FROM requests WHERE id=?", (request_id,)).fetchone()
+            raise StateError(
+                f"request {request_id}: expected {from_states}, found {state and state[0]}"
             )
+        c.execute(
+            "INSERT INTO events (request_id, at, event, detail) VALUES (?,?,?,?)",
+            (request_id, now, to_state, detail),
+        )
 
     def fail(self, request_id: int, from_states: Iterable[str], error: str) -> None:
         self.transition(
@@ -320,8 +335,20 @@ class Manifest:
         )
         return int(cur.lastrowid)
 
-    def mark_file_deleted(self, file_id: int) -> None:
-        self.conn.execute("UPDATE files SET deleted_at=? WHERE id=?", (utcnow(), file_id))
+    def mark_raw_deleted(self, request_id: int, file_id: int, detail: str) -> None:
+        """Record a deleted raw file and move ingested → raw_deleted in one transaction."""
+        with self.tx() as c:
+            c.execute(
+                "UPDATE files SET deleted_at=? WHERE id=? AND deleted_at IS NULL",
+                (utcnow(), file_id),
+            )
+            self._transition(c, request_id, ("ingested",), "raw_deleted", detail, False, {})
+
+    def latest_file(self, request_id: int) -> sqlite3.Row | None:
+        """Most recent file row for a request, deleted or not."""
+        return self.conn.execute(
+            "SELECT * FROM files WHERE request_id=? ORDER BY id DESC LIMIT 1", (request_id,)
+        ).fetchone()
 
     # --- export ------------------------------------------------------------------
     def export(self, dest_dir: Path) -> Path:

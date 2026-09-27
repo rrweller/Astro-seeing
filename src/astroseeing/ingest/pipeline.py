@@ -7,11 +7,20 @@
 * :func:`cleanup_raw`: ``ingested`` → ``raw_deleted``; deletes the raw GRIB only if
   the ingest was verified, the Zarr store still passes a content check, and the
   file lies under the staging directory. Never deletes anything under /data.
+  Crash-safe: if a previous run deleted the file but died before the manifest
+  update, the next run checks the store against its recorded content hash and
+  completes the transition.
+
+Without a land/night mask function, only validation boxes (at most
+:data:`MAX_UNMASKED_POINTS` grid points) are ingested; AGENTS.md: "only land cells
+(with the 1 km buffer) and night hours … Validation boxes keep all hours".
+Larger requests are left in ``verified`` and counted as ``refused_unmasked``.
 """
 
 from __future__ import annotations
 
 import datetime as dt
+import json
 import logging
 from collections.abc import Callable
 from pathlib import Path
@@ -20,13 +29,17 @@ import numpy as np
 
 from astroseeing.download.downloader import sha256_file
 from astroseeing.ingest.decode import decode_grib
-from astroseeing.ingest.store import compare_store, prepare, write_store_atomic
+from astroseeing.ingest.store import compare_store, prepare, self_check_store, write_store_atomic
 from astroseeing.manifest import Manifest, Request
 from astroseeing.paths import probe_responsive
 from astroseeing.provenance import era5_attribution, provenance
 from astroseeing.verify.grib import verify_grib
 
 log = logging.getLogger(__name__)
+
+#: Largest request grid (points) that may be stored without a land/night mask:
+#: validation boxes only (11×11 points covers a ±1.25° box).
+MAX_UNMASKED_POINTS = 121
 
 #: Optional hook returning (cell_mask, keep_hours) for a request; None → grid layout.
 MaskFn = Callable[[Request, "object"], tuple[np.ndarray | None, np.ndarray | None]]
@@ -69,12 +82,26 @@ def ingest_pending(
     config: dict,
     mask_fn: MaskFn | None = None,
     probe_timeout_s: float = 60.0,
+    max_unmasked_points: int = MAX_UNMASKED_POINTS,
 ) -> dict[str, int]:
-    out = {"ingested": 0, "already_present": 0, "failed": 0}
+    out = {"ingested": 0, "already_present": 0, "failed": 0, "refused_unmasked": 0}
     todo = m.by_state("verified")
     if todo:
         probe_responsive(Path(data_root), probe_timeout_s)
     for req in todo:
+        if mask_fn is None:
+            g = req.expected["grid"]
+            npts = g["nlat"] * g["nlon"]
+            if npts > max_unmasked_points:
+                log.error(
+                    "%s: %d grid points > %d; refusing to store all cells and hours without "
+                    "a land/night mask (left in 'verified')",
+                    req.key,
+                    npts,
+                    max_unmasked_points,
+                )
+                out["refused_unmasked"] += 1
+                continue
         f = m.current_file(req.id)
         try:
             dec = decode_grib(Path(f["path"]), req.expected)
@@ -119,29 +146,59 @@ def cleanup_raw(m: Manifest, staging_root: Path, mask_fn: MaskFn | None = None) 
     """Delete raw GRIBs whose ingest is verified. Only files under ``staging_root``.
 
     Before deleting, the store is compared bit-for-bit once more with the arrays
-    rebuilt from the GRIB (using the same ``mask_fn`` as the ingest).
+    rebuilt from the GRIB (using the same ``mask_fn`` as the ingest). The file row
+    and the state change are then recorded in one transaction. A failure on one
+    request is logged and counted; it does not stop the others.
     """
     staging_root = Path(staging_root).resolve()
-    out = {"deleted": 0, "skipped": 0}
+    out = {"deleted": 0, "recovered": 0, "skipped": 0, "failed": 0}
     for req in m.by_state("ingested"):
-        f = m.current_file(req.id)
-        ing = m.conn.execute(
-            "SELECT * FROM ingests WHERE file_id=? AND ok=1 ORDER BY id DESC LIMIT 1", (f["id"],)
-        ).fetchone()
-        path = Path(f["path"]).resolve()
-        if ing is None or not path.is_relative_to(staging_root):
-            log.warning("not deleting %s (no verified ingest, or outside staging)", path)
-            out["skipped"] += 1
-            continue
-        dec = decode_grib(path, req.expected)
-        cell_mask, keep = mask_fn(req, dec) if mask_fn else (None, None)
-        problems = compare_store(Path(ing["store_path"]), prepare(dec, cell_mask, keep))
-        if problems:
-            log.error("store %s does not match %s: %s", ing["store_path"], path, problems)
-            out["skipped"] += 1
-            continue
-        path.unlink()
-        m.mark_file_deleted(f["id"])
-        m.transition(req.id, ["ingested"], "raw_deleted", detail=str(path))
-        out["deleted"] += 1
+        try:
+            out[_cleanup_one(m, req, staging_root, mask_fn)] += 1
+        except Exception:
+            log.exception("cleanup of %s failed", req.key)
+            out["failed"] += 1
     return out
+
+
+def _cleanup_one(m: Manifest, req: Request, staging_root: Path, mask_fn: MaskFn | None) -> str:
+    f = m.current_file(req.id)
+    if f is None:
+        last = m.latest_file(req.id)
+        if last is not None and last["deleted_at"]:
+            # Deletion was recorded but the state change was not (older runs only).
+            m.transition(req.id, ["ingested"], "raw_deleted", detail="recovered: deletion recorded")
+            return "recovered"
+        raise RuntimeError(f"{req.key}: no file row")
+    ing = m.conn.execute(
+        "SELECT * FROM ingests WHERE file_id=? AND ok=1 ORDER BY id DESC LIMIT 1", (f["id"],)
+    ).fetchone()
+    path = Path(f["path"]).resolve()
+    if ing is None or not path.is_relative_to(staging_root):
+        log.warning("not deleting %s (no verified ingest, or outside staging)", path)
+        return "skipped"
+    layout = json.loads(ing["report_json"]).get("layout", "grid")
+    if layout != "grid" and mask_fn is None:
+        log.warning("not deleting %s: %s-layout store needs the ingest's mask_fn", path, layout)
+        return "skipped"
+    store = Path(ing["store_path"])
+    if not path.exists():
+        # A previous run deleted the file and died before the manifest update. The
+        # GRIB is gone, so check the store against its recorded content hash.
+        problems = self_check_store(store, ing["content_sha256"])
+        if problems:
+            log.error(
+                "%s: raw file gone and store %s fails its self-check: %s", req.key, store, problems
+            )
+            return "skipped"
+        m.mark_raw_deleted(req.id, f["id"], detail=f"recovered: {path} already gone")
+        return "recovered"
+    dec = decode_grib(path, req.expected)
+    cell_mask, keep = mask_fn(req, dec) if mask_fn else (None, None)
+    problems = compare_store(store, prepare(dec, cell_mask, keep))
+    if problems:
+        log.error("store %s does not match %s: %s", store, path, problems)
+        return "skipped"
+    path.unlink()
+    m.mark_raw_deleted(req.id, f["id"], detail=str(path))
+    return "deleted"

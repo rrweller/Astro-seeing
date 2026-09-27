@@ -78,3 +78,33 @@ def test_smoke_test_reports_auth_failure(ct, monkeypatch):
     assert cli.main(["cds-smoke-test", "--out", str(out)]) == 2
     rep = json.loads(out.read_text())
     assert rep["authentication"]["ok"] is False and "401" in rep["authentication"]["error"]
+
+
+def test_cli_exit_codes_report_failures(ct, monkeypatch):
+    args = [
+        "plan-box",
+        "--region",
+        "x",
+        "--lat",
+        "-24.63",
+        "--lon",
+        "-70.40",
+        "--half-width",
+        "1",
+        "--start",
+        "2023-06-21",
+        "--end",
+        "2023-06-22",
+        "--kinds",
+        "sl",
+        "--hours",
+        "0",
+    ]
+    assert cli.main(args) == 0
+    fake = _fake_from_manifest(ct / "state" / "manifest.sqlite")
+    first, second = list(fake.expected)
+    fake.behaviour[first] = "reject"
+    fake.behaviour[second] = "drop"
+    monkeypatch.setattr(cli, "_backend", lambda: fake)
+    assert cli.main(["download", "--poll", "0"]) == 1  # one CDS rejection
+    assert cli.main(["verify"]) == 1  # one file missing a message
