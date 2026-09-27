@@ -1,0 +1,19 @@
+# CT 350: phone notifications (ntfy) about the downloads: finished, problems, daily.
+# The topic URL is in /root/.config/astro/notify.env (not in git).
+[Unit]
+Description=astro-seeing: download notifications (ntfy)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=HOME=/root
+WorkingDirectory=/home/astro-seeing
+ExecStart=/root/.pixi/bin/pixi run astro notify-watch
+StandardOutput=append:/home/astro-seeing/logs/notify_watch.log
+StandardError=inherit
+Restart=always
+RestartSec=2min
+
+[Install]
+WantedBy=multi-user.target

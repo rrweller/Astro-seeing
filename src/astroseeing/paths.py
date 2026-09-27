@@ -50,6 +50,10 @@ class Paths:
     def manifest_exports(self) -> Path:
         return self.data_root / "manifest-exports"
 
+    @property
+    def static_dir(self) -> Path:
+        return self.data_root / "static"
+
     def era5_dir(self, kind: str) -> Path:
         return self.data_root / "era5" / kind
 

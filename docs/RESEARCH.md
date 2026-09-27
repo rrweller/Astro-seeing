@@ -109,6 +109,13 @@
   - **Seeing conversion:** ε = **0.976** λ/r₀ at λ = 500 nm (their eqs. 5–6), not 0.98. *[verified in the arXiv PDF served on 2026-09-27]*
   - **Integration:** "Euler forward numerical scheme", from the Table 4 level upward.
   - **Table 4, ERA5 seeing-model lower levels (hPa):** Mauna Kea 800, Paranal 900, La Silla 825, Tololo 825, La Palma 1000, Siding Spring 950, Sutherland 850, San Pedro Mártir 850 (also in `configs/sites.yaml`).
+- **What their code actually does** *[verified in the code, commit 1da3712, 2026-09-27; D27]*:
+  - Per slab between consecutive levels, T, P and θ are taken at the *lower* level (not the midpoint); Δz = |z_i − z_{i+1}|/g; N² uses **|Δθ|** (so unstable layers get the "abs" treatment, cf. D5); J = Σ Cₙ²·Δz from the start level to 50 hPa, with k = 1.
+  - Start level: the pressure level closest to the site's *time-mean* ERA5 surface pressure at the nearest grid point. Their site table gives 975 hPa for La Palma, the paper's Table 4 says 1000 hPa.
+  - Calibration: seeing (not J) is multiplied by mean in-situ seeing / mean ERA5 seeing over *all* loaded hours (day and night, 1979–2020). The 200-hPa-wind-speed seeing puts u₂₀₀² + v₂₀₀² in place of J and is calibrated the same way.
+  - ERA5 downloads: u, v, t, z, hourly, 1979–2020, per-site boxes (e.g. Chile 22–32.5° S, 69–72.5° W, with 27 levels: no 70 and no 975 hPa).
+  - Seeing comparison periods in the code: Mauna Kea 2010–2019, Paranal 2000–2016, La Silla 2000–2019, Tololo 2004–2019, La Palma 2008–2019, Siding Spring 1993–2019 (yearly values), SPM 2005–2008; Sutherland uses a fixed mean of 1.32″.
+  - The in-situ series are **not in their repository** (the `data` branch holds skill-score CSVs, trend posteriors and PRIMAVERA IDs only).
 - **Seeing results (ERA5 vs in situ, monthly means):**
   - Average skill is "poor": 0.20 for 200-hPa-wind-speed seeing and 0.28 for the seeing model.
   - Best: Mauna Kea, 0.39 (200 hPa). Worst: Paranal, 0.06 (0.07 against Paranal MASS-DIMM).
@@ -365,6 +372,7 @@ For each ERA5 cell c and hour t:
 | Daocheng | 100.11E, 29.11N | 100.00E, 29.00N | Mar 2017 – Feb 2019 (DIMM) | 1.01 [0.84, 1.22] | 0.96 [0.85, 1.10] |
 | Muztagh-ata | 74.90E, 38.33N | 75.00E, 38.25N | Mar 2017 – Feb 2019 (DIMM) | 0.82 [0.64, 1.06] | 0.85 [0.78, 0.92] |
 | Lenghu | 93.89E, 38.61N | 94.00E, 38.50N | "Oct. 2018 to 2020" (DIMM) | 0.75 [0.61, 1.03] | 0.96 [0.88, 1.07] |
+- **Rongcheng coordinates [check]:** as listed (122.11E, 36.46N) the site is in the Yellow Sea, 34.6 km from the nearest GLOBE land; the listed ERA5 point (122.00E, 36.50N) is 36.0 km from land (checked 2026-09-27, `reports/landmask.md`). Rongcheng is on the Shandong coast; 37.46N would put it on land near Weihai. Check both against the PDF (not yet obtained: MDPI blocks non-browser downloads). To reproduce Bi's ERA5 value, use the grid point they list whatever the site's true location.
 - **Balloon timing:** flights were launched in the early morning or late evening local time, so match those hours.
 - **Altitudes:** the DIMM site altitudes aren't in these tables; get them from the paper or its references.
 
@@ -432,6 +440,18 @@ Their seeing data include La Palma (IAC/ING, 2004–2019), Siding Spring (AAT, 1
   - Area subsetting is `area: [N, W, S, E]`.
   - Size limits are enforced as "cost" (number of fields); measure what you hit.
   - Phase 3 uses one global day per request.
+- **Measured on the CT, 2026-09-27** (`reports/cds_smoke_test.json`, decisions D23–D24):
+  - Cost = number of fields (variables × levels × times), whatever the area; an ERA5 "item" is one variable on one 2-D field at one level and one time step (ECMWF staff, forum.ecmwf.int/t/cdsapi-limitations-and-restrictions/1639). Limits: **60,000 fields per request for pressure levels, 121,000 for single levels.** A global day costs 3,480 (pl) / 408 (sl); a month of a 5×5 box on 29 levels × 5 variables (107,880) is over the limit, so such months are split in two.
+  - Per user and dataset, the CDS accepted 5 queued requests and rejected the rest ("Number queued requests for this dataset is temporarily limited"). It ran **one request at a time per user, across datasets** (a single-level job waited 15 min behind a pressure-level one). **Processing: 26.4 fields/s on average** (9 half-month pressure-level files of 52,200 fields, 27–45 min each; one single-level month: 16.9 fields/s). So the CDS cost of a validation box is set by its field count, not its area. Not documented anywhere I found; treat as observed.
+  - GRIB1 with 16-bit packing: ~153 bytes per 5×5-point field, so a 5×5 box-day is ~0.60 MB (pl 0.53 + sl 0.06).
+- **Measured on the CT, 2026-09-27 evening (D29):**
+  - The per-user slot is **shared by `reanalysis-era5-pressure-levels` and `-single-levels`**: a single-level request started 5 s after our pressure-level job finished, and the next pressure-level job started 7 s after it finished. The time-series products have their own slot (a request ran while a pressure-level job was running). The live dashboard (cds.climate.copernicus.eu/live, 21:15 UTC) showed 475 running requests for 456 running users, 7,480 queued.
+  - The CDS terms of use, Article 2: "Any user can only have one account" (cds.climate.copernicus.eu/disclaimer-privacy). So extra accounts for extra slots are not an option.
+  - ECMWF: ERA5 hourly pressure- and single-level data are on CDS disks, not tape ("ERA5 data on CDS Disks", confluence.ecmwf.int pageId=181127817). A 0.25° GRIB field is ~2 MB and isn't tiled, so each field is read whole whatever the area; ~52,000 fields in ~33 min is ~50 MB/s.
+  - **Single-level time series:** 22 months × 3 variables at Paranal ran in **5 s** (cost 3 of 760; the time span isn't counted). Values equal our gridded data at the same point (sp within 0.06 Pa, tcc identical, t2m within 1e-4 K). Variables: 10/100 m winds, 2 m T and dewpoint, blh, cbh, msl, skt, sp, tcc, tp, radiation, accumulated fluxes; **not** lcc/mcc/hcc, zust, instantaneous sensible heat flux or tcwv. Returned as a zip holding one NetCDF4 file.
+  - **Mirrors:** NSF NCAR on AWS (`s3://nsf-ncar-era5`, NetCDF4, one file per variable per day, ~1.3 GB, chunks (1 h, 37 levels, whole globe)) and Google ARCO-ERA5 are whole-globe per hour, so they're useless for site boxes and possible for the global run (no queue). Earthmover's public ERA5 is surface-only.
+  - **Our bandwidth:** 21 MB/s on one stream, 47 MB/s with 6 parallel streams (NCAR file on AWS, 1.3 GB).
+- **Point time series (not used for validation, D25):** `reanalysis-era5-pressure-levels-timeseries` (CC-BY, published 2026-08-07) returns long time series for a point or an area up to 2.5°×2.5°, but only on 13 levels (1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50 hPa) and without `cc`. `reanalysis-era5-single-levels-timeseries` is its single-level counterpart.
 - **ERA5 complete (model levels):**
   - Stored on MARS tape: expect "several hours to several days" per request.
   - Retrieve one tape at a time: for analyses, that's one month per level type.
@@ -478,6 +498,7 @@ Their seeing data include La Palma (IAC/ING, 2004–2019), Siding Spring (AAT, 1
 - Covers 29.19% of Earth's area (land alone: 28.91%).
 - ERA5 0.25° cells kept: **367,051 of 1,038,240** (35.4%); Antarctica is 27.9% of them.
 - At 0.5° it's 95,798 cells; at 1°, 25,761.
+- **Measured (2026-09-27, `reports/landmask.md`, D22):** land 28.905%, land + buffer 29.131%; ERA5 cells with land 365,100, kept **366,604** (35.31%), 27.3% of them south of 60° S; 95,715 cells at 0.5°, 25,742 at 1°.
 - The native N320 grid equivalent is about 167,828 of 542,080 points.
 
 **Darkness:** the Sun is below −18° in 29% of all hours, and below −12° in 35.9%.

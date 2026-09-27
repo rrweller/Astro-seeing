@@ -11,9 +11,17 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from astroseeing.download.downloader import Downloader
-from astroseeing.download.requests import Area, RequestSpec, plan_requests, static_request
+from astroseeing.download.requests import (
+    Area,
+    RequestSpec,
+    max_fields,
+    plan_requests,
+    static_request,
+)
 from astroseeing.ingest.decode import decode_grib
 from astroseeing.ingest.pipeline import cleanup_raw, ingest_pending, store_path, verify_pending
 from astroseeing.ingest.store import choose_chunks, prepare, read_store, write_store_atomic
@@ -77,7 +85,9 @@ def test_request_builder_matches_cds_form_keys():
     monthly = plan_requests(
         "sl", "x", dt.date(2023, 1, 30), dt.date(2023, 2, 2), AREA, granularity="month"
     )
-    assert [s.key for s in monthly] == ["sl/x/2023-01", "sl/x/2023-02"]
+    # Partial months are labelled by their first and last day, so two plans over the
+    # same month can never share a store path.
+    assert [s.key for s in monthly] == ["sl/x/2023-01-30_2023-01-31", "sl/x/2023-02-01_2023-02-02"]
     assert monthly[0].cds_request()["day"] == ["30", "31"]
     st = static_request("x", AREA).cds_request()
     assert st["variable"] == ["geopotential", "land_sea_mask", "standard_deviation_of_orography"]
@@ -166,6 +176,75 @@ def test_resume_after_crash_does_not_resubmit(env):
     drain(dl2)
     assert fake.submits == 3  # the two in-flight jobs were re-attached, not resubmitted
     assert m.counts() == {"downloaded": 3}
+
+
+def test_never_more_than_max_active_in_flight(env):
+    """Regression (found on the CT, 2026-09-27): with max_active jobs still queued at
+    the CDS, the next step asked for ``limit=0`` planned requests, which by_state took
+    as "no limit", and submitted everything that was planned."""
+    m, fake = env["m"], env["fake"]
+    fake.polls_to_finish = 10  # jobs stay queued for several steps
+    for _ in range(4):
+        env["dl"].step()
+        assert len(m.by_state("submitted")) <= 2
+    assert fake.submits == 2 and len(m.by_state("planned")) == 1
+    assert m.by_state("planned", limit=0) == []
+
+
+def test_queue_limit_rejection_is_planned_again(env):
+    """A CDS "queued requests ... temporarily limited" rejection is transient."""
+    m, fake = env["m"], env["fake"]
+    fake.behaviour[FakeCdsBackend.req_key(env["specs"][0].cds_request())] = "queue_limit"
+    drain(env["dl"])
+    assert m.counts() == {"downloaded": 3} and fake.submits == 4
+    assert len(fake.deleted) == 4  # the rejected job too, as a courtesy
+    assert m.by_state("downloaded")[0].attempts == 0  # not counted as a failure
+
+
+def test_real_backend_reads_the_message_of_a_rejected_job():
+    """Rejected jobs raise requests.HTTPError, not ProcessingFailedError (seen on the CT)."""
+    import requests
+
+    from astroseeing.download.cds import DatastoresBackend, is_queue_limit_rejection
+
+    class _Remote:
+        status = "rejected"
+
+        @property
+        def results_ready(self):
+            raise requests.HTTPError(
+                "400 Client Error: Bad Request\nThe job has been rejected\nNumber queued "
+                "requests for this dataset is temporarily limited. Please configure your "
+                "scripts accordingly"
+            )
+
+    class _Client:
+        @staticmethod
+        def get_remote(request_id):
+            return _Remote()
+
+    backend = object.__new__(DatastoresBackend)
+    backend.client = _Client()
+    info = backend.info("abc")
+    assert info.status == "rejected" and "HTTPError" in info.error
+    assert is_queue_limit_rejection(info.error)
+    assert not is_queue_limit_rejection("cost limits exceeded")
+
+
+def test_max_active_must_be_positive(env):
+    with pytest.raises(ValueError, match="max_active"):
+        Downloader(env["m"], env["fake"], env["tmp"] / "staging" / "grib", max_active=0)
+
+
+def test_held_requests_are_not_submitted_until_released(env):
+    m, fake = env["m"], env["fake"]
+    assert m.hold("pl/") == 2 and m.counts() == {"held": 2, "planned": 1}
+    drain(env["dl"])
+    assert fake.submits == 1 and m.counts() == {"held": 2, "downloaded": 1}
+    assert m.hold("pl/") == 0  # only planned requests can be held
+    assert m.release("pl/paranal/2023-06-20") == 1
+    drain(env["dl"])
+    assert m.counts() == {"held": 1, "downloaded": 2}
 
 
 def test_cds_rejection_is_recorded_and_retryable(env):
@@ -457,12 +536,14 @@ def test_ingest_refuses_large_requests_without_a_mask(tmp_path):
     verify_pending(m)
     out = ingest_pending(m, tmp_path / "data", {})
     assert out["refused_unmasked"] == 1 and out["ingested"] == 0
-    assert m.get(rid).state == "verified"
+    # Refused is its own state: not a failure (never retried) and not pending work.
+    assert m.get(rid).state == "refused" and m.get(rid).attempts == 0
     assert not (tmp_path / "data" / "era5").exists()
 
     def land_and_night(req, dec):
         return np.ones((dec.lat.size, dec.lon.size), bool), np.ones((dec.times.size, 144), bool)
 
+    assert m.requeue_refused("sl/") == 1 and m.get(rid).state == "verified"
     assert ingest_pending(m, tmp_path / "data", {}, mask_fn=land_and_night)["ingested"] == 1
     m.close()
 
@@ -542,3 +623,53 @@ def test_all_ocean_mask_gives_an_empty_valid_store(tmp_path):
     assert arrays["t"].shape == (24, 29, 0) and arrays["cell_index"].shape == (0,)
     assert attrs["qc"]["cells_dropped_not_land"]["count"] == 9
     assert write_store_atomic(tmp_path / "empty.zarr", prep, {}).already_present
+
+
+# --- CDS cost limits (D23) ----------------------------------------------------------------
+
+
+def test_month_of_pressure_levels_splits_under_the_cds_limit():
+    jan = (dt.date(2023, 1, 1), dt.date(2023, 1, 31))
+    whole = plan_requests("pl", "x", *jan, AREA, granularity="month", split=False)
+    assert len(whole) == 1 and whole[0].n_fields == 107_880 > max_fields("pl") == 60_000
+    specs = plan_requests("pl", "x", *jan, AREA, granularity="month")
+    assert [s.key for s in specs] == ["pl/x/2023-01-01_2023-01-16", "pl/x/2023-01-17_2023-01-31"]
+    assert all(s.n_fields <= 60_000 for s in specs)
+    assert [s.cds_request()["day"][0] for s in specs] == ["01", "17"]
+    (sl,) = plan_requests("sl", "x", *jan, AREA, granularity="month")
+    assert sl.key == "sl/x/2023-01" and sl.n_fields == 12_648
+
+
+def test_a_day_over_the_limit_is_refused(monkeypatch):
+    from astroseeing.download import requests as rq
+
+    monkeypatch.setattr(rq, "max_fields", lambda kind: 1000)
+    with pytest.raises(ValueError, match="over the CDS limit"):
+        plan_requests("pl", "x", dt.date(2023, 1, 1), dt.date(2023, 1, 1), AREA)
+
+
+@settings(max_examples=60, deadline=None)
+@given(
+    start=st.dates(dt.date(2019, 1, 1), dt.date(2025, 12, 31)),
+    ndays=st.integers(1, 120),
+    kind=st.sampled_from(["pl", "sl"]),
+    granularity=st.sampled_from(["day", "month"]),
+)
+def test_split_plans_cover_every_day_once_under_the_limit(start, ndays, kind, granularity):
+    end = start + dt.timedelta(days=ndays - 1)
+    specs = plan_requests(kind, "x", start, end, AREA, granularity=granularity)
+    days = [d for s in specs for d in s.dates]
+    assert days == [start + dt.timedelta(days=i) for i in range(ndays)]
+    assert all(s.n_fields <= max_fields(kind) for s in specs)
+    assert len({s.key for s in specs}) == len(specs)  # distinct store paths
+    for s in specs:  # contiguous, within one month, and a valid CDS date product
+        assert (s.dates[-1] - s.dates[0]).days == len(s.dates) - 1
+        assert (s.dates[0].year, s.dates[0].month) == (s.dates[-1].year, s.dates[-1].month)
+        s.cds_request()
+    if granularity == "month":  # the fewest chunks per month
+        per_month: dict = {}
+        for s in specs:
+            per_month.setdefault((s.dates[0].year, s.dates[0].month), []).append(s)
+        for group in per_month.values():
+            total = sum(s.n_fields for s in group)
+            assert len(group) == -(-total // max_fields(kind))

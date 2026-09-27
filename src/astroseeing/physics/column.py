@@ -13,6 +13,11 @@ constant; temperature is taken at the slab midpoint as the mean of the two level
 pressure as the log-pressure midpoint √(p₁p₂), and gradients by finite difference.
 The slab's potential temperature is θ_mid = T_mid (P₀/P_mid)^κ.
 
+``state_at="lower"`` instead takes T, P and θ at the slab's lower level, as
+Haslebacher et al. 2022 do ("Euler forward"; their code evaluates the formula at
+level i and differences to level i+1). The fields keep their ``*_mid`` names;
+``Slabs.state_at`` records which was used.
+
 Levels that are below ground (p > surface pressure, or Z ≤ surface height) hold
 extrapolated values in ERA5 and are masked; the count is recorded.
 """
@@ -72,6 +77,7 @@ class Slabs:
     valid: np.ndarray  # bool: both bounding levels valid
     level_valid: np.ndarray  # bool, shape (..., nlev)
     qc: QCCounts = field(default_factory=QCCounts)
+    state_at: str = "mid"  # where p_mid, t_mid, theta_mid were taken: "mid" or "lower"
 
     @property
     def dz(self) -> np.ndarray:
@@ -140,6 +146,7 @@ def prepare_slabs(
     surface_height_m: np.ndarray | None = None,
     kappa: float = KAPPA,
     p0_hpa: float = P0_HPA,
+    state_at: str = "mid",
 ) -> Slabs:
     """Build slabs between neighbouring levels of each column.
 
@@ -153,6 +160,9 @@ def prepare_slabs(
         (..., nlev) for model levels.
     surface_pressure_hpa, surface_height_m
         Optional, shape (...): used to mask underground levels.
+    state_at
+        ``"mid"`` (default): T, P, θ at the slab midpoint (decision D3).
+        ``"lower"``: at the slab's lower level (Haslebacher et al. 2022).
 
     Returns
     -------
@@ -190,10 +200,15 @@ def prepare_slabs(
     # Use a safe dz for invalid slabs so no warnings or infinities are produced there.
     dz_safe = np.where(valid, dz, 1.0)
 
-    t_mid = 0.5 * (t[..., :-1] + t[..., 1:])
-    p_mid = np.sqrt(p[..., :-1] * p[..., 1:])
     theta = potential_temperature(t, p, kappa, p0_hpa)
-    theta_mid = potential_temperature(t_mid, p_mid, kappa, p0_hpa)
+    if state_at == "mid":
+        t_mid = 0.5 * (t[..., :-1] + t[..., 1:])
+        p_mid = np.sqrt(p[..., :-1] * p[..., 1:])
+        theta_mid = potential_temperature(t_mid, p_mid, kappa, p0_hpa)
+    elif state_at == "lower":
+        t_mid, p_mid, theta_mid = t[..., :-1], p[..., :-1], theta[..., :-1]
+    else:
+        raise ValueError(f"state_at must be 'mid' or 'lower', got {state_at!r}")
 
     def grad(x: np.ndarray) -> np.ndarray:
         return np.where(valid, (x[..., 1:] - x[..., :-1]) / dz_safe, np.nan)
@@ -214,6 +229,7 @@ def prepare_slabs(
         valid=valid,
         level_valid=lv,
         qc=qc,
+        state_at=state_at,
     )
 
 

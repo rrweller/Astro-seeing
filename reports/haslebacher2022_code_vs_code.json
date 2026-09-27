@@ -1,0 +1,50 @@
+{
+  "request": "pl/smoke-20260927T144426/2023-06-21",
+  "start_level_hpa": 900.0,
+  "levels_hpa": [
+    900,
+    875,
+    850,
+    825,
+    800,
+    775,
+    750,
+    700,
+    650,
+    600,
+    550,
+    500,
+    450,
+    400,
+    350,
+    300,
+    250,
+    225,
+    200,
+    175,
+    150,
+    125,
+    100,
+    50
+  ],
+  "n_columns": 25,
+  "seeing_theirs_median_arcsec": 0.20441552229377258,
+  "seeing_ours_median_arcsec": 0.2044153302781571,
+  "max_relative_difference": 9.393397011336901e-07,
+  "tolerance": 0.001,
+  "pass": true,
+  "qc": {
+    "level_nonfinite": {
+      "count": 0,
+      "total": 600
+    },
+    "os_unstable_layers": {
+      "count": 0,
+      "total": 575
+    },
+    "slab_invalid": {
+      "count": 0,
+      "total": 575
+    }
+  }
+}

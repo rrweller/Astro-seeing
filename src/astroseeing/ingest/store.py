@@ -183,7 +183,8 @@ def _write(path: Path, prep: Prepared, attrs: dict[str, Any]) -> None:
             chunks=chunks,
             shards=choose_shards(arr.shape, chunks),
             compressors=comp,
-            fill_value=np.nan,
+            # NaN for floats (ERA5 fields); zero/False for counts and masks.
+            fill_value=np.nan if np.issubdtype(arr.dtype, np.floating) else arr.dtype.type(0),
             dimension_names=prep.dims,
         )
         a[...] = arr

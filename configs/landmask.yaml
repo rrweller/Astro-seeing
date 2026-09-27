@@ -1,0 +1,12 @@
+# Land mask (AGENTS.md "Coverage: land plus a 1 km buffer"; decisions D20, D22).
+# Built by `astro build-landmask`; code in src/astroseeing/terrain/landmask.py.
+
+buffer_m: 1000
+# "edge": a 30" cell is in the buffer if its centre is within buffer_m of the nearest
+# point of a land cell; "centre": within buffer_m of a land cell's centre (D22).
+measure: edge
+grid_deg: 0.25            # ERA5 grid
+store_dir: static/landmask  # under ASTRO_DATA_ROOT
+stores:
+  era5_cells: era5_0p25_cells_v1.zarr
+  globe: globe_30s_land_buffer_v1.zarr

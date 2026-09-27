@@ -127,6 +127,10 @@ def _smoke_fake(reject_kind: str | None = None) -> FakeCdsBackend:
         def estimate_costs(dataset, request):
             return {"cost": 1, "limit": 10}
 
+        @staticmethod
+        def get_accepted_licences():
+            return [{"id": "licence-to-use-copernicus-products", "revision": 12}]
+
     fake.client = _Client()
     if reject_kind:
         spec = specs[0] if reject_kind == "pl" else specs[1]
@@ -142,7 +146,16 @@ def test_smoke_test_passes_when_everything_verifies(ct, monkeypatch):
     rep = json.loads(out.read_text())
     assert rep["ok"] is True and rep["download"]["downloaded"] == 2
     assert all(r["state"] == "verified" for r in rep["requests"])
-    assert set(rep["cost_estimates"]) == {"pl_global_day", "sl_global_day"}
+    assert set(rep["cost_estimates"]) == {
+        "pl_global_day",
+        "sl_global_day",
+        "pl_box_month",
+        "sl_box_month",
+        "pl_box_month_split",
+        "sl_box_month_split",
+    }
+    assert len(rep["cost_estimates"]["pl_box_month_split"]) == 2  # 16 + 15 days
+    assert rep["accepted_licences"] == ["licence-to-use-copernicus-products (revision 12)"]
 
 
 def test_smoke_test_fails_when_a_request_is_rejected(ct, monkeypatch):
@@ -170,11 +183,65 @@ def test_config_lookup_order(tmp_path, monkeypatch):
 
 
 def test_plan_box_defaults_to_month_sized_requests(ct):
-    """D16: validation boxes use one request per month."""
+    """D16: validation boxes use one request per month; D23: pressure levels are split
+    in two per month to stay under the CDS limit of 60,000 fields per request."""
     args = ["plan-box", "--region", "m", "--lat", "-24.63", "--lon", "-70.40",
-            "--start", "2023-01-30", "--end", "2023-02-02", "--kinds", "pl"]  # fmt: skip
+            "--start", "2023-01-01", "--end", "2023-02-28", "--kinds", "pl,sl"]  # fmt: skip
     assert cli.main(args) == 0
     m = Manifest(ct / "state" / "manifest.sqlite")
     keys = [r[0] for r in m.conn.execute("SELECT key FROM requests ORDER BY id")]
     m.close()
-    assert keys == ["pl/m/2023-01", "pl/m/2023-02"]
+    assert keys == [
+        "pl/m/2023-01-01_2023-01-16",
+        "pl/m/2023-01-17_2023-01-31",
+        "pl/m/2023-02-01_2023-02-14",
+        "pl/m/2023-02-15_2023-02-28",
+        "sl/m/2023-01",
+        "sl/m/2023-02",
+    ]
+
+
+class _StubMask:
+    """Stands in for terrain.landmask.LandMask (the real build needs ~3 GB and 10 s)."""
+
+    def __init__(self, sites):
+        from astroseeing.qc import QCCounts
+
+        self._sites = sites
+        self.qc = QCCounts()
+
+    def summary(self, sites=None):
+        return {"era5_cells_kept": 1, "sites": self._sites}
+
+
+@pytest.mark.parametrize(
+    ("sites", "code"),
+    [
+        # a site whose listed coordinates are at sea: warn, still succeed
+        ({"a": (True, True), "b": (False, False)}, 0),
+        # a site on land outside the kept cells: the aggregation is wrong, fail
+        ({"a": (True, False)}, 1),
+    ],
+)
+def test_build_landmask_site_checks(ct, monkeypatch, sites, code):
+    from astroseeing.terrain import landmask
+
+    stub = _StubMask(
+        {n: {"globe_land": land, "era5_cell_kept": kept} for n, (land, kept) in sites.items()}
+    )
+    monkeypatch.setattr(landmask, "build", lambda **kw: stub)
+    out = ct / "summary.json"
+    assert cli.main(["build-landmask", "--dry-run", "--summary-out", str(out)]) == code
+    assert json.loads(out.read_text())["sites"].keys() == sites.keys()
+
+
+def test_build_landmask_dry_run_writes_nothing_by_default(ct, monkeypatch):
+    """Copilot review of PR #2: --dry-run must not rewrite reports/landmask_summary.json."""
+    from astroseeing.terrain import landmask
+
+    stub = _StubMask({"a": {"globe_land": True, "era5_cell_kept": True}})
+    monkeypatch.setattr(landmask, "build", lambda **kw: stub)
+    written = []
+    monkeypatch.setattr(cli.Path, "write_text", lambda self, *a, **k: written.append(self))
+    assert cli.main(["build-landmask", "--dry-run"]) == 0
+    assert written == []

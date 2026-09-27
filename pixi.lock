@@ -198,6 +198,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/xarray-2026.7.0-pyhc364b38_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zarr-3.4.0-pyhc364b38_0.conda
       - pypi: ./
+      - pypi: https://files.pythonhosted.org/packages/e6/e9/eaac67e39b68f64828a164f8dbfcf13baccd7382704ea120152af475f520/global_land_mask-1.0.0-py3-none-any.whl
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
   build_number: 20
@@ -3116,3 +3117,7 @@ packages:
 - pypi: ./
   name: astroseeing
   requires_python: '>=3.12'
+- pypi: https://files.pythonhosted.org/packages/e6/e9/eaac67e39b68f64828a164f8dbfcf13baccd7382704ea120152af475f520/global_land_mask-1.0.0-py3-none-any.whl
+  name: global-land-mask
+  version: 1.0.0
+  sha256: 07751fbb4e3834ee508a84ea64d9bd5340fbd0a8c951e24b43c323fcc670bb62

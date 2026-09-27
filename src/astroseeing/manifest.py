@@ -28,7 +28,18 @@ from typing import Any
 
 from astroseeing.paths import assert_local_filesystem
 
-STATES = ("planned", "submitted", "downloaded", "verified", "ingested", "raw_deleted", "failed")
+STATES = (
+    "planned",
+    "held",  # planned but paused on purpose (astro hold / astro release); never submitted
+    "submitted",
+    "downloaded",
+    "verified",
+    "ingested",
+    "raw_deleted",
+    "failed",
+    "cancelled",  # planned or held, then dropped on purpose (astro cancel); never submitted
+    "refused",  # verified but not stored: no suitable mask (D18); astro requeue-refused
+)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS requests (
@@ -210,8 +221,8 @@ class Manifest:
 
     def by_state(self, *states: str, limit: int | None = None) -> list[Request]:
         q = f"SELECT * FROM requests WHERE state IN ({','.join('?' * len(states))}) ORDER BY id"
-        if limit:
-            q += f" LIMIT {int(limit)}"
+        if limit is not None:  # LIMIT 0 means none (an earlier `if limit:` made it "all")
+            q += f" LIMIT {max(0, int(limit))}"
         return [Request.from_row(r) for r in self.conn.execute(q, states)]
 
     def counts(self) -> dict[str, int]:
@@ -275,6 +286,46 @@ class Manifest:
             increment_attempts=True,
             last_error=error,
         )
+
+    def hold(self, key_prefix: str) -> int:
+        """Pause planned requests whose key starts with ``key_prefix``; returns how many.
+
+        Held requests are never submitted until :meth:`release`d. Only ``planned``
+        requests can be held, so nothing already at the CDS is affected.
+        """
+        n = 0
+        for r in self.by_state("planned"):
+            if r.key.startswith(key_prefix):
+                self.transition(r.id, ["planned"], "held", detail=f"hold {key_prefix}")
+                n += 1
+        return n
+
+    def release(self, key_prefix: str) -> int:
+        """Move held requests whose key starts with ``key_prefix`` back to planned."""
+        n = 0
+        for r in self.by_state("held"):
+            if r.key.startswith(key_prefix):
+                self.transition(r.id, ["held"], "planned", detail=f"release {key_prefix}")
+                n += 1
+        return n
+
+    def cancel(self, key_prefix: str, reason: str) -> int:
+        """Drop planned or held requests whose key starts with ``key_prefix``."""
+        n = 0
+        for r in self.by_state("planned", "held"):
+            if r.key.startswith(key_prefix):
+                self.transition(r.id, ["planned", "held"], "cancelled", detail=reason)
+                n += 1
+        return n
+
+    def requeue_refused(self, key_prefix: str) -> int:
+        """Move refused requests back to verified (e.g. once a mask exists for them)."""
+        n = 0
+        for r in self.by_state("refused"):
+            if r.key.startswith(key_prefix):
+                self.transition(r.id, ["refused"], "verified", detail="requeued")
+                n += 1
+        return n
 
     def retry_failed(self, max_attempts: int = 5) -> int:
         """Move failed requests with attempts < max back to planned; returns how many."""

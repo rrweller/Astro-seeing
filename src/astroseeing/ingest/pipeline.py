@@ -14,7 +14,11 @@
 Without a land/night mask function, only validation boxes (at most
 :data:`MAX_UNMASKED_POINTS` grid points) are ingested; AGENTS.md: "only land cells
 (with the 1 km buffer) and night hours … Validation boxes keep all hours".
-Larger requests are left in ``verified`` and counted as ``refused_unmasked``.
+Larger requests, and any request a ``mask_fn`` refuses by raising
+:class:`RefusedUnmasked`, move to the ``refused`` state and are counted as
+``refused_unmasked``. That is neither a failure (nothing is retried or re-downloaded)
+nor pending work (unattended loops don't wait on it); ``Manifest.requeue_refused``
+puts such requests back to ``verified`` once a suitable mask exists.
 """
 
 from __future__ import annotations
@@ -43,6 +47,10 @@ MAX_UNMASKED_POINTS = 121
 
 #: Optional hook returning (cell_mask, keep_hours) for a request; None → grid layout.
 MaskFn = Callable[[Request, "object"], tuple[np.ndarray | None, np.ndarray | None]]
+
+
+class RefusedUnmasked(ValueError):
+    """A mask function declines to store a request (D18): not a failure, not retried."""
 
 
 def store_path(data_root: Path, req: Request) -> Path:
@@ -88,24 +96,36 @@ def ingest_pending(
     todo = m.by_state("verified")
     if todo:
         probe_responsive(Path(data_root), probe_timeout_s)
+
+    def refuse(req: Request, why: str) -> None:
+        log.error("%s: %s; refused (state 'refused', D18)", req.key, why)
+        m.transition(req.id, ["verified"], "refused", detail=why)
+        out["refused_unmasked"] += 1
+
     for req in todo:
         if mask_fn is None:
             g = req.expected["grid"]
             npts = g["nlat"] * g["nlon"]
             if npts > max_unmasked_points:
-                log.error(
-                    "%s: %d grid points > %d; refusing to store all cells and hours without "
-                    "a land/night mask (left in 'verified')",
-                    req.key,
-                    npts,
-                    max_unmasked_points,
-                )
-                out["refused_unmasked"] += 1
+                refuse(req, f"{npts} grid points > {max_unmasked_points} and no land/night mask")
+                continue
+        # A mask function may refuse from the request alone (``mask_fn.preflight``), so
+        # an unmasked large request (e.g. a global day) is never decoded into memory.
+        preflight = getattr(mask_fn, "preflight", None)
+        if preflight is not None:
+            try:
+                preflight(req)
+            except RefusedUnmasked as e:
+                refuse(req, str(e))
                 continue
         f = m.current_file(req.id)
         try:
             dec = decode_grib(Path(f["path"]), req.expected)
-            cell_mask, keep = mask_fn(req, dec) if mask_fn else (None, None)
+            try:
+                cell_mask, keep = mask_fn(req, dec) if mask_fn else (None, None)
+            except RefusedUnmasked as e:
+                refuse(req, str(e))
+                continue
             prep = prepare(dec, cell_mask, keep)
             prov = provenance(
                 config,

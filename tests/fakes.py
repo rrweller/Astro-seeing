@@ -24,7 +24,8 @@ class FakeCdsBackend:
     """Jobs go accepted → running → successful after ``polls_to_finish`` polls.
 
     ``behaviour`` maps a request key (canonical JSON of the request) to one of:
-    "reject", "expire", "truncate", "drop", "duplicate", "shift".
+    "reject", "queue_limit" (rejected once like the real CDS when too many jobs are
+    queued, then fine), "expire", "truncate", "drop", "duplicate", "shift".
     """
 
     def __init__(self, expected_by_request: dict[str, dict], polls_to_finish: int = 2):
@@ -54,6 +55,15 @@ class FakeCdsBackend:
             return RemoteInfo(status="accepted" if job["polls"] == 1 else "running")
         if job["behaviour"] == "reject":
             return RemoteInfo(status="rejected", error="cost limits exceeded (fake)")
+        if job["behaviour"] == "queue_limit":
+            job["behaviour"] = None  # the resubmitted job will succeed
+            self.behaviour.pop(job["key"], None)
+            return RemoteInfo(
+                status="rejected",
+                error="HTTPError: 400 Client Error: Bad Request\nThe job has been rejected\n"
+                "Number queued requests for this dataset is temporarily limited. Please "
+                "configure your scripts accordingly",
+            )
         if job["behaviour"] == "expire":
             job["behaviour"] = None  # the resubmitted job will succeed
             self.behaviour.pop(job["key"], None)

@@ -119,20 +119,22 @@ def cmd_verify(args, paths: Paths) -> int:
 
 
 def cmd_ingest(args, paths: Paths) -> int:
+    from astroseeing.download.areas import mask_fn
     from astroseeing.ingest.pipeline import ingest_pending
 
-    # No land/night mask is wired in yet (the land-mask source is an open [ASK]), so
-    # only validation boxes are ingested; larger requests are refused and counted.
-    cfg = {"era5": load_config("era5"), "layout": "grid"}
-    out = ingest_pending(_manifest(paths), paths.data_root, cfg)
+    # Validation boxes keep the grid layout; declared validation areas store only their
+    # site boxes (cells layout, D31); anything else large is refused (D18).
+    cfg = {"era5": load_config("era5"), "validation_areas": load_config("validation_areas")}
+    out = ingest_pending(_manifest(paths), paths.data_root, cfg, mask_fn=mask_fn)
     log.info("ingest: %s", out)
     return 1 if out["failed"] or out["refused_unmasked"] else 0
 
 
 def cmd_cleanup_raw(args, paths: Paths) -> int:
+    from astroseeing.download.areas import mask_fn
     from astroseeing.ingest.pipeline import cleanup_raw
 
-    out = cleanup_raw(_manifest(paths), paths.staging)
+    out = cleanup_raw(_manifest(paths), paths.staging, mask_fn=mask_fn)
     log.info("cleanup: %s", out)
     return 1 if out["failed"] or out["skipped"] else 0
 
@@ -144,9 +146,176 @@ def cmd_retry_failed(args, paths: Paths) -> int:
     return 0
 
 
+def cmd_cancel(args, paths: Paths) -> int:
+    n = _manifest(paths).cancel(args.prefix, args.reason)
+    log.info("cancelled %d planned/held requests with keys starting %r", n, args.prefix)
+    return 0
+
+
+#: Measured CDS throughput (fields/s, D24), for the time estimates printed when planning.
+CDS_FIELDS_PER_S = 26.4
+
+
+def _parse_variables(kind: str, spec: str) -> tuple[str, ...] | None:
+    if not spec:
+        return None
+    ds = load_config("era5")["datasets"][kind]
+    allvars = {**ds["variables"], **ds.get("optional_variables", {})}
+    by_short = {v["short_name"]: name for name, v in allvars.items()}
+    out = []
+    for v in spec.split(","):
+        name = by_short.get(v, v)
+        if name not in allvars:
+            raise SystemExit(f"unknown {kind} variable {v!r}")
+        out.append(name)
+    return tuple(out)
+
+
+def cmd_plan_area(args, paths: Paths) -> int:
+    """Plan downloads for a validation area (configs/validation_areas.yaml, D31)."""
+    from astroseeing.download.areas import load_areas
+    from astroseeing.download.requests import plan_requests, static_request
+
+    areas = load_areas()
+    if args.name not in areas:
+        raise SystemExit(f"unknown area {args.name!r}; known: {sorted(areas)}")
+    area = areas[args.name]
+    if args.hours == "all":
+        hours = tuple(range(24))
+    elif args.hours == "night":
+        hours = area.night_hours()
+    else:
+        hours = tuple(int(h) for h in args.hours.split(","))
+    cfg_pl = load_config("era5")["datasets"]["pl"]
+    levels = {"29": None, "37": tuple(cfg_pl["levels_hpa_all"])}.get(args.levels)
+    if levels is None and args.levels not in ("29",):
+        levels = tuple(int(x) for x in args.levels.split(","))
+    region = args.name + (f"@every{args.day_step}d" if args.day_step > 1 else "")
+    m = _manifest(paths)
+    total_fields = n = 0
+    for kind in args.kinds.split(","):
+        if kind == "static":
+            specs = [static_request(region, area.area)]
+        else:
+            specs = plan_requests(
+                kind,
+                region,
+                _date(args.start),
+                _date(args.end),
+                area.area,
+                granularity="month",
+                variables=_parse_variables(kind, args.variables if kind == "pl" else ""),
+                levels=levels if kind == "pl" else None,
+                hours=hours,
+                day_step=args.day_step,
+            )
+        for spec in specs:
+            m.add_request(spec)
+            total_fields += spec.n_fields
+            n += 1
+    log.info(
+        "planned %d requests for area %s (%s; UTC hours %s): %.2f M fields, ~%.1f days of CDS "
+        "processing at %.1f fields/s",
+        n, region, area.area.as_cds(), ",".join(map(str, hours)), total_fields / 1e6,
+        total_fields / CDS_FIELDS_PER_S / 86400, CDS_FIELDS_PER_S,
+    )  # fmt: skip
+    return 0
+
+
+def cmd_requeue_refused(args, paths: Paths) -> int:
+    n = _manifest(paths).requeue_refused(args.prefix)
+    log.info("requeued %d refused requests with keys starting %r", n, args.prefix)
+    return 0
+
+
+def cmd_hold(args, paths: Paths) -> int:
+    n = _manifest(paths).hold(args.prefix)
+    log.info("held %d planned requests with keys starting %r", n, args.prefix)
+    return 0
+
+
+def cmd_release(args, paths: Paths) -> int:
+    n = _manifest(paths).release(args.prefix)
+    log.info("released %d held requests with keys starting %r", n, args.prefix)
+    return 0
+
+
+def cmd_notify(args, paths: Paths) -> int:
+    from astroseeing.notify import ntfy_url, send_ntfy
+
+    send_ntfy(ntfy_url(), args.message, title=args.title)
+    log.info("notification sent")
+    return 0
+
+
+def cmd_notify_watch(args, paths: Paths) -> int:
+    from astroseeing.notify import watch
+
+    log.info("watching downloads; checking every %.0f s", args.interval)
+    watch(
+        paths,
+        interval_s=args.interval,
+        stall_hours=args.stall_hours,
+        daily_hour_utc=args.daily_hour_utc,
+    )
+    return 0
+
+
 def cmd_export_manifest(args, paths: Paths) -> int:
+    from astroseeing.paths import probe_responsive
+
+    # A hung NFS mount blocks in uninterruptible I/O, which no timeout can stop: check
+    # the NAS answers (in a child process with a timeout) before writing to it.
+    probe_responsive(paths.data_root, timeout_s=60)
     out = _manifest(paths).export(paths.manifest_exports)
     log.info("exported manifest to %s", out)
+    return 0
+
+
+DEFAULT_LANDMASK_SUMMARY = str(REPO_ROOT / "reports" / "landmask_summary.json")
+
+
+def validation_sites() -> dict[str, tuple[float, float]]:
+    """``group/site`` → (lat, lon) for every site in configs/sites.yaml."""
+    return {
+        f"{group}/{name}": (float(s["lat"]), float(s["lon"]))
+        for group, sites in load_config("sites").items()
+        for name, s in sites.items()
+    }
+
+
+def cmd_build_landmask(args, paths: Paths) -> int:
+    """Land plus 1 km buffer at 30″ and the ERA5 cells kept (AGENTS.md "Coverage"; D20, D22)."""
+    from astroseeing.paths import probe_responsive
+    from astroseeing.terrain import landmask as lm
+
+    cfg = load_config("landmask")
+    mask = lm.build(buffer_m=cfg["buffer_m"], grid_deg=cfg["grid_deg"], measure=cfg["measure"])
+    summary = mask.summary(validation_sites())
+    mask.qc.log(log, context="landmask ")
+    sites = summary["sites"]
+    # A site on GLOBE land must lie in a kept cell (else the aggregation is wrong);
+    # a site whose listed coordinates are at sea is a finding about the coordinates.
+    inconsistent = [n for n, s in sites.items() if s["globe_land"] and not s["era5_cell_kept"]]
+    at_sea = [n for n, s in sites.items() if not s["globe_land"]]
+    summary_out = args.summary_out or (None if args.dry_run else DEFAULT_LANDMASK_SUMMARY)
+    if summary_out:
+        p = Path(summary_out)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(summary, indent=2) + "\n")
+    print(json.dumps({k: v for k, v in summary.items() if k != "sites"}, indent=2))
+    if at_sea:
+        log.warning("validation sites not on GLOBE land (check their coordinates): %s", at_sea)
+    if inconsistent:
+        log.error("sites on land outside the kept cells: %s; not writing", inconsistent)
+        return 1
+    if args.dry_run:
+        return 0
+    probe_responsive(paths.data_root)
+    out_dir = paths.data_root / cfg["store_dir"]
+    for key, res in lm.write_stores(mask, out_dir, cfg["stores"], summary).items():
+        state = "already present (identical)" if res.already_present else "written"
+        log.info("landmask %s: %s %s (sha256 %s)", key, res.path, state, res.content_sha256)
     return 0
 
 
@@ -170,6 +339,13 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
         _write_report(args.out, report)
         log.error("authentication failed: %s — [ASK] Riley (token or licences)", e)
         return 2
+    try:
+        report["accepted_licences"] = sorted(
+            f"{lic.get('id')} (revision {lic.get('revision')})"
+            for lic in backend.client.get_accepted_licences()
+        )
+    except Exception as e:  # informational; the requests below are the real test
+        report["accepted_licences"] = {"error": str(e)}
 
     area = Area.around(-24.63, -70.40, 2)  # 5×5 points at Paranal
     day = _date(args.date)
@@ -229,6 +405,18 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
             )
         except Exception as e:
             report["cost_estimates"][f"{kind}_global_day"] = {"error": str(e)}
+    # Month-sized validation-box requests (D16): is a 31-day 5×5 box within the limits,
+    # and is each chunk of the split plan (D23)?
+    jan = (dt.date(2023, 1, 1), dt.date(2023, 1, 31))
+    for kind in ("pl", "sl"):
+        whole = plan_requests(kind, "box", *jan, area, granularity="month", split=False)
+        chunks = plan_requests(kind, "box", *jan, area, granularity="month")
+        for name, specs_ in ((f"{kind}_box_month", whole), (f"{kind}_box_month_split", chunks)):
+            try:
+                est = [backend.client.estimate_costs(s.dataset, s.cds_request()) for s in specs_]
+                report["cost_estimates"][name] = est[0] if len(est) == 1 else est
+            except Exception as e:
+                report["cost_estimates"][name] = {"error": str(e)}
     states = {r["key"]: r["state"] for r in report["requests"]}
     not_verified = {k: v for k, v in states.items() if v != "verified"}
     report["ok"] = not not_verified
@@ -286,9 +474,60 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--max-attempts", type=int, default=5)
     p.set_defaults(fn=cmd_retry_failed)
 
+    p = sub.add_parser("notify", help="send one notification (ntfy; ~/.config/astro/notify.env)")
+    p.add_argument("message")
+    p.add_argument("--title", default="astro-seeing")
+    p.set_defaults(fn=cmd_notify)
+    p = sub.add_parser("notify-watch", help="notify on finish, problems and daily progress")
+    p.add_argument("--interval", type=float, default=600.0, help="seconds between checks")
+    p.add_argument("--stall-hours", type=float, default=3.0)
+    p.add_argument("--daily-hour-utc", type=int, default=6)
+    p.set_defaults(fn=cmd_notify_watch)
+
+    p = sub.add_parser("plan-area", help="plan downloads for a validation area (D31)")
+    p.add_argument("name", help="area in configs/validation_areas.yaml")
+    p.add_argument("--start", required=True)
+    p.add_argument("--end", required=True)
+    p.add_argument("--kinds", default="pl", help="comma list of pl, sl, static")
+    p.add_argument("--hours", default="all", help="all | night | comma list of UTC hours")
+    p.add_argument("--variables", default="", help="pl variables, e.g. z,t,u,v (default all)")
+    p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
+    p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
+    p.set_defaults(fn=cmd_plan_area)
+    p = sub.add_parser("cancel", help="drop planned/held requests whose key starts with PREFIX")
+    p.add_argument("prefix")
+    p.add_argument("--reason", required=True)
+    p.set_defaults(fn=cmd_cancel)
+
+    p = sub.add_parser("requeue-refused", help="move refused requests back to verified")
+    p.add_argument("prefix")
+    p.set_defaults(fn=cmd_requeue_refused)
+
+    p = sub.add_parser("hold", help="pause planned requests whose key starts with PREFIX")
+    p.add_argument("prefix", help="e.g. pl/paranal/2021 (keys are kind/region/period)")
+    p.set_defaults(fn=cmd_hold)
+    p = sub.add_parser("release", help="move held requests whose key starts with PREFIX to planned")
+    p.add_argument("prefix")
+    p.set_defaults(fn=cmd_release)
+
     sub.add_parser(
         "export-manifest", help="copy the manifest to /data/astro/manifest-exports"
     ).set_defaults(fn=cmd_export_manifest)
+
+    p = sub.add_parser(
+        "build-landmask", help="land + 1 km buffer (GLOBE 30″) and the ERA5 cells kept"
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="compute and print; write no stores (and no summary unless --summary-out is given)",
+    )
+    p.add_argument(
+        "--summary-out",
+        default=None,
+        help=f"JSON summary path (default without --dry-run: {DEFAULT_LANDMASK_SUMMARY})",
+    )
+    p.set_defaults(fn=cmd_build_landmask)
 
     p = sub.add_parser("cds-smoke-test", help="phase 1 step 2: one hour, small box")
     p.add_argument("--date", default="2023-06-21")

@@ -127,3 +127,105 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Smoke test:** exits 1 unless every smoke request ends `verified`; the report includes the download summary and an `ok` flag.
 - **Configs in the wheel:** `configs/*.yaml` are packaged as `astroseeing/configs`. Lookup order is `$ASTRO_CONFIG_DIR`, then the repo checkout, then the packaged copy. Logs go to `$ASTRO_LOG_DIR`, else `logs/` in a checkout, else the state directory. Checked by building the wheel and loading the configs from a clean virtualenv.
 - **Who:** agent.
+
+---
+
+## 2026-09-27 — First session on CT 350 (Claude Code on the CT)
+
+### D22. Land-mask buffer: distance to the nearest point of a land cell
+- **Options:** a 30″ cell is in the 1 km buffer if its centre is within 1 km of (a) a land cell's *centre* or (b) the *nearest point* of a land cell (the land cell as an area).
+- **Evidence:** both built on the full GLOBE grid (`reports/landmask.md`). (a) 29.066% of Earth's area, 366,305 ERA5 cells kept, 4-neighbours at the equator; (b) 29.131%, 366,604 cells, 8-neighbours at the equator. RESEARCH §8 estimated 29.19% and 367,051 without recording its method; neither variant reproduces it. (b) is "within 1 km of land" taken literally.
+- **Choice:** (b), `measure: edge` in `configs/landmask.yaml`. Great-circle distance on a sphere of the WGS84 mean radius (2a + b)/3. ERA5 cells are ±0.125° boxes centred on the grid points; a cell is kept if it holds any land-or-buffer cell. Stores: `/data/astro/static/landmask/*_v1.zarr` (commit a2e97dc). The unbuffered count is 365,100, 12 cells more than the cloud session's 365,088, whose method wasn't recorded (two plausible alternatives give 364,408 and 365,113).
+- **Who:** agent (provisional).
+
+### D23. Request size: split to the CDS cost limit (amends D16's fallback)
+- **Evidence (smoke test, `reports/cds_smoke_test.json`):** the CDS "cost" of a request is its number of fields (variables × levels × hours × days) whatever the area. ECMWF staff define an ERA5 "item" as one variable on one 2-D field at one level and one time step (forum.ecmwf.int/t/cdsapi-limitations-and-restrictions/1639, 2019). Limits today: 60,000 fields for pressure levels, 121,000 for single levels. A month of a 5×5 box on 29 levels × 5 variables is 107,880 fields, over the limit; single levels (12,648) fit.
+- **Options:** D16's stated fallback, day-sized requests (31 per month); or split each month into the fewest runs of days under the limit (2 for pressure levels, 1 for single levels).
+- **Choice:** split to the limit (`plan_requests(split=True)`, limits in `configs/era5.yaml: request.max_fields`). It keeps D16's aim (few queued jobs) with ~15× fewer requests than daily; content and verification are unchanged. Partial months are now labelled `first_last` (e.g. `2023-01-01_2023-01-16`) so chunks can never share a store path.
+- **Who:** agent (provisional); Riley to confirm, since D16's fallback said "day".
+
+### D24. CDS concurrency: at most 4 in flight; queue-limit rejections are transient
+- **Evidence:** the first real run submitted 29 requests at once (a downloader bug: `limit=0` meant "no limit"; fixed in fa1c95a with a regression test). The CDS accepted 5 and rejected 24 with "Number queued requests for this dataset is temporarily limited. Please configure your scripts accordingly". Of the 5 accepted, the CDS ran one at a time, and a single-level request submitted while a pressure-level one ran stayed queued for 15 minutes: one running request per user across datasets. The first half-month pressure-level chunk (52,200 fields) ran 1,669 s (31.3 fields/s); the average of the first 9 was 33 min (26.4 fields/s). I found no published per-user limit, so these are observations, not documented limits.
+- **Choice:** keep `--max-active 4` (below the observed 5 accepted). A rejection carrying that message sends the request back to `planned` (the remote job is deleted); any other rejection still fails the request. Rejected jobs raise `requests.HTTPError`, not `ProcessingFailedError`; the backend now records the server's message either way (previously the downloader kept polling dead jobs).
+- **Who:** agent.
+
+### D25. The CDS pressure-level time-series dataset is not a substitute for validation boxes
+- **Evidence:** `reanalysis-era5-pressure-levels-timeseries` (published 2026-08-07, CC-BY) serves long point time series cheaply, but only on 13 levels (1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50 hPa) and without cloud fraction `cc` (catalogue form read 2026-09-27). Our method and every paper we reproduce use the 25 hPa spacing near the surface, and vertical resolution changes Cₙ² directly.
+- **Choice:** don't use it for reproductions or calibration. It may serve quick sanity checks later.
+- **Who:** agent.
+
+### D26. Running on the CT: root, tmux from conda-forge, repo at /home/astro-seeing
+- **Facts:** the CT has one login user, `root`; the repo is at `/home/astro-seeing` (HOME is `/root`, so `~/astro-seeing` in the runbook and `%h/astro-seeing` in the systemd units are wrong here). `systemctl --user` has no user manager for root (no lingering). tmux wasn't installed.
+- **Choice:** pixi (user-level installer, runbook §1) and `pixi global install tmux` (conda-forge tmux 3.7c in `~/.pixi`), so nothing was installed system-wide. Long jobs run in tmux with logs in `logs/`. The systemd units are unchanged until Riley decides on a user (question in `reports/ct_first_run.md`).
+- **Who:** agent.
+
+### D27. Haslebacher et al.: what their code needs, and what can be reproduced **[ASK]**
+- **Evidence (their code at commit 1da3712, `code` branch; paper arXiv:2208.04918):**
+  - Inputs: ERA5 u, v, t, z on up to 28 pressure levels (no 70 hPa; the Chile download lists 27, also without 975), hourly, all 24 hours, **1979–2020**, nearest grid point to each site; plus surface pressure to pick the lowest level (the level closest to the site's time-mean ERA5 surface pressure).
+  - The in-situ seeing that sets each site's calibration (`mean_insitu`) and all skill scores is **not published**. Their `data` branch holds only skill-score CSVs, trend posteriors and PRIMAVERA IDs. The in-situ data come from observatory archives and private communication (their Table 2).
+  - Calibration scales seeing (not J) by mean in-situ / mean ERA5 seeing over all loaded hours. Comparison periods differ from Table 2 (e.g. Paranal 2000–2016 in code vs 2000–2019 in the table). La Palma's lower level is 975 hPa in their site table but 1000 hPa in the paper's Table 4.
+- **Consequence:** the approved tolerance "reproduces their published numbers (skill scores ±0.01)" needs their in-situ series. Without it, what can be reproduced is (1) their code vs ours on the same ERA5 input (≤ 0.1%, D19), (2) Table 4's lower levels from ERA5 surface pressure, and (3) the ERA5 trends of Tables A.13–A.14 up to the unknown calibration factor. A full 1979–2020 download for 8 sites is roughly 35–50 GB and, at the measured CDS speed, days to weeks of queue time (`reports/ct_first_run.md`).
+- **Who:** open, for Riley.
+
+### D28. Riley's answers to the first CT report (2026-09-27, evening)
+- **Haslebacher et al. (D27):** approved: reproduce (a) their code vs ours on the same ERA5 (≤ 0.1%), (b) Table 4's lower levels from ERA5 surface pressure, and (c) a written account of what can't be reproduced and why. This replaces "published skill scores ±0.01" in `reports/phase1_plan.md` §5.
+- **Land mask (D22):** Riley doesn't mind which buffer measure. The requirement is "only land plus a small buffer of sea, to include shoreline weather phenomena and smaller islands". D22 stays; small islands to be checked explicitly.
+- **Request splitting (D23):** approved ("splitting as you did is fine").
+- **CT user (D26):** keep root.
+- **ESO ambient data:** approved as a source (CC BY 4.0, ESO acknowledgement).
+- **Download schedule:** not decided. Riley asked for a review of the CDS speed first: parallel requests, larger requests, the effect on the global run, and how Haslebacher et al. got 42 years.
+- **Later:** Bi et al. PDF (Riley will upload it), TMT login, CDS key rotation, PR to `main`.
+- **Who:** Riley.
+
+### D29. Download review (Riley asked: parallel requests, larger requests, the global run, Haslebacher's 42 years)
+- **Facts (2026-09-27 evening; RESEARCH §7):** one processing slot per user shared by ERA5 pressure and single levels; one account per user (CDS terms, Art. 2); requests are already 87% of the 60,000-field limit and time scales with fields, not requests (overhead ~10–15 s). The single-level **time-series product runs in its own slot, takes seconds, and matches our data**. The mirrors (NCAR, Google) are whole-globe per hour. Bandwidth 21–47 MB/s.
+- **Consequences:** larger requests and extra accounts won't help. Single levels for validation should come from the time-series product (except lcc/mcc/hcc, zust, ishf and tcwv, needed only for the cloud-layer and W71 experiments), so the slot is used only for pressure levels. The global run is ~7.1 M fields (~3.1 days of CDS processing) plus ~13 TB of transfer (~3–7 days at the measured bandwidth); it is not worse than phase 1.
+- **Haslebacher et al.'s 42 years:** their scripts send one request per pressure level per year (4 variables, ~35,000 fields) for each site box, and start ~27 downloads at once (one terminal per level), on the old CDS (replaced in September 2024). With today's one slot, that plan is ~5 months for us.
+- **Choice:** pending Riley (options in `reports/ct_first_run.md` §8). ERA5-complete (MARS) as a possible second slot is untested: its cost estimator returned HTTP 500s, and a real test is a tape request that can take hours.
+- **Who:** agent (facts); Riley (choice).
+
+### D30. Land mask: GLOBE for choosing ERA5 cells; the 30 m Copernicus DEM for pixels (phase 2)
+- **Evidence (2026-09-27):** of 22 small islands tested, all from 1 km² up are in the mask (Tromelin 1.0, Surtsey 1.3, Howland, Baker, Johnston, Nightingale, Jarvis, Pitcairn, Clipperton, Midway, Wake, … St Helena, Christmas Island); only Rockall (a 0.001 km² rock) is missing. But GLOBE places some small islands kilometres off: **Norfolk Island is drawn ~9 km east** of its true position (GLOBE centroid 29.027° S 168.043° E vs 29.03° S 167.95° E). Its ERA5 cell is still kept.
+- **Choice:** keep GLOBE + 1 km for selecting ERA5 cells (robust at 25 km scale). For the pixel-level mask in phase 2, use the Copernicus DEM (30 m, which we process anyway) and add any island it has that GLOBE lacks to the cell selection. Meets Riley's requirement (D28): land plus a small sea buffer, including small islands.
+- **Who:** agent (provisional).
+
+### D31. Phase 1 download schedule: option C (Riley, 2026-09-27)
+- **Choice:** option C of `reports/ct_first_run.md` §8, ~10 days of CDS processing for pressure levels:
+  - shared areas for co-located sites (Chile: Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; Tibet/Qinghai: Ali, Daocheng, Muztagh-ata, Lenghu, Da Qaidam);
+  - cloud fraction only where clouds are studied;
+  - Priyatikanto's 2002–2021 sampled every 4th day;
+  - **night hours only** where every comparison is at night (ESO and TMT DIMM/MASS, O&S SCIDAR);
+  - single levels from the CDS time-series product where it has the variables (D29).
+- **Exception approved:** night-only downloads for those validation areas, although AGENTS.md says validation boxes keep all hours. Riley was told this when choosing C; the AGENTS.md wording change is his to make.
+- **Already running:** the Paranal 5×5 box for O&S's 2016-04..2018-01 continues with all hours. Its 2021–2025 part (180 requests) is `held`, to be replaced by the Chile area.
+- **Who:** Riley.
+
+### D32. Unattended running: system-level services, bounded retries, alerts only when retries run out
+- **Why:** Riley will close the chat session and wants downloads and notifications to keep going by themselves (2026-09-27).
+- **Choice:**
+  - The download loop, the ntfy watcher and the nightly manifest export run as **system-level systemd services** (the CT runs everything as root, D26; user units would need lingering). They start at boot and restart after crashes. Units are in `scripts/systemd/system/`, installed by `scripts/install_services.sh`.
+  - `scripts/run_boxes.sh` retries failed requests up to 5 times, counts retryable failures as unfinished, and backs off 10 min when a round makes no progress, so a CDS or network outage neither stops nor spins the loop.
+  - The watcher alerts only when a request has used up its 5 attempts (earlier failures are retried), and it never says "finished" while a retry is pending. Stalls (3 h without progress), a stopped loop and an unresponsive NAS still alert.
+- **Who:** agent, on Riley's instruction.
+
+### D33. Copilot review of PR #2 (first round, 4 findings, all addressed)
+- **Refusals (amends D18):** a request that mustn't be stored unmasked now moves to a new **`refused`** state instead of staying `verified`. It is not a failure (never retried or re-downloaded) and not pending work, so the unattended loop doesn't wait on it; the watcher reports it; `astro requeue-refused` puts it back to `verified` once a mask exists. Mask functions signal it with `RefusedUnmasked`.
+- **Stale requests:**
+  - the watcher's stall clock counts only real progress (a finished download or later) and the plan times of *pending* requests, so holds, cancellations and retries don't hide a stall;
+  - a separate alert fires for any request sitting at the CDS for more than 12 h.
+- **Smoke-test report:** the split-month cost estimates were added with the current code (estimate calls only: 55,680 and 52,200 of 60,000), marked as added after the original run.
+- **First-run report:** the systemd text now describes the D32 services.
+- **Who:** agent (fixes), Copilot (findings).
+- **Second round (4 more findings, all addressed):**
+  - the site-box mask compares longitudes modulo 360, and ingest refuses loudly (a failure, not a silent empty store) if an area's mask doesn't select exactly its site-box points;
+  - `notify.env` must be mode 600, like `~/.cdsapirc`;
+  - `build-landmask --dry-run` writes no summary unless `--summary-out` is given;
+  - the finish estimate counts failed requests that will be retried.
+- **Third round (3 findings, all addressed):**
+  - ingest refuses undeclared large requests *before* decoding them (`mask_fn.preflight`), so a global day can't be loaded into memory just to be refused;
+  - problem alerts are per event (request + time), so a requeue and a new refusal inside one check interval still alert;
+  - a queue that drains with failed or refused requests is reported as "finished with problems";
+  - the watcher's saved state ignores fields from older versions.
+- **Fourth round (3 findings, all addressed):** "finished with problems" is also sent when every request failed or was refused; `max_active` must be ≥ 1; the report's test count is updated (167).
+- **Fifth round (4 findings, all addressed):** the installer creates `logs/`; the export and download services require the `/data/astro` mount (`RequiresMountsFor`), and the export checks the NAS answers (child-process probe with a timeout) before writing; the report and plan now show the download schedule as decided (option C) rather than an open question.
+- **Sixth round:** no new findings on the diff; one previously missed item fixed (the finish estimate counts downloaded/verified requests still awaiting ingest). Merged after this round.

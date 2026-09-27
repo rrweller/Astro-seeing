@@ -1,0 +1,16 @@
+# Validation areas (decision D31, option C). One CDS download per area covers every
+# site in it: the CDS charges per field whatever the area (D29), so nearby sites share.
+# Only the 5x5 boxes (box_half_width 2) around the listed sites are stored, in the
+# `cells` layout, with every downloaded hour. Sites refer to configs/sites.yaml.
+
+chile:
+  sites: [haslebacher2022/paranal, haslebacher2022/la_silla, haslebacher2022/cerro_tololo,
+          tmt2009/cerro_armazones, tmt2009/cerro_tolar, tmt2009/cerro_tolonchar]
+tibet:
+  sites: [bi2023/ali, bi2023/daocheng, bi2023/muztagh_ata, bi2023/lenghu, bi2023/da_qaidam]
+timau:
+  sites: [priyatikanto2026/timau, priyatikanto2026/eltari_radiosonde]
+haikou:
+  sites: [bi2023/haikou]
+rongcheng:
+  sites: [bi2023/rongcheng]

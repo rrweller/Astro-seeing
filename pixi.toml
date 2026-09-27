@@ -31,6 +31,7 @@ ruff = ">=0.8"
 
 [pypi-dependencies]
 astroseeing = { path = ".", editable = true }
+global-land-mask = "==1.0.0"
 
 [tasks]
 test = "pytest"

@@ -1,0 +1,13 @@
+# CT 350: copy the SQLite manifest to /data/astro/manifest-exports (AGENTS.md: nightly).
+[Unit]
+Description=astro-seeing: export the manifest to the NAS
+# Never run against an unmounted /data (writes would land on the empty mountpoint).
+RequiresMountsFor=/data/astro
+
+[Service]
+Type=oneshot
+Environment=HOME=/root
+WorkingDirectory=/home/astro-seeing
+# A hung NFS mount must not block forever (AGENTS.md "Environment").
+TimeoutStartSec=15min
+ExecStart=/root/.pixi/bin/pixi run astro export-manifest
