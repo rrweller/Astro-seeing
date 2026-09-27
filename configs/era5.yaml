@@ -1,0 +1,62 @@
+# ERA5 datasets, variables and levels (docs/RESEARCH.md §7).
+# Variable names and pressure levels were checked against the live CDS request
+# forms on 2026-09-27 (catalogue API "form" resources).
+
+grid_deg: 0.25
+
+datasets:
+  pl:
+    cds_name: reanalysis-era5-pressure-levels
+    product_type: reanalysis
+    # CDS variable name -> GRIB shortName (paramId)
+    variables:
+      geopotential: {short_name: z, param_id: 129}
+      temperature: {short_name: t, param_id: 130}
+      u_component_of_wind: {short_name: u, param_id: 131}
+      v_component_of_wind: {short_name: v, param_id: 132}
+      fraction_of_cloud_cover: {short_name: cc, param_id: 248}
+    optional_variables:
+      specific_humidity: {short_name: q, param_id: 133}
+    # 29 levels, hPa (RESEARCH §7). Stored bottom -> top (1000 -> 50).
+    levels_hpa: [1000, 975, 950, 925, 900, 875, 850, 825, 800, 775, 750, 700, 650, 600,
+                 550, 500, 450, 400, 350, 300, 250, 225, 200, 175, 150, 125, 100, 70, 50]
+
+  sl:
+    cds_name: reanalysis-era5-single-levels
+    product_type: reanalysis
+    variables:
+      total_cloud_cover: {short_name: tcc, param_id: 164}
+      low_cloud_cover: {short_name: lcc, param_id: 186}
+      medium_cloud_cover: {short_name: mcc, param_id: 187}
+      high_cloud_cover: {short_name: hcc, param_id: 188}
+      cloud_base_height: {short_name: cbh, param_id: 228023}
+      surface_pressure: {short_name: sp, param_id: 134}
+      2m_temperature: {short_name: 2t, param_id: 167}
+      2m_dewpoint_temperature: {short_name: 2d, param_id: 168}
+      skin_temperature: {short_name: skt, param_id: 235}
+      10m_u_component_of_wind: {short_name: 10u, param_id: 165}
+      10m_v_component_of_wind: {short_name: 10v, param_id: 166}
+      100m_u_component_of_wind: {short_name: 100u, param_id: 228246}
+      100m_v_component_of_wind: {short_name: 100v, param_id: 228247}
+      boundary_layer_height: {short_name: blh, param_id: 159}
+      friction_velocity: {short_name: zust, param_id: 228003}
+      instantaneous_surface_sensible_heat_flux: {short_name: ishf, param_id: 231}
+      total_column_water_vapour: {short_name: tcwv, param_id: 137}
+
+  static:
+    # Time-invariant fields, requested once from the single-levels dataset.
+    cds_name: reanalysis-era5-single-levels
+    product_type: reanalysis
+    variables:
+      geopotential: {short_name: z, param_id: 129}
+      land_sea_mask: {short_name: lsm, param_id: 172}
+      standard_deviation_of_orography: {short_name: sdor, param_id: 160}
+
+request:
+  data_format: grib
+  download_format: unarchived
+  # Request size. Validation boxes: one month per request (Riley approved,
+  # 2026-09-27, decision D16). Global and regional runs: one day per request
+  # (AGENTS.md "day-sized requests").
+  validation_box_granularity: month
+  global_granularity: day

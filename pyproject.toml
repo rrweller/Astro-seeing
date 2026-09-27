@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "astroseeing"
+version = "0.1.0"
+description = "Good astronomical viewing nights per year from ERA5 profiles and Copernicus DEM terrain"
+requires-python = ">=3.12"
+# Runtime dependencies are managed by pixi (conda-forge); see pixi.toml.
+dependencies = []
+
+[project.scripts]
+astro = "astroseeing.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/astroseeing"]
+
+[tool.hatch.build.targets.wheel.force-include]
+# Ship the YAML configs inside the wheel (config.py falls back to them).
+"configs" = "astroseeing/configs"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["external", "papers", "notebooks"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["astroseeing"]
+known-local-folder = ["fakes"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF", "SIM"]
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # Greek letters and unicode symbols are intentional in physics docs
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: long-running tests (deselect with -m 'not slow')",
+]
+filterwarnings = [
+    "error::RuntimeWarning:astroseeing.*",
+]

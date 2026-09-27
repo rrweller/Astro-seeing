@@ -60,7 +60,12 @@
   - ERA5 hourly, 2002-01-01 to 2021-12-31, from 1000 hPa to 1 hPa.
   - They write "the interval between pressure levels is 25 hPa". ERA5's standard levels are *not* evenly spaced, so check what they actually used *[check]*.
   - The site value comes from consecutive 1-D cubic interpolation in longitude, latitude and pressure.
+  - The cube was downloaded as NetCDF, and before computing they interpolated T and wind *linearly onto 5 hPa steps from 10 to 1000 hPa* (their §II.2; applied to ERA5 and radiosondes alike). *[verified in the arXiv HTML served on 2026-09-27]*
 - **Method:** Tatarskii + HMNSP99; ε = 0.98 λ/r₀. λ is given only as "e.g. 500 nm" *[check]*.
+- **Printed equations differ from §4.4 in three ways** *[verified in the arXiv HTML served on 2026-09-27]*; the reproduction must try each variant:
+  1. Eq. 6: M = −7.9×10⁻⁵ (P/T²) ∂θ/∂h, i.e. P/T² times ∂θ/∂h. Bi et al.'s form is (P/T²)(∂T/∂z + γ) = P/(Tθ) ∂θ/∂z, so the printed form is larger by θ/T.
+  2. Eq. 7: θ = T (100/P)^0.286 (100, not 1000). If used literally this scales Cₙ² by 10^(−0.572) ≈ 0.27. Probably a typo.
+  3. Eq. 4 writes 10^(a₁ + a₂S − a₃ dT/dh) with a₃ = −192.347 (troposphere), −57.784 (stratosphere), which gives **+**192.347·dT/dh, the opposite sign to §4.4. Probably a typo (a double negative).
 - **Radiosonde check:** at Eltari Airport (123.6679°E, 10.1686°S), 2017–2018, 295 soundings around 12 UT. **ERA5 seeing came out at about 76% of the radiosonde-derived value** (R² = 0.51).
 - **Results:**
   - Timau ERA5 median **0.79″**, best in March and December, more variable in the dry season (May–September).
@@ -87,7 +92,8 @@
   | Coherence time τ₀ | 0.63 | | |
 
   The median profile correlated at 0.98.
-- **Split height [check]:** Haslebacher et al. say O&S's free atmosphere starts about 1–2 km above the observatory. Confirm the exact split height in the PDF.
+- **Split height (resolved 2026-09-27):** O&S use **1 km above the observatory**: "free atmosphere seeing (h>1 km)" and "ground layer seeing (integrated from the ground to h=1 km)" (§5.7, Fig. 9 caption). Haslebacher et al.'s "about 1–2 km" is looser than the PDF.
+- **Not printed:** their r₀→ε conversion and wavelength. We assume 0.98 λ/r₀ at 500 nm for comparisons *[check]*.
 - **Use:** our alternative Cₙ² model; the ground-layer relocation idea; the free-atmosphere vs total benchmark.
 
 ### 3.4 Haslebacher et al. 2022: ERA5 and climate models at 8 observatories
@@ -100,6 +106,9 @@
 - **Seeing methods:**
   1. "200-hPa-wind-speed seeing" (their eq. 12, from Vernin 1986), described in §4.6. They quote: "seeing below 1 arcsecond requires wind speeds below 20 m s⁻¹ at the tropopause".
   2. The "seeing model": the Osborn & Sarazin Cₙ² formula (their eq. 13), integrated from a site-specific lower pressure level (their Table 4). The calibration factor k was set per site from the *mean in situ seeing* (e.g. 1.32″ at Sutherland); the script's `# k = 6` is commented out.
+  - **Seeing conversion:** ε = **0.976** λ/r₀ at λ = 500 nm (their eqs. 5–6), not 0.98. *[verified in the arXiv PDF served on 2026-09-27]*
+  - **Integration:** "Euler forward numerical scheme", from the Table 4 level upward.
+  - **Table 4, ERA5 seeing-model lower levels (hPa):** Mauna Kea 800, Paranal 900, La Silla 825, Tololo 825, La Palma 1000, Siding Spring 950, Sutherland 850, San Pedro Mártir 850 (also in `configs/sites.yaml`).
 - **Seeing results (ERA5 vs in situ, monthly means):**
   - Average skill is "poor": 0.20 for 200-hPa-wind-speed seeing and 0.28 for the seeing model.
   - Best: Mauna Kea, 0.39 (200 hPa). Worst: Paranal, 0.06 (0.07 against Paranal MASS-DIMM).
@@ -186,6 +195,7 @@ dark h   = 2 · (180° − H₁₈) / 15°                         0 h if cos H�
   | 65° | 213 |
 
   These come from the simple declination formula; test against Skyfield.
+  - **Measured** with our Skyfield-based module (DE440s, 1-minute resolution, 2021–2025 mean, lon 0°): 365.2, 349.6, 308.8, 268.0, 237.2, 210.6. They agree with the estimates to ≤1 night up to 50°; at 55–65° the precise count is 1–3 nights lower.
 - **Implementation:**
   - Compute the Sun's apparent position once per time step (Skyfield), then altitude for every cell in vectorised trig.
   - Compute dark durations at ≤1-minute resolution, not by counting hourly samples.
@@ -385,8 +395,9 @@ Their seeing data include La Palma (IAC/ING, 2004–2019), Siding Spring (AAT, 1
 | Cerro Armazones | −24.5800, −70.1833 | 3064 | 0.64 | 0.41 | 0.43 | 0.23 | 0.35 | 2.04 |
 | Cerro Tolonchar | −23.9333, −67.9750 | 4480 | 0.64 | 0.44 | 0.48 | 0.25 | 0.32 | 1.83 |
 | San Pedro Mártir | 31.0456, −115.4691 | 2830 | 0.79 | 0.50 | 0.37 | 0.17 | 0.58 | 2.03 |
-| Mauna Kea 13N | 19.8330, −155.4810 | 4050 | 0.75 | 0.46 | 0.33 | 0.15 | 0.54 | see paper |
+| Mauna Kea 13N | 19.8330, −155.4810 | 4050 | 0.75 | 0.46 | 0.33 | 0.15 | 0.54 | 2.69 |
 
+- **Checked** against Schöck et al. Table 2 (arXiv PDF served on 2026-09-27): all values match. The same table gives τ₀ (ms): 5.2, 4.6, 5.6, 4.2, 5.1 (same site order).
 - **Ground-layer column:** DIMM minus MASS.
 - **Raw data:** from the TMT site-testing database (free, login required).
 - **Why this set matters:** the separate free-atmosphere and ground-layer medians are the best available test of our split.
@@ -410,9 +421,11 @@ Their seeing data include La Palma (IAC/ING, 2004–2019), Siding Spring (AAT, 1
 - **`~/.cdsapirc` format:** `url: https://cds.climate.copernicus.eu/api` and `key: <PERSONAL-ACCESS-TOKEN>`. Requires `cdsapi>=0.7.7`.
 - **Terms of use:** you must accept them manually on each dataset page before any download works.
 - **Licence:** CC-BY 4.0 since 2 July 2025. Follow the attribution guidance on the dataset pages.
+- **Attribution text** (dataset page "Citation and attribution", read via the CDS catalogue API on 2026-09-27): "Generated using or contains modified Copernicus Climate Change Service information <YYYY>. Neither the European Commission nor ECMWF is responsible for any use that may be made of the Copernicus information or data it contains." Also cite the catalogue entries: pressure levels DOI 10.24381/cds.bd0915c6, single levels DOI 10.24381/cds.adbb2d47 (Hersbach et al. 2023). Stored in `src/astroseeing/provenance.py`.
+- **Request keys** (live form): `product_type`, `variable`, `year`, `month`, `day`, `time`, `pressure_level`, `area`, `data_format` (`grib`), `download_format` (`unarchived`).
 - **Pressure levels used (29):** 50, 70, 100, 125, 150, 175, 200, 225, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 775, 800, 825, 850, 875, 900, 925, 950, 975, 1000 hPa. Spacing is 25 hPa near the surface and 50 hPa between 750 and 250 hPa.
 - **Pressure-level variables:** `geopotential` (z), `temperature` (t), `u_component_of_wind` (u), `v_component_of_wind` (v), `fraction_of_cloud_cover` (cc). Optional: `specific_humidity` (q).
-- **Single-level variables:** `total_cloud_cover` (tcc), `low_cloud_cover`, `medium_cloud_cover`, `high_cloud_cover`, `cloud_base_height` (cbh), `surface_pressure` (sp), `2m_temperature`, `2m_dewpoint_temperature`, `skin_temperature`, `10m_u_component_of_wind`, `10m_v_component_of_wind`, `100m_u_component_of_wind`, `100m_v_component_of_wind`, `boundary_layer_height` (blh), `friction_velocity` (zust), `instantaneous_surface_sensible_heat_flux` (ishf), `total_column_water_vapour` (confirm the name on the CDS form).
+- **Single-level variables:** `total_cloud_cover` (tcc), `low_cloud_cover`, `medium_cloud_cover`, `high_cloud_cover`, `cloud_base_height` (cbh), `surface_pressure` (sp), `2m_temperature`, `2m_dewpoint_temperature`, `skin_temperature`, `10m_u_component_of_wind`, `10m_v_component_of_wind`, `100m_u_component_of_wind`, `100m_v_component_of_wind`, `boundary_layer_height` (blh), `friction_velocity` (zust), `instantaneous_surface_sensible_heat_flux` (ishf), `total_column_water_vapour` (tcwv). *[verified 2026-09-27: every name here and in the pressure-level list is on the live CDS request forms]*
 - **Fixed fields:** `geopotential` (surface z; orography = z/g₀), `land_sea_mask`, `standard_deviation_of_orography`.
 - **Request tips:**
   - Use GRIB; NetCDF requests have smaller size limits.
@@ -443,6 +456,8 @@ Their seeing data include La Palma (IAC/ING, 2004–2019), Siding Spring (AAT, 1
 
 **Other inputs**
 - **Land mask:** `global-land-mask` (GLOBE 1 km, MIT licence) or OSM land polygons (ODbL, attribution required). Add a 1 km buffer. Our numbers are in §8.
+  - **Chosen: `global-land-mask` v1.0.0** (Riley, 2026-09-27; decision D20). GLOBE's unrestricted version has "no copyright or security distribution restrictions" (NOAA NCEI ETOPO page). Cite: National Geophysical Data Center, 1999, GLOBE v.1, Hastings & Dunbar, doi:10.7289/V52R3PMS.
+  - Checked: lakes count as land, floating ice shelves as sea. Land is 28.905% of Earth, and 365,088 ERA5 cells contain land before the buffer, consistent with the §8 estimates.
 - **Skyfield:** the solar-position library (`almanac.dark_twilight_day` for tests).
 - **TMT site-testing database:** https://sitedata.tmt.org. Free; login needed to download.
 - **ESO ambient conditions database:** https://archive.eso.org/cms/eso-data/ambient-conditions.html (La Silla, Paranal, Chajnantor; query forms).
@@ -553,8 +568,8 @@ Fetch each file, check it opens, and record SHA-256 hashes in `papers/INDEX.md`.
 ## 11. Open questions for phase 1
 1. **Bi et al.'s data:** which ERA5 product and levels did they use? Test both; see which reproduces §6.1.
 2. **Priyatikanto et al.:** which levels and wavelength, and where the ×1.3 factor was applied.
-3. **O&S:** the exact free-atmosphere/ground-layer split height, and how to emulate their forecast data with ERA5 analyses.
-4. **Haslebacher et al.:** the lower integration levels (their Table 4) and the periods; reproduce exactly with their code.
+3. **O&S:** how to emulate their forecast data with ERA5 analyses. (Split height resolved: 1 km above the observatory, §3.3.)
+4. **Haslebacher et al.:** the periods; reproduce exactly with their code. (Table 4 lower levels and the 0.976 coefficient now recorded, §3.4.)
 5. **Ground layer:** which treatment (§5 step 3).
 6. **Cloud overlap:** which overlap rule for C(h), and how well C(surface) matches total cloud.
 7. **Cloud validation:** what data are obtainable (ESO photometric-night fractions, TMT database, observatory logs).

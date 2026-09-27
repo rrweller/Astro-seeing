@@ -1,0 +1,12 @@
+[Unit]
+Description=astro-seeing: %i (download | verify | ingest), resumable
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/astro-seeing
+ExecStart=%h/.pixi/bin/pixi run astro %i
+# Downloads resume from the manifest after any restart.
+Restart=on-failure
+RestartSec=5min
+TimeoutStopSec=2min
