@@ -188,3 +188,14 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Evidence (2026-09-27):** of 22 small islands tested, all from 1 km² up are in the mask (Tromelin 1.0, Surtsey 1.3, Howland, Baker, Johnston, Nightingale, Jarvis, Pitcairn, Clipperton, Midway, Wake, … St Helena, Christmas Island); only Rockall (a 0.001 km² rock) is missing. But GLOBE places some small islands kilometres off: **Norfolk Island is drawn ~9 km east** of its true position (GLOBE centroid 29.027° S 168.043° E vs 29.03° S 167.95° E). Its ERA5 cell is still kept.
 - **Choice:** keep GLOBE + 1 km for selecting ERA5 cells (robust at 25 km scale). For the pixel-level mask in phase 2, use the Copernicus DEM (30 m, which we process anyway) and add any island it has that GLOBE lacks to the cell selection. Meets Riley's requirement (D28): land plus a small sea buffer, including small islands.
 - **Who:** agent (provisional).
+
+### D31. Phase 1 download schedule: option C (Riley, 2026-09-27)
+- **Choice:** option C of `reports/ct_first_run.md` §8, ~10 days of CDS processing for pressure levels:
+  - shared areas for co-located sites (Chile: Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; Tibet/Qinghai: Ali, Daocheng, Muztagh-ata, Lenghu, Da Qaidam);
+  - cloud fraction only where clouds are studied;
+  - Priyatikanto's 2002–2021 sampled every 4th day;
+  - **night hours only** where every comparison is at night (ESO and TMT DIMM/MASS, O&S SCIDAR);
+  - single levels from the CDS time-series product where it has the variables (D29).
+- **Exception approved:** night-only downloads for those validation areas, although AGENTS.md says validation boxes keep all hours. Riley was told this when choosing C; the AGENTS.md wording change is his to make.
+- **Already running:** the Paranal 5×5 box for O&S's 2016-04..2018-01 continues with all hours. Its 2021–2025 part (180 requests) is `held`, to be replaced by the Chile area.
+- **Who:** Riley.
