@@ -168,14 +168,20 @@ def cmd_build_landmask(args, paths: Paths) -> int:
     mask = lm.build(buffer_m=cfg["buffer_m"], grid_deg=cfg["grid_deg"], measure=cfg["measure"])
     summary = mask.summary(validation_sites())
     mask.qc.log(log, context="landmask ")
-    missing = [n for n, s in summary["sites"].items() if not s["era5_cell_kept"]]
+    sites = summary["sites"]
+    # A site on GLOBE land must lie in a kept cell (else the aggregation is wrong);
+    # a site whose listed coordinates are at sea is a finding about the coordinates.
+    inconsistent = [n for n, s in sites.items() if s["globe_land"] and not s["era5_cell_kept"]]
+    at_sea = [n for n, s in sites.items() if not s["globe_land"]]
     if args.summary_out:
         p = Path(args.summary_out)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(summary, indent=2) + "\n")
     print(json.dumps({k: v for k, v in summary.items() if k != "sites"}, indent=2))
-    if missing:
-        log.error("validation sites outside the kept cells: %s; not writing", missing)
+    if at_sea:
+        log.warning("validation sites not on GLOBE land (check their coordinates): %s", at_sea)
+    if inconsistent:
+        log.error("sites on land outside the kept cells: %s; not writing", inconsistent)
         return 1
     if args.dry_run:
         return 0

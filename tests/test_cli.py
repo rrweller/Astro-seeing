@@ -188,3 +188,37 @@ def test_plan_box_defaults_to_month_sized_requests(ct):
     keys = [r[0] for r in m.conn.execute("SELECT key FROM requests ORDER BY id")]
     m.close()
     assert keys == ["pl/m/2023-01", "pl/m/2023-02"]
+
+
+class _StubMask:
+    """Stands in for terrain.landmask.LandMask (the real build needs ~3 GB and 10 s)."""
+
+    def __init__(self, sites):
+        from astroseeing.qc import QCCounts
+
+        self._sites = sites
+        self.qc = QCCounts()
+
+    def summary(self, sites=None):
+        return {"era5_cells_kept": 1, "sites": self._sites}
+
+
+@pytest.mark.parametrize(
+    ("sites", "code"),
+    [
+        # a site whose listed coordinates are at sea: warn, still succeed
+        ({"a": (True, True), "b": (False, False)}, 0),
+        # a site on land outside the kept cells: the aggregation is wrong, fail
+        ({"a": (True, False)}, 1),
+    ],
+)
+def test_build_landmask_site_checks(ct, monkeypatch, sites, code):
+    from astroseeing.terrain import landmask
+
+    stub = _StubMask(
+        {n: {"globe_land": land, "era5_cell_kept": kept} for n, (land, kept) in sites.items()}
+    )
+    monkeypatch.setattr(landmask, "build", lambda **kw: stub)
+    out = ct / "summary.json"
+    assert cli.main(["build-landmask", "--dry-run", "--summary-out", str(out)]) == code
+    assert json.loads(out.read_text())["sites"].keys() == sites.keys()
