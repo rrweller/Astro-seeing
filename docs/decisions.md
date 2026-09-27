@@ -95,3 +95,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Evidence:** phase 1 needs roughly 20,000 box-days (see `reports/phase1_plan.md`); at one request per day per dataset that is about 40,000 CDS requests, each queued separately. A 5×5-point month of pressure levels is 29 × 5 × 24 × 31 ≈ 108,000 fields; whether the CDS accepts that is what the smoke test's cost estimate will tell.
 - **Choice:** code supports both (`--granularity month`); the default stays `day` until Riley decides.
 - **Who:** Riley.
+
+### D17. Missing values in ERA5 GRIB
+- **Choice:** a bitmap-missing value fails verification, except for variables where missing is physically expected. For now that is only `cbh` (no cloud → no cloud base). Those counts are recorded as warnings, decoded to NaN, and stored in the Zarr `qc` attribute (`grib_missing_values_<var>`). The grid-size check uses `numberOfDataPoints`, because `numberOfValues` excludes missing points (found by the test). If the smoke test shows other variables with legitimate gaps, they get added here explicitly, never silently.
+- **Who:** agent (provisional).

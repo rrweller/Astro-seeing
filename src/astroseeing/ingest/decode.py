@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +25,9 @@ class DecodedGrib:
     lat: np.ndarray
     lon: np.ndarray
     data: dict[str, np.ndarray]
+    #: GRIB missing (bitmap) points per variable, stored as NaN (e.g. cloud base
+    #: height where there is no cloud). Recorded in the store's QC counts.
+    missing: dict[str, int] = field(default_factory=dict)
 
     @property
     def dims(self) -> tuple[str, ...]:
@@ -33,6 +36,9 @@ class DecodedGrib:
             if self.levels is not None
             else ("time", "latitude", "longitude")
         )
+
+
+_MISSING = 1.0e20  # sentinel eccodes writes into missing points; converted to NaN
 
 
 def _axis(first: float, last: float, n: int) -> np.ndarray:
@@ -53,6 +59,7 @@ def decode_grib(path: Path, expected: dict[str, Any]) -> DecodedGrib:
     shape = (len(times), len(levels), nlat, nlon) if levels else (len(times), nlat, nlon)
     data = {s: np.full(shape, np.nan, dtype=np.float32) for s in short}
     filled = {s: np.zeros(shape[:-2], dtype=bool) for s in short}
+    missing = {s: 0 for s in short}
     lat = lon = None
 
     with open(path, "rb") as f:
@@ -75,7 +82,12 @@ def decode_grib(path: Path, expected: dict[str, Any]) -> DecodedGrib:
                     "%Y-%m-%dT%H:%M"
                 )
                 ti = t_index[key]
-                vals = ec.codes_get_values(h).reshape(nlat, nlon).astype(np.float32)
+                ec.codes_set(h, "missingValue", _MISSING)
+                raw = ec.codes_get_values(h)
+                miss = raw == _MISSING
+                if miss.any():
+                    missing[sn] += int(miss.sum())
+                vals = np.where(miss, np.nan, raw).reshape(nlat, nlon).astype(np.float32)
                 if levels:
                     li = lv_index[int(ec.codes_get(h, "level"))]
                     data[sn][ti, li] = vals
@@ -101,6 +113,7 @@ def decode_grib(path: Path, expected: dict[str, Any]) -> DecodedGrib:
         if not filled[s].all():
             raise ValueError(f"{path}: {int((~filled[s]).sum())} fields of {s} not filled")
     return DecodedGrib(
+        missing={k: v for k, v in missing.items() if v},
         times=np.array(times, dtype="datetime64[s]"),
         levels=np.asarray(levels, dtype=np.float64) if levels else None,
         lat=np.asarray(lat, dtype=np.float64),

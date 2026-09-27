@@ -32,6 +32,11 @@ SANITY_RANGES: dict[str, tuple[float, float]] = {
 
 GRID_TOL = 1e-6
 
+#: Variables where missing (bitmap) values are expected and do not fail
+#: verification: ERA5 cloud base height has no value where there is no cloud.
+#: Their counts are still recorded in the report.
+MISSING_ALLOWED = frozenset({"cbh"})
+
 
 @dataclass
 class MessageInfo:
@@ -112,7 +117,8 @@ def scan_grib(path: Path, with_values: bool = True):
                     lon_last=float(ec.codes_get(h, "longitudeOfLastGridPointInDegrees")),
                     dlat=float(ec.codes_get(h, "jDirectionIncrementInDegrees")),
                     dlon=float(ec.codes_get(h, "iDirectionIncrementInDegrees")),
-                    n_values=int(ec.codes_get(h, "numberOfValues")),
+                    # numberOfDataPoints = grid points; numberOfValues excludes bitmap-missing ones
+                    n_values=int(ec.codes_get(h, "numberOfDataPoints")),
                     n_missing=n_missing,
                     n_nan=n_nan,
                     vmin=vmin,
@@ -186,8 +192,10 @@ def verify_grib(path: Path, expected: dict[str, Any], max_listed: int = 20) -> V
     rep.nan_values = dict(nans)
     rep.out_of_range = {k: v for k, v in oor.items() if v}
     for k, v in rep.missing_values.items():
-        if v:
+        if v and k not in MISSING_ALLOWED:
             rep.problems.append(f"{k}: {v} missing (bitmap) values")
+        elif v:
+            rep.warnings.append(f"{k}: {v} missing values (expected for this variable)")
     for k, v in rep.nan_values.items():
         if v:
             rep.problems.append(f"{k}: {v} NaN values")

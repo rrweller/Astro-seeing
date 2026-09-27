@@ -70,6 +70,8 @@ def prepare(
     ``cells`` layout (requires ``cell_mask``).
     """
     qc = QCCounts()
+    for var, n in dec.missing.items():
+        qc.add(f"grib_missing_values_{var}", n, dec.data[var].size)
     times = dec.times.astype("datetime64[s]").astype(np.int64)
     coords: dict[str, tuple[tuple[str, ...], np.ndarray]] = {"time": (("time",), times)}
     if dec.levels is not None:

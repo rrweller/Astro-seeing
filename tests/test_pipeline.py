@@ -356,3 +356,37 @@ def test_cdsapirc_permissions_are_enforced(tmp_path):
         read_cdsapirc(rc)
     os.chmod(rc, 0o600)
     assert read_cdsapirc(rc) == ("https://cds.climate.copernicus.eu/api", "abc")
+
+
+def test_missing_cloud_base_height_is_expected_and_counted(tmp_path):
+    """ERA5 cbh is missing where there is no cloud: allowed, stored as NaN, counted."""
+    import eccodes as ec
+
+    spec = plan_requests("sl", "x", dt.date(2023, 6, 20), dt.date(2023, 6, 20), AREA, hours=(0,))[0]
+    exp = spec.expected()
+    good = tmp_path / "good.grib"
+    write_synthetic_grib(good, exp, era5_param_ids())
+    path = tmp_path / "cbh_missing.grib"
+    with open(good, "rb") as fin, open(path, "wb") as fout:
+        while (h := ec.codes_grib_new_from_file(fin)) is not None:
+            if ec.codes_get(h, "shortName") == "cbh":
+                ec.codes_set(h, "bitmapPresent", 1)
+                ec.codes_set(h, "missingValue", 9999)
+                vals = ec.codes_get_values(h)
+                vals[:4] = 9999
+                ec.codes_set_values(h, vals)
+            ec.codes_write(h, fout)
+            ec.codes_release(h)
+    rep = verify_grib(path, exp)
+    assert rep.ok and rep.missing_values["cbh"] == 4
+    assert any("cbh" in w for w in rep.warnings)
+    dec = decode_grib(path, exp)
+    assert dec.missing == {"cbh": 4}
+    assert int(np.isnan(dec.data["cbh"]).sum()) == 4
+    assert np.isfinite(dec.data["tcc"]).all()
+    prep = prepare(dec)
+    assert prep.qc["grib_missing_values_cbh"] == 4
+    res = write_store_atomic(tmp_path / "s.zarr", prep, {})
+    arrays, attrs = read_store(res.path)
+    assert int(np.isnan(arrays["cbh"]).sum()) == 4
+    assert attrs["qc"]["grib_missing_values_cbh"]["count"] == 4
