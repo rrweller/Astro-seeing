@@ -2,14 +2,14 @@
 
 - **Status:** draft for Riley's approval (AGENTS.md phase 1 step 1: "share it with Riley, then start").
 - **Written:** 2026-09-27, from a cloud session with no access to the CT, `/data`, `/staging` or the CDS.
-- **Decision log:** `docs/decisions.md` (D1–D16). **Commands for the CT:** `docs/ct_runbook.md`.
+- **Decision log:** `docs/decisions.md` (D1–D17). **Commands for the CT:** `docs/ct_runbook.md`.
 - **Tags:** *[estimate]* = my arithmetic, to be replaced by measurements; **[ASK]** = needs Riley.
 
 ---
 
 ## 1. Summary
 
-- **Done here, tested:** the bootstrap (pixi environment and lock, repo skeleton, `.gitignore`), the physics module, darkness, and the download → verify → ingest → cleanup pipeline. 96 tests pass, `ruff` is clean.
+- **Done here, tested:** the bootstrap (pixi environment and lock, repo skeleton, `.gitignore`), the physics module, darkness, and the download → verify → ingest → cleanup pipeline. 97 tests pass, `ruff` is clean.
 - **Every known-answer value in RESEARCH §4.9 is reproduced** to the precision printed there.
 - **Darkness matches Skyfield:** crossings within 3.7 s, dark minutes within 0.96 min (9 sites × 6 dates).
 - **Checked against the PDFs:** several RESEARCH.md details changed (§3 below). The Bi et al. PDF could not be fetched here, because MDPI refuses this container.
@@ -33,7 +33,7 @@
 | Darkness | `solar/sun.py`, `solar/darkness.py` | Sun table from Skyfield; dark minutes per night; −12° night mask for ingest | vs Skyfield `dark_twilight_day` |
 | Data | `manifest.py` | SQLite state machine and event log; refuses NFS; NFS-safe export | idempotency, compare-and-set |
 | | `download/` | CDS request builder (keys checked on the live forms); resumable async downloader | fake CDS: resume, reject, expire, truncate |
-| | `verify/grib.py` | Field count, every var × level × time exactly once, grid, missing/NaN counts | drop, duplicate, shifted grid, bitmap |
+| | `verify/grib.py` | Field count, every var × level × time exactly once, grid, missing/NaN counts (missing allowed only for `cbh`, D17) | drop, duplicate, shifted grid, bitmap, cbh gaps |
 | | `ingest/` | GRIB → Zarr v3 (sharded), temp → read-back → fsync → rename → re-verify; land-cell layout with counted night mask | tamper, overwrite, failed write |
 | CLI | `astro` | `plan-box`, `download`, `verify`, `ingest`, `cleanup-raw`, `retry-failed`, `export-manifest`, `cds-smoke-test`, `status` | end to end on fake CDS |
 
@@ -53,7 +53,7 @@ Details in D15 and RESEARCH.md (all edits dated 2026-09-27):
 
 | # | Task | Where | Needs | Output |
 |---|---|---|---|---|
-| 1 | Bootstrap, tests | CT | — | `logs/bootstrap.log` (96 pass) |
+| 1 | Bootstrap, tests | CT | — | `logs/bootstrap.log` (97 pass) |
 | 2 | Papers + Haslebacher code | CT | — | `papers/INDEX.md`, `external/haslebacher.COMMIT` |
 | 3 | Verify Bi et al. against RESEARCH §3.1/§4.4 | agent | step 2 | RESEARCH fix or note |
 | 4 | CDS smoke test | CT | Riley: `~/.cdsapirc`, licences | `reports/cds_smoke_test.json` |

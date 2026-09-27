@@ -38,10 +38,10 @@ What it checks: `pixi install --locked`; creates any missing
 `/staging/{grib,tmp}` and `~/.local/state/astro`; prints each path's
 filesystem type and refuses a state directory on NFS; checks that `~/.cdsapirc`
 exists with mode 600 (without printing it); downloads the DE440s ephemeris
-(checksum-verified); runs `ruff` and the full test suite (96 tests, about 2 min).
+(checksum-verified); runs `ruff` and the full test suite (97 tests, about 2 min).
 
 **Expected:** `/data/astro` shows `nfs4`, `~/.local/state/astro` shows a local
-filesystem, and the last lines say `96 passed`. Send me `logs/bootstrap.log` if
+filesystem, and the last lines say `97 passed`. Send me `logs/bootstrap.log` if
 not.
 
 ## 2. Papers and Haslebacher's code (about 5 minutes)
