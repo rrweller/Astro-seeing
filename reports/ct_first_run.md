@@ -78,22 +78,30 @@ What happened:
 4. **Processing time:** the first half-month chunk (`pl/paranal/2016-04-01_2016-04-15`, 52,200 fields) queued 14 s, then **ran 1,669 s (27.8 min): 31.3 fields/s**. It downloaded 7,985,234 bytes in 1.5 s. The other accepted requests waited in turn. **Concurrency test:** I submitted one single-level request while a pressure-level one was running; it stayed queued for the full 15 minutes of watching. So the CDS runs **one request at a time per user, across datasets** (observed today; I found no documentation of it). Paranal alone is 164 pressure-level chunks plus 82 single-level months. **Update 21:00 UTC:** 10 files in, averaging **33 min per half-month file (27–45 min, 26.4 fields/s)**, plus 12.5 min per single-level month, so **~4.2 more days**. I'm letting it run (it's in every option below) and **have not queued any other site**.
 5. **First code-vs-code check (Haslebacher):** their unmodified `ERA5_seeing_calc` vs our `HASLEBACHER2022_MODEL` on the smoke-test hour (25 Paranal columns, 900 → 50 hPa): median uncalibrated seeing 0.2044″ both ways, **max relative difference 9.39e-7**. That is exactly their rounded rad→arcsec constant (206265 vs 206264.806), so the methods agree to rounding (`reports/haslebacher2022_code_vs_code.json`). The formal check is on monthly means, next.
 
-## 8. Updated volume and time estimates
+## 8. Updated volume and time estimates (revised after the download review, D29)
 
-Measured: **26.4 fields/s for pressure levels (average of 9 files) and 16.9 for single levels (1 file), one request at a time per user, across datasets**; cost = fields whatever the area; 0.60 MB per 5×5 box-day. Field counts use each paper's own levels and variables (Priyatikanto: 37 levels up to 1 hPa, 4 variables; ours: 29 levels, 5 variables with `cc`).
+**How the CDS behaves (measured 2026-09-27):**
+- **One processing slot per user**, shared by ERA5 pressure and single levels. The CDS terms allow one account per person, so extra accounts aren't an option.
+- **~26 fields/s.** Every field is read whole (~2 MB) whatever the area, so a site box costs as much as the globe per field.
+- **Requests are already near the 60,000-field limit**, and time scales with fields, not requests, so bigger requests don't help.
+- **The single-level time-series product runs in its own slot in seconds and gives identical values**, so single levels move there. Only lcc/mcc/hcc, friction velocity, instantaneous heat flux and water vapour still need the standard dataset, and only for the cloud-layer and ground-layer experiments.
+- **No faster source exists for site boxes.** The mirrors (NCAR on AWS, Google) store the whole globe per hour, and Earthmover's copy is surface-only.
+- **So only pressure levels use the slot:**
 
-| Option | What | Fields (pl) | CDS time | GRIB |
-|---|---|---|---|---|
-| **A: as planned** | 5×5 boxes per site, all variables, all hours: Paranal (O&S + ESO), La Silla (ESO), Timau 2002–2021, Bi's 7 sites, TMT 4 boxes × 2004–2007 | 72.2 M | **~37 days** (incl. single levels) | 11 GB |
-| **B (recommended)** | **Shared rectangles** for co-located sites, since a bigger area costs the CDS nothing extra: Chile (Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; O&S + ESO + TMT periods) and Tibet/Qinghai (Ali, Daocheng, Muztagh-ata, Lenghu, Da Qaidam; 2017-03..2020-12). `cc` only where cloud work is planned. **Priyatikanto's 20 years sampled 1 day in 4** (every season and year; I'd quantify the sampling error on one full year). SPM and Mauna Kea 13N boxes for the TMT period. | 34.6 M | **~18 days** (incl. single levels) | 54 GB (36 GB is the Tibet rectangle; transient) |
-| **C** | B, plus **night hours only** for the DIMM/MASS calibration targets (ESO, TMT) | ~24 M | ~12 days | ~40 GB |
-| Haslebacher, full | 1979–2020 × 8 sites × 28 levels × 4 variables | ~330 M | months | ~50 GB |
+| Option | What changes | Fields | CDS time |
+|---|---|---|---|
+| **A** | As planned: 5×5 box per site, all variables, all hours | 72.2 M | ~32 days |
+| **B** | One download for nearby sites (Chile ×6, Tibet ×5); cloud fraction only where clouds are studied; Timau's 20 years 1 day in 4 | 34.6 M | ~15 days |
+| **C** | B + night hours only where every comparison is at night (DIMM/MASS/SCIDAR sites) | 23.6 M | ~10 days |
+| **D** | C + 2 years (not 5) for the ESO calibration + only the TMT campaign years (~2 per site) | 17.7 M | ~8 days |
 
-- Rectangles need ingest to either store the rectangle as one validation region or cut it into per-site boxes. D18 currently refuses unmasked stores over 121 points; I'd add explicit validation regions.
-- TMT campaign dates come from the TMT database (login) and will shrink the TMT rows.
-- The cloud-above-height experiment (Mauna Kea, La Palma, Paranal) needs `cc` for periods with observatory cloud records. Paranal is covered; Mauna Kea and La Palma periods are still to be chosen (~2.5 M fields per site-year, no rectangle sharing).
-- **Phase 3 implication:** a global day is 3,888 fields, ~2 min of CDS processing, but ~7 GB to download. So phase 3 is bound by bandwidth, not processing, and we haven't measured bandwidth on a large file yet (next step: one global hour, ~300 MB).
-- **Disk now:** `/data/astro` 6.8 MB (land mask + first stores), `/staging/grib` 7.7 MB (raw GRIB kept until the first reproduction confirms the stores), root 2.6 GB used of 63 GB.
+- **What each gives up.**
+  - B: nothing scientific. It means bigger files, plus sampling Timau's 20 years, which I'd check against one full year.
+  - C: daytime hours at sites compared only at night. Our product is night-only anyway, but it needs an exception to the AGENTS.md rule that validation boxes keep all hours.
+  - D: smaller calibration samples, though still thousands of matched night hours. The 5-year global run gives all years for every site later, so the calibration can be re-checked then.
+- **The global run is not worse.** ~7.1 M fields is ~3.3 days of CDS processing (a global field costs the same as a box field), and ~13 TB to transfer is ~3–7 days at the measured 21–47 MB/s. The mirrors have no queue, so they're an option for it later (a new source, so I'd ask first).
+- **Haslebacher's 42 years:** their scripts start ~27 downloads at once (one per pressure level, one year per request) on the old CDS, replaced in September 2024. With one slot today that is ~5 months.
+- **Disk now:** `/data/astro` 28 MB; `/staging/grib` ~80 MB (raw GRIB kept until the first reproduction confirms the stores).
 
 ## 9. Questions for Riley
 
@@ -101,16 +109,13 @@ Measured: **26.4 fields/s for pressure levels (average of 9 files) and 16.9 for 
 
 **1. How to handle the slow downloads (the most important one)**
 
-- **What's going on.** For every request, the Copernicus server (CDS) has to process one full map per variable, per pressure level and per hour. That's true even though we only want a small 5×5-point patch: the time depends on the number of maps, not the size of the area. A half-month at one site is 52,200 maps (29 levels × 5 variables × 24 hours × 15 days). The server gets through about 26 a second, one of our requests at a time. So each half-month takes ~33 minutes of server time, then an 8 MB file arrives in about 2 seconds. That's why there's almost no network traffic.
-- **What it means.** The sites and periods in the phase 1 plan add up to **about 37 days** of back-to-back server time. The plan assumed 1–3.5 days.
-- **Options:**
-  - **A, keep the plan as written: ~37 days.**
-  - **B, download smarter: ~18 days (my recommendation).** Three changes, none of which touch the physics:
-    1. One download covers several nearby sites, since a bigger area costs the server nothing extra. Chile covers Paranal, La Silla, Tololo and the three Chilean TMT sites; Tibet covers five of Bi et al.'s sites.
-    2. The cloud variable is left out where we aren't studying clouds (20% fewer maps).
-    3. For the Timau paper's 20 years, every 4th day instead of every day. That still covers every season and year; I'd check on one full year that the answer doesn't move.
-  - **C, B plus night hours only: ~12 days.** Only for sites where we compare with telescope measurements, which are all taken at night. This needs you to relax the AGENTS.md rule that validation boxes keep all 24 hours.
-- **What I need:** reply **A, B or C**. With B or C, I'll also switch Paranal's 2021–2025 part to the shared Chile download before it starts (in about a day), which saves another ~3 days. Paranal's 2016–2018 part continues either way; it's needed in every option.
+- **What's going on.** The CDS works on one of our requests at a time (one slot per user; the terms allow one account per person). It handles ~26 maps a second and reads every map in full, so a small site costs as much as the globe per map. Bigger requests don't help, since time scales with maps. Single levels now come from a separate time-series service in seconds, with identical values, so only pressure levels use the slot.
+- **Options (the same sites and papers in each; details in §8):**
+  - **A:** as planned, ~32 days;
+  - **B:** shared downloads for nearby sites, cloud fraction only where needed, Timau 1 day in 4: ~15 days;
+  - **C:** B + night hours only where all comparisons are at night: ~10 days (needs an exception to "validation boxes keep all hours");
+  - **D:** C + 2 years of ESO calibration and only the TMT campaign years: ~8 days.
+- **What I need:** reply **A, B, C or D**. With B, C or D, the Paranal 2021–2025 part (about 18 h from starting) gets replaced by the shared Chile download.
 
 **2. What counts as "reproducing" Haslebacher et al.**
 
