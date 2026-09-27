@@ -95,6 +95,9 @@ class Snapshot:
     refused: int = 0  # verified but not stored (D18): needs a person
     #: Keys of requests submitted to the CDS more than ``stuck_hours`` ago.
     stuck: list[str] = field(default_factory=list)
+    #: One entry per problem event, "state key @ time": a request failed for good or
+    #: refused at that time. A requeued request that fails again is a new event.
+    problem_events: list[str] = field(default_factory=list)
 
     @property
     def done(self) -> int:
@@ -136,6 +139,7 @@ def snapshot(
     starts, ends = [], []
     failed_examples = []
     retryable = permanent = 0
+    problem_events: list[str] = []
     for r in rows:
         retry = r["state"] == "failed" and r["attempts"] < max_attempts
         if r["state"] in ("planned", "submitted") or retry:
@@ -152,6 +156,9 @@ def snapshot(
             else:
                 permanent += 1
                 failed_examples.append(f"{r['key']}: {(r['last_error'] or '')[:100]}")
+                problem_events.append(f"failed {r['key']} @ {r['updated_at']}")
+        elif r["state"] == "refused":
+            problem_events.append(f"refused {r['key']} @ {r['updated_at']}")
     return Snapshot(
         counts=counts,
         pending=sum(counts.get(s, 0) for s in PENDING) + retryable,
@@ -163,14 +170,14 @@ def snapshot(
         span_24h_s=(max(ends) - min(starts)).total_seconds() if starts and ends else 0.0,
         refused=counts.get("refused", 0),
         stuck=stuck,
+        problem_events=problem_events,
     )
 
 
 @dataclass
 class WatchState:
     last_daily: str = ""
-    failed_reported: int = 0
-    refused_reported: int = 0
+    reported_events: list[str] = field(default_factory=list)  # problem events already sent
     stall_alerted_at: str = ""
     stuck_alerted_at: str = ""
     loop_alerted_at: str = ""
@@ -179,9 +186,11 @@ class WatchState:
 
     @classmethod
     def load(cls, path: Path) -> WatchState:
+        """The saved state; fields from older versions are ignored, not fatal."""
         try:
-            return cls(**json.loads(path.read_text()))
-        except (OSError, ValueError, TypeError):
+            d = json.loads(path.read_text())
+            return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+        except (OSError, ValueError, TypeError, AttributeError):
             return cls()
 
     def save(self, path: Path) -> None:
@@ -233,19 +242,21 @@ def check_once(
                      "high")  # fmt: skip
                 state.nas_alerted_at = now.isoformat()
 
-    if s.failed > state.failed_reported:
-        new = s.failed - state.failed_reported
+    # Problems are reported per event (request + time), not by comparing counts: a
+    # count sampled every few minutes misses a requeue followed by a new refusal.
+    new_events = [e for e in s.problem_events if e not in set(state.reported_events)]
+    new_failed = [e for e in new_events if e.startswith("failed ")]
+    new_refused = [e for e in new_events if e.startswith("refused ")]
+    if new_failed:
         example = s.failed_examples[-1] if s.failed_examples else ""
-        msg = (f"Problem: {new} download request(s) failed {max_attempts} times and need a "
-               f"look ({s.failed} in total). {example}")  # fmt: skip
+        msg = (f"Problem: {len(new_failed)} download request(s) failed {max_attempts} times "
+               f"and need a look ({s.failed} in total). {example}")  # fmt: skip
         emit(msg, "astro-seeing: failures", "high")
-    state.failed_reported = s.failed
-
-    if s.refused > state.refused_reported:
-        emit(f"Problem: {s.refused - state.refused_reported} downloaded request(s) were "
-             "refused by ingest (not a declared validation area, D18) and need a look.",
-             "astro-seeing: refused", "high")  # fmt: skip
-    state.refused_reported = s.refused
+    if new_refused:
+        emit(f"Problem: {len(new_refused)} downloaded request(s) were refused by ingest (not a "
+             "declared validation area, D18) and need a look.", "astro-seeing: refused",
+             "high")  # fmt: skip
+    state.reported_events = list(s.problem_events)  # keeps the state as small as the problems
 
     if s.stuck:
         if _hours_since(state.stuck_alerted_at, now) >= realert_hours:
@@ -275,9 +286,15 @@ def check_once(
             state.loop_alerted_at = ""
     elif not state.finished_reported and s.done:
         held = s.counts.get("held", 0)
-        msg = (f"Finished: all queued downloads are stored and verified ({s.done} requests; "
-               f"{s.failed} failed; {s.refused} refused; {held} on hold).")  # fmt: skip
-        emit(msg, "astro-seeing: downloads finished", "high")
+        if s.failed or s.refused:
+            msg = (f"Queue finished WITH PROBLEMS: {s.done} requests stored and verified, "
+                   f"but {s.failed} failed for good and {s.refused} were refused; they need a "
+                   f"look ({held} on hold).")  # fmt: skip
+            emit(msg, "astro-seeing: finished with problems", "high")
+        else:
+            msg = (f"Finished: all queued downloads are stored and verified ({s.done} requests; "
+                   f"{held} on hold).")  # fmt: skip
+            emit(msg, "astro-seeing: downloads finished", "high")
         state.finished_reported = True
 
     today = now.date().isoformat()

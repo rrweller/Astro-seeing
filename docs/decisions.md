@@ -221,3 +221,8 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - `notify.env` must be mode 600, like `~/.cdsapirc`;
   - `build-landmask --dry-run` writes no summary unless `--summary-out` is given;
   - the finish estimate counts failed requests that will be retried.
+- **Third round (3 findings, all addressed):**
+  - ingest refuses undeclared large requests *before* decoding them (`mask_fn.preflight`), so a global day can't be loaded into memory just to be refused;
+  - problem alerts are per event (request + time), so a requeue and a new refusal inside one check interval still alert;
+  - a queue that drains with failed or refused requests is reported as "finished with problems";
+  - the watcher's saved state ignores fields from older versions.

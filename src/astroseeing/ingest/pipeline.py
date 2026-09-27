@@ -109,6 +109,15 @@ def ingest_pending(
             if npts > max_unmasked_points:
                 refuse(req, f"{npts} grid points > {max_unmasked_points} and no land/night mask")
                 continue
+        # A mask function may refuse from the request alone (``mask_fn.preflight``), so
+        # an unmasked large request (e.g. a global day) is never decoded into memory.
+        preflight = getattr(mask_fn, "preflight", None)
+        if preflight is not None:
+            try:
+                preflight(req)
+            except RefusedUnmasked as e:
+                refuse(req, str(e))
+                continue
         f = m.current_file(req.id)
         try:
             dec = decode_grib(Path(f["path"]), req.expected)

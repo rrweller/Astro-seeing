@@ -109,6 +109,18 @@ def area_for_region(region: str) -> ValidationArea | None:
     return load_areas().get(region.split("@", 1)[0])
 
 
+def preflight(req) -> None:
+    """Refuse from the request alone, before its GRIB is decoded (see ``mask_fn``)."""
+    if area_for_region(req.region) is not None:
+        return
+    g = req.expected["grid"]
+    npts = int(g["nlat"]) * int(g["nlon"])
+    if npts > MAX_UNMASKED_POINTS:
+        raise RefusedUnmasked(
+            f"{npts} grid points and not a declared validation area; not stored unmasked"
+        )
+
+
 def mask_fn(req, dec) -> tuple[np.ndarray | None, None]:
     """Ingest/cleanup hook: site-box mask for areas, grid layout for small boxes."""
     area = area_for_region(req.region)
@@ -129,3 +141,7 @@ def mask_fn(req, dec) -> tuple[np.ndarray | None, None]:
     raise RefusedUnmasked(
         f"{npts} grid points and not a declared validation area; not stored unmasked"
     )
+
+
+#: Checked by ``ingest_pending`` before decoding (Copilot review of PR #2).
+mask_fn.preflight = preflight  # type: ignore[attr-defined]

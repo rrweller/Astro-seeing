@@ -134,6 +134,26 @@ def test_refused_requests_are_reported_once(m):
     assert run(m, st) == []
 
 
+def test_a_requeued_request_refused_again_is_a_new_alert(m):
+    """Copilot review of PR #2: requeue + refusal inside one check interval (same count)."""
+    set_state(m, 1, "refused")
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert len(run(m, st)) == 1
+    later = (NOW - dt.timedelta(minutes=1)).isoformat(timespec="seconds")
+    set_state(m, 1, "verified", updated=later)
+    set_state(m, 1, "refused", updated=later)
+    assert [t for t, _, _ in run(m, st)] == ["astro-seeing: refused"]
+
+
+def test_finished_with_problems_says_so(m):
+    set_state(m, 1, "ingested")
+    set_state(m, 2, "ingested")
+    set_state(m, 3, "refused")
+    st = WatchState(last_daily=NOW.date().isoformat())
+    titles = [t for t, _, _ in run(m, st)]
+    assert titles == ["astro-seeing: refused", "astro-seeing: finished with problems"]
+
+
 def test_daily_progress_once_per_day_with_eta(m):
     set_state(m, 1, "ingested", cds_started_at=(NOW - dt.timedelta(hours=3)).isoformat(),
               cds_finished_at=(NOW - dt.timedelta(hours=2)).isoformat())  # fmt: skip
@@ -159,10 +179,13 @@ def test_eta_uses_the_span_the_work_took_not_a_full_day(m):
 
 
 def test_state_round_trip(tmp_path):
-    st = WatchState(last_daily="2026-10-01", failed_reported=2, finished_reported=True)
+    st = WatchState(last_daily="2026-10-01", reported_events=["failed k @ t"],
+                    finished_reported=True)  # fmt: skip
     p = tmp_path / "s.json"
     st.save(p)
     assert WatchState.load(p) == st
+    p.write_text('{"last_daily": "2026-10-01", "failed_reported": 3}')  # an older version
+    assert WatchState.load(p) == WatchState(last_daily="2026-10-01")
     p.write_text("{not json")
     assert WatchState.load(p) == WatchState()
     assert json.loads(json.dumps(st.__dict__))

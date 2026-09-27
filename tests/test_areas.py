@@ -153,3 +153,30 @@ def test_a_partial_or_empty_area_mask_fails_loudly(monkeypatch):
                               lon=np.arange(a.west, a.east + 1e-9, 0.25))  # fmt: skip
     with pytest.raises(ValueError, match="expected 50"):
         ar.mask_fn(SimpleNamespace(region="two", key="k"), shifted)
+
+
+def test_large_undeclared_request_is_refused_before_decoding(tmp_path, monkeypatch):
+    """Copilot review of PR #2: a global day must not be decoded just to be refused."""
+    from astroseeing.ingest import pipeline
+
+    monkeypatch.setattr(ar, "load_areas", lambda: {})
+    monkeypatch.setattr(ar, "MAX_UNMASKED_POINTS", 25)
+    m = Manifest(tmp_path / "state" / "m.sqlite")
+    spec = plan_requests("pl", "somewhere", dt.date(2023, 6, 20), dt.date(2023, 6, 20), TWO.area,
+                         variables=("temperature",), levels=(500,), hours=(0,))[0]  # fmt: skip
+    fake = FakeCdsBackend({FakeCdsBackend.req_key(spec.cds_request()): spec.expected()},
+                          polls_to_finish=1)  # fmt: skip
+    rid = m.add_request(spec)
+    dl = Downloader(m, fake, tmp_path / "staging" / "grib")
+    for _ in range(5):
+        dl.step()
+    verify_pending(m)
+
+    def no_decoding(*a, **k):
+        raise AssertionError("decoded a request that preflight should have refused")
+
+    monkeypatch.setattr(pipeline, "decode_grib", no_decoding)
+    (tmp_path / "data").mkdir()
+    out = ingest_pending(m, tmp_path / "data", {}, mask_fn=ar.mask_fn)
+    assert out["refused_unmasked"] == 1 and m.get(rid).state == "refused"
+    m.close()
