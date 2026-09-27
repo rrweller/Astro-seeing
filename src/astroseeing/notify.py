@@ -82,25 +82,32 @@ class Snapshot:
     fields_left: int
     fields_done_24h: int
     failed_examples: list[str] = field(default_factory=list)
+    #: Wall-clock seconds from the first start to the last finish of the requests
+    #: finished in the last 24 h (the span that work actually took).
+    span_24h_s: float = 0.0
 
     @property
     def done(self) -> int:
         return sum(self.counts.get(s, 0) for s in ("ingested", "raw_deleted"))
 
     def eta(self, now: dt.datetime) -> dt.datetime | None:
-        if not self.fields_left or not self.fields_done_24h:
+        """Finish estimate from the recent throughput (fields per wall-clock second)."""
+        if not self.fields_left or not self.fields_done_24h or self.span_24h_s <= 0:
             return None
-        return now + dt.timedelta(days=self.fields_left / self.fields_done_24h)
+        rate = self.fields_done_24h / self.span_24h_s
+        return now + dt.timedelta(seconds=self.fields_left / rate)
 
 
 def snapshot(m: Manifest, now: dt.datetime) -> Snapshot:
     counts = m.counts()
     rows = m.conn.execute(
-        "SELECT key, state, request_json, updated_at, cds_finished_at, last_error FROM requests"
+        "SELECT key, state, request_json, updated_at, cds_started_at, cds_finished_at,"
+        " last_error FROM requests"
     ).fetchall()
     last = max((dt.datetime.fromisoformat(r["updated_at"]) for r in rows), default=None)
     left = done24 = 0
     since = now - dt.timedelta(hours=24)
+    starts, ends = [], []
     failed_examples = []
     for r in rows:
         if r["state"] in ("planned", "submitted"):
@@ -108,6 +115,9 @@ def snapshot(m: Manifest, now: dt.datetime) -> Snapshot:
         fin = r["cds_finished_at"]
         if fin and dt.datetime.fromisoformat(fin).astimezone(dt.UTC) >= since:
             done24 += request_fields(json.loads(r["request_json"]))
+            ends.append(dt.datetime.fromisoformat(fin).astimezone(dt.UTC))
+            if r["cds_started_at"]:
+                starts.append(dt.datetime.fromisoformat(r["cds_started_at"]).astimezone(dt.UTC))
         if r["state"] == "failed":
             failed_examples.append(f"{r['key']}: {(r['last_error'] or '')[:100]}")
     return Snapshot(
@@ -118,6 +128,7 @@ def snapshot(m: Manifest, now: dt.datetime) -> Snapshot:
         fields_left=left,
         fields_done_24h=done24,
         failed_examples=failed_examples,
+        span_24h_s=(max(ends) - min(starts)).total_seconds() if starts and ends else 0.0,
     )
 
 

@@ -83,8 +83,8 @@ def test_stall_and_stopped_loop(m):
 
 
 def test_daily_progress_once_per_day_with_eta(m):
-    fin = (NOW - dt.timedelta(hours=2)).isoformat()
-    set_state(m, 1, "ingested", cds_finished_at=fin)
+    set_state(m, 1, "ingested", cds_started_at=(NOW - dt.timedelta(hours=3)).isoformat(),
+              cds_finished_at=(NOW - dt.timedelta(hours=2)).isoformat())  # fmt: skip
     st = WatchState()
     sent = run(m, st)
     assert [t for t, _, _ in sent] == ["astro-seeing: daily progress"]
@@ -92,6 +92,18 @@ def test_daily_progress_once_per_day_with_eta(m):
     assert run(m, st) == []
     s = snapshot(m, NOW)
     assert s.fields_done_24h == 12_648 and s.fields_left == 11_424 + 12_648  # Feb + Mar left
+
+
+def test_eta_uses_the_span_the_work_took_not_a_full_day(m):
+    """Regression (2026-09-27): 7 h of work divided by 24 h made the first ETA ~3x too late."""
+    t1 = NOW - dt.timedelta(hours=7)
+    set_state(m, 1, "ingested", cds_started_at=t1.isoformat(),
+              cds_finished_at=(t1 + dt.timedelta(hours=1)).isoformat())  # fmt: skip
+    s = snapshot(m, NOW)
+    assert s.span_24h_s == 3600.0
+    eta = s.eta(NOW)
+    # January (12,648 fields) took 1 h, so the 24,072 fields left take ~1.9 h.
+    assert abs((eta - NOW).total_seconds() - 3600 * 24_072 / 12_648) < 1
 
 
 def test_state_round_trip(tmp_path):
