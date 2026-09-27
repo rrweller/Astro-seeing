@@ -166,3 +166,13 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - Calibration scales seeing (not J) by mean in-situ / mean ERA5 seeing over all loaded hours. Comparison periods differ from Table 2 (e.g. Paranal 2000–2016 in code vs 2000–2019 in the table). La Palma's lower level is 975 hPa in their site table but 1000 hPa in the paper's Table 4.
 - **Consequence:** the approved tolerance "reproduces their published numbers (skill scores ±0.01)" needs their in-situ series. Without it, what can be reproduced is (1) their code vs ours on the same ERA5 input (≤ 0.1%, D19), (2) Table 4's lower levels from ERA5 surface pressure, and (3) the ERA5 trends of Tables A.13–A.14 up to the unknown calibration factor. A full 1979–2020 download for 8 sites is roughly 35–50 GB and, at the measured CDS speed, days to weeks of queue time (`reports/ct_first_run.md`).
 - **Who:** open, for Riley.
+
+### D28. Riley's answers to the first CT report (2026-09-27, evening)
+- **Haslebacher et al. (D27):** approved: reproduce (a) their code vs ours on the same ERA5 (≤ 0.1%), (b) Table 4's lower levels from ERA5 surface pressure, and (c) a written account of what can't be reproduced and why. This replaces "published skill scores ±0.01" in `reports/phase1_plan.md` §5.
+- **Land mask (D22):** Riley doesn't mind which buffer measure. The requirement is "only land plus a small buffer of sea, to include shoreline weather phenomena and smaller islands". D22 stays; small islands to be checked explicitly.
+- **Request splitting (D23):** approved ("splitting as you did is fine").
+- **CT user (D26):** keep root.
+- **ESO ambient data:** approved as a source (CC BY 4.0, ESO acknowledgement).
+- **Download schedule:** not decided. Riley asked for a review of the CDS speed first: parallel requests, larger requests, the effect on the global run, and how Haslebacher et al. got 42 years.
+- **Later:** Bi et al. PDF (Riley will upload it), TMT login, CDS key rotation, PR to `main`.
+- **Who:** Riley.

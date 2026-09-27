@@ -76,7 +76,7 @@ Proposed before any reproduction runs, so they can't be tuned to the results:
 |---|---|
 | Known-answer tests (§4.9) | Value rounds to the printed digits. **Met.** |
 | Darkness vs Skyfield | Within 1 minute. **Met** (3.7 s crossings, 0.96 min counts). |
-| Haslebacher: their code on our ERA5 | Reproduces their published numbers to the precision printed (e.g. skill scores ±0.01). Any gap is traced to an input difference (ERA5 version, periods). |
+| Haslebacher: their code on our ERA5 | ~~Reproduces their published numbers (skill scores ±0.01)~~ Not possible: their in-situ data are unpublished and 1979–2020 is ~5 months of CDS time (D27). **Replaced (Riley, D28):** their code vs ours (row below), their Table 4 lower levels from ERA5 surface pressure, and a written account of what can't be reproduced. |
 | Haslebacher: our code vs theirs, same inputs | Monthly mean seeing within 0.1% (numerical noise only). Settings: 0.976, 500 nm, k per site, Table 4 lower level, 28 levels without 70 hPa. |
 | Bi et al. | Each site's median and quartiles within ±0.05″ of their ERA5 column (§6.1), with pressure and/or model levels. If fewer than 5 of 7 sites match, every difference is explained. |
 | Priyatikanto et al. | Timau ERA5 median 0.79″ ± 0.03″, with at least one printed-equation variant; seasonal pattern matches qualitatively (best in March and December). The Eltari ratio (0.76) needs their radiosondes; reproduce it only if BMKG data turn out to be obtainable. |
