@@ -25,7 +25,7 @@ def m(tmp_path):
     for s in plan_requests("sl", "x", dt.date(2023, 1, 1), dt.date(2023, 3, 31), AREA,
                            granularity="month"):  # fmt: skip
         man.add_request(s)
-    man.conn.execute("UPDATE requests SET updated_at=?", (RECENT,))
+    man.conn.execute("UPDATE requests SET updated_at=?, created_at=?", (RECENT, RECENT))
     man.conn.commit()
     yield man
     man.close()
@@ -86,12 +86,23 @@ def test_not_finished_while_a_failed_request_will_be_retried(m):
 def test_stall_and_stopped_loop(m):
     old = (NOW - dt.timedelta(hours=5)).isoformat(timespec="seconds")
     for rid in (1, 2, 3):
-        m.conn.execute("UPDATE requests SET updated_at=? WHERE id=?", (old, rid))
+        m.conn.execute("UPDATE requests SET updated_at=?, created_at=? WHERE id=?", (old, old, rid))
     m.conn.commit()
     st = WatchState(last_daily=NOW.date().isoformat())
     titles = [t for t, _, _ in run(m, st, loop_running=lambda: False)]
     assert titles == ["astro-seeing: stalled", "astro-seeing: loop stopped"]
     assert run(m, st, loop_running=lambda: False) == []  # re-alerts only after 12 h
+
+
+def test_retries_without_progress_still_count_as_a_stall(m):
+    """A failing request retried every few minutes touches updated_at but isn't progress."""
+    old = (NOW - dt.timedelta(hours=5)).isoformat(timespec="seconds")
+    m.conn.execute("UPDATE requests SET created_at=?", (old,))
+    m.conn.commit()
+    set_state(m, 1, "failed", last_error="HTTP 503")  # updated just now (RECENT)
+    set_state(m, 1, "planned")  # retried: planned again, also RECENT
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert [t for t, _, _ in run(m, st)] == ["astro-seeing: stalled"]
 
 
 def test_daily_progress_once_per_day_with_eta(m):

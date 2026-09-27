@@ -38,6 +38,8 @@ from astroseeing.paths import Paths, StorageUnresponsive, probe_responsive
 log = logging.getLogger(__name__)
 
 PENDING = ("planned", "submitted", "downloaded", "verified")
+#: States a request reaches only by making real progress (a finished download or later).
+PROGRESS = ("downloaded", "verified", "ingested", "raw_deleted")
 DEFAULT_ENV = Path.home() / ".config" / "astro" / "notify.env"
 
 
@@ -79,7 +81,7 @@ class Snapshot:
     counts: dict[str, int]
     pending: int  # in flight, plus failed requests that will be retried
     failed: int  # failed for good: max_attempts used up
-    last_change: dt.datetime | None
+    last_change: dt.datetime | None  # last real progress (see snapshot)
     fields_left: int
     fields_done_24h: int
     failed_examples: list[str] = field(default_factory=list)
@@ -102,10 +104,15 @@ class Snapshot:
 def snapshot(m: Manifest, now: dt.datetime, max_attempts: int = 5) -> Snapshot:
     counts = m.counts()
     rows = m.conn.execute(
-        "SELECT key, state, attempts, request_json, updated_at, cds_started_at,"
+        "SELECT key, state, attempts, request_json, created_at, updated_at, cds_started_at,"
         " cds_finished_at, last_error FROM requests"
     ).fetchall()
-    last = max((dt.datetime.fromisoformat(r["updated_at"]) for r in rows), default=None)
+    # Progress = a request finishing a download (or later), or new work being planned.
+    # Retries of failing requests also touch updated_at, so they must not count: during
+    # a CDS outage the loop keeps retrying without progressing.
+    stamps = [r["updated_at"] for r in rows if r["state"] in PROGRESS]
+    stamps += [r["created_at"] for r in rows]
+    last = max((dt.datetime.fromisoformat(t) for t in stamps), default=None)
     left = done24 = 0
     since = now - dt.timedelta(hours=24)
     starts, ends = [], []
