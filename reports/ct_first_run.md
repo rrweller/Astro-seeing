@@ -6,7 +6,7 @@ Claude Code on the CT, continuing from the cloud bootstrap (`docs/handoff_ct.md`
 
 - **Done:** bootstrap (111 → 135 tests pass, ruff clean); papers (18 of 19); Haslebacher et al.'s code cloned and read; CDS smoke test passed; land mask built and stored on the NAS (phase 1 task 7); first validation-box downloads (Paranal) running.
 - **Fixed on real data:** a downloader bug that submitted every planned request at once, and rejected CDS jobs being polled forever (both with regression tests). Also split requests to the CDS cost limit (a month of pressure levels is over it).
-- **The big finding:** the CDS processes about **31 fields per second** for us, **one request at a time per user**, and charges per field whatever the area. Phase 1 as planned needs about **72 million pressure-level fields: ~27 days of CDS time (~30 with single levels)**, against 1–3.5 days in the plan. Paranal is continuing; **I have not queued any other site** and need your decision (§8, question 1).
+- **The big finding:** the CDS processes about **26 fields per second** for us (average of the first 9 files, 27–45 min each), **one request at a time per user**, and charges per field whatever the area. Phase 1 as planned needs about **72 million pressure-level fields: ~37 days of CDS time including single levels**, against 1–3.5 days in the plan. Paranal is continuing; **I have not queued any other site** and need your decision (§8, question 1).
 - **Also for you:** the Bi et al. PDF (MDPI blocks non-browser downloads), the scope of the Haslebacher reproduction (their in-situ data aren't published), and a few confirmations (§9).
 
 ## 1. Machine
@@ -75,18 +75,18 @@ What happened:
 1. **Downloader bug:** with 4 jobs in flight, the next step asked the manifest for `limit=0` planned requests, and 0 meant "no limit". **It submitted 29 at once.** I stopped it, fixed it (`fa1c95a`) and added a regression test that fails on the old code.
 2. **The CDS rejected 24 of the 29** with "Number queued requests for this dataset is temporarily limited", and **ran only one at a time** of the 5 it accepted.
 3. **Second bug:** a rejected job raises `requests.HTTPError`, not `ProcessingFailedError`, so the downloader would have polled the 24 dead jobs forever. Now the message is recorded; queue-limit rejections go back to `planned` and other rejections fail the request (`716d16d`, tests added).
-4. **Processing time:** the first half-month chunk (`pl/paranal/2016-04-01_2016-04-15`, 52,200 fields) queued 14 s, then **ran 1,669 s (27.8 min): 31.3 fields/s**. It downloaded 7,985,234 bytes in 1.5 s. The other accepted requests waited in turn. **Concurrency test:** I submitted one single-level request while a pressure-level one was running; it stayed queued for the full 15 minutes of watching. So the CDS runs **one request at a time per user, across datasets** (observed today; I found no documentation of it). Paranal alone is 164 pressure-level chunks × ~28 min plus 82 single-level months × ~7 min ≈ **3.6 days**. I'm letting it run (it's in every option below) and **have not queued any other site**.
+4. **Processing time:** the first half-month chunk (`pl/paranal/2016-04-01_2016-04-15`, 52,200 fields) queued 14 s, then **ran 1,669 s (27.8 min): 31.3 fields/s**. It downloaded 7,985,234 bytes in 1.5 s. The other accepted requests waited in turn. **Concurrency test:** I submitted one single-level request while a pressure-level one was running; it stayed queued for the full 15 minutes of watching. So the CDS runs **one request at a time per user, across datasets** (observed today; I found no documentation of it). Paranal alone is 164 pressure-level chunks plus 82 single-level months. **Update 21:00 UTC:** 10 files in, averaging **33 min per half-month file (27–45 min, 26.4 fields/s)**, plus 12.5 min per single-level month, so **~4.2 more days**. I'm letting it run (it's in every option below) and **have not queued any other site**.
 5. **First code-vs-code check (Haslebacher):** their unmodified `ERA5_seeing_calc` vs our `HASLEBACHER2022_MODEL` on the smoke-test hour (25 Paranal columns, 900 → 50 hPa): median uncalibrated seeing 0.2044″ both ways, **max relative difference 9.39e-7**. That is exactly their rounded rad→arcsec constant (206265 vs 206264.806), so the methods agree to rounding (`reports/haslebacher2022_code_vs_code.json`). The formal check is on monthly means, next.
 
 ## 8. Updated volume and time estimates
 
-Measured: **31.3 fields/s, one request at a time per user, across datasets**; cost = fields whatever the area; 0.60 MB per 5×5 box-day. Field counts use each paper's own levels and variables (Priyatikanto: 37 levels up to 1 hPa, 4 variables; ours: 29 levels, 5 variables with `cc`).
+Measured: **26.4 fields/s for pressure levels (average of 9 files) and 16.9 for single levels (1 file), one request at a time per user, across datasets**; cost = fields whatever the area; 0.60 MB per 5×5 box-day. Field counts use each paper's own levels and variables (Priyatikanto: 37 levels up to 1 hPa, 4 variables; ours: 29 levels, 5 variables with `cc`).
 
 | Option | What | Fields (pl) | CDS time | GRIB |
 |---|---|---|---|---|
-| **A: as planned** | 5×5 boxes per site, all variables, all hours: Paranal (O&S + ESO), La Silla (ESO), Timau 2002–2021, Bi's 7 sites, TMT 4 boxes × 2004–2007 | 72.2 M | **~27 days** (+3 days of single levels, run serially) | 11 GB |
-| **B (recommended)** | **Shared rectangles** for co-located sites, since a bigger area costs the CDS nothing extra: Chile (Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; O&S + ESO + TMT periods) and Tibet/Qinghai (Ali, Daocheng, Muztagh-ata, Lenghu, Da Qaidam; 2017-03..2020-12). `cc` only where cloud work is planned. **Priyatikanto's 20 years sampled 1 day in 4** (every season and year; I'd quantify the sampling error on one full year). SPM and Mauna Kea 13N boxes for the TMT period. | 34.6 M | **~13 days** (+~1.5 days of single levels) | 54 GB (36 GB is the Tibet rectangle; transient) |
-| **C** | B, plus **night hours only** for the DIMM/MASS calibration targets (ESO, TMT) | ~24 M | ~9 days | ~40 GB |
+| **A: as planned** | 5×5 boxes per site, all variables, all hours: Paranal (O&S + ESO), La Silla (ESO), Timau 2002–2021, Bi's 7 sites, TMT 4 boxes × 2004–2007 | 72.2 M | **~37 days** (incl. single levels) | 11 GB |
+| **B (recommended)** | **Shared rectangles** for co-located sites, since a bigger area costs the CDS nothing extra: Chile (Paranal, La Silla, Tololo, Armazones, Tolar, Tolonchar; O&S + ESO + TMT periods) and Tibet/Qinghai (Ali, Daocheng, Muztagh-ata, Lenghu, Da Qaidam; 2017-03..2020-12). `cc` only where cloud work is planned. **Priyatikanto's 20 years sampled 1 day in 4** (every season and year; I'd quantify the sampling error on one full year). SPM and Mauna Kea 13N boxes for the TMT period. | 34.6 M | **~18 days** (incl. single levels) | 54 GB (36 GB is the Tibet rectangle; transient) |
+| **C** | B, plus **night hours only** for the DIMM/MASS calibration targets (ESO, TMT) | ~24 M | ~12 days | ~40 GB |
 | Haslebacher, full | 1979–2020 × 8 sites × 28 levels × 4 variables | ~330 M | months | ~50 GB |
 
 - Rectangles need ingest to either store the rectangle as one validation region or cut it into per-site boxes. D18 currently refuses unmasked stores over 121 points; I'd add explicit validation regions.
@@ -97,15 +97,62 @@ Measured: **31.3 fields/s, one request at a time per user, across datasets**; co
 
 ## 9. Questions for Riley
 
-1. **Phase 1 download schedule (A, B or C, §8).** I recommend **B**: it keeps every paper's variables, levels and hours except Priyatikanto's sampling. Should validation boxes stay all-hours (AGENTS.md), or is C's night-only allowed for calibration targets?
-2. **Haslebacher et al. scope (D27).** Their published numbers need their unpublished in-situ seeing plus ~330 M fields of ERA5. May I replace the approved "published skill scores ±0.01" with: (a) their code vs ours on the same ERA5 (≤ 0.1%; already 9.4e-7 on one hour), (b) Table 4's lower levels from ERA5 surface pressure, and (c) a written account of what can't be reproduced? The alternative is collecting observatory in-situ data (ESO, MKWC, ING, CTIO…): new sources and licences.
-3. **Bi et al. PDF:** please save it from a browser as `papers/bi2023_remotesensing.pdf` (MDPI blocks scripts). Racine 2005 and the García-Lorenzo 2011 corrigendum too, if you can get them.
-4. **Please confirm D22** (land buffer measured to the nearest point of a land cell) **and D23** (split months to the CDS limit instead of D16's day-sized fallback).
-5. **CT user:** everything runs as root, in `/home/astro-seeing`. Keep it that way (tmux for long jobs), or create an unprivileged user and move the repo so the systemd user units can be used (you'd run `useradd` and `loginctl enable-linger`)?
-6. **CDS token:** it went through the chat, so it's in this conversation's transcript. Consider regenerating it on your CDS profile page at some point. To swap it in without the chat, run `! printf 'url: https://cds.climate.copernicus.eu/api\nkey: <new>\n' > ~/.cdsapirc && chmod 600 ~/.cdsapirc` yourself.
-7. **ESO ambient data (task 12):** ESO distributes archive data under **CC BY 4.0** with an ESO provenance acknowledgement (ESO data access policy, 2022-11-07). OK to use for calibration?
-8. **TMT database login** (task 12), when convenient: it also gives the exact campaign dates.
-9. **Checkpoint to `main`:** `dev` has 13 commits since `main`. A PR now, or at the next milestone (first reproductions)?
+### Decisions needed now
+
+**1. How to handle the slow downloads (the most important one)**
+
+- **What's going on.** For every request, the Copernicus server (CDS) has to process one full map per variable, per pressure level and per hour. That's true even though we only want a small 5×5-point patch: the time depends on the number of maps, not the size of the area. A half-month at one site is 52,200 maps (29 levels × 5 variables × 24 hours × 15 days). The server gets through about 26 a second, one of our requests at a time. So each half-month takes ~33 minutes of server time, then an 8 MB file arrives in about 2 seconds. That's why there's almost no network traffic.
+- **What it means.** The sites and periods in the phase 1 plan add up to **about 37 days** of back-to-back server time. The plan assumed 1–3.5 days.
+- **Options:**
+  - **A, keep the plan as written: ~37 days.**
+  - **B, download smarter: ~18 days (my recommendation).** Three changes, none of which touch the physics:
+    1. One download covers several nearby sites, since a bigger area costs the server nothing extra. Chile covers Paranal, La Silla, Tololo and the three Chilean TMT sites; Tibet covers five of Bi et al.'s sites.
+    2. The cloud variable is left out where we aren't studying clouds (20% fewer maps).
+    3. For the Timau paper's 20 years, every 4th day instead of every day. That still covers every season and year; I'd check on one full year that the answer doesn't move.
+  - **C, B plus night hours only: ~12 days.** Only for sites where we compare with telescope measurements, which are all taken at night. This needs you to relax the AGENTS.md rule that validation boxes keep all 24 hours.
+- **What I need:** reply **A, B or C**. With B or C, I'll also switch Paranal's 2021–2025 part to the shared Chile download before it starts (in about a day), which saves another ~3 days. Paranal's 2016–2018 part continues either way; it's needed in every option.
+
+**2. What counts as "reproducing" Haslebacher et al.**
+
+- **What's going on.** You approved "reproduce their published numbers (skill scores to ±0.01)". Having read their code, that isn't possible:
+  - their scores compare ERA5 with observatory seeing measurements they got privately and never published;
+  - their numbers use 42 years (1979–2020) at 8 sites, which at the measured speed is roughly a year of server time.
+- **What I can do instead:**
+  - (a) show that our code gives the same numbers as theirs on the same weather data. Done for one hour: they agree to within 1 part in a million. I'd repeat it on a full month;
+  - (b) check their Table 4 (the lowest pressure level used at each site) from ERA5 surface pressure. That's cheap;
+  - (c) write down exactly what can't be reproduced, and why.
+- **What I need:** reply **"OK, (a)+(b)+(c)"**, or **"no, collect the observatory data"**. The second means new data sources, new licences and weeks of extra work.
+
+**3. The Bi et al. paper**
+
+- **What's going on.** MDPI's website refuses automated downloads, so I don't have the paper. Until I do, I can't check our notes on it, including the Rongcheng coordinates that land in the sea.
+- **What I need:** open https://www.mdpi.com/2072-4292/15/9/2225/pdf in your browser and save it where I can read it, for example the top of the NAS share (`Astro-seeing/data`). Tell me the path and I'll copy it into `papers/`.
+- **Optional:** Racine 2005 (PASP) and the García-Lorenzo 2011 corrigendum (MNRAS), if you have access.
+
+### Please confirm when you get a chance
+
+**4. Two choices I made myself.** Just reply "keep both", or tell me which to change.
+
+- **Coastline buffer.** "Land plus 1 km" is measured from the edge of land pixels, not their centres. The alternative keeps 299 fewer coastal cells out of 366,604 (0.08%).
+- **Splitting downloads.** You approved one request per month, with daily requests as the fallback if the server refused. It does refuse a whole month of pressure-level data (too many maps), so I split each month into two halves instead of 30 days. Same data, 15× fewer requests.
+
+**5. Which user runs the project.**
+
+- **What's going on.** The container only has `root`, and the repo is in `/home/astro-seeing`. The setup notes assumed a normal user running background services, so for now long jobs run in tmux, which works fine.
+- **What I need:** reply **"keep root"** (my recommendation, since nothing is blocked), or create a normal user and I'll move things over.
+
+**6. ESO measurement data** (needed for calibration in a week or two).
+
+- **What's going on.** ESO publishes Paranal and La Silla seeing measurements under CC BY 4.0, which only asks that ESO be credited. It's a new data source, so it needs your OK.
+- **What I need:** **OK** or **not yet**.
+
+### Later / not urgent
+
+**7. TMT site-testing database.** Free, but it needs an account in your name. It's needed for calibration later, and it also gives the exact campaign dates, which would shrink the TMT downloads.
+
+**8. CDS key.** Because it was pasted in the chat, it's saved in the conversation history. If that bothers you, generate a new one on your CDS profile page and write it yourself: `! printf 'url: https://cds.climate.copernicus.eu/api\nkey: NEW-KEY\n' > ~/.cdsapirc && chmod 600 ~/.cdsapirc`.
+
+**9. Merging to main.** All work is on the `dev` branch (13 commits). Open a pull request to `main` now, or wait until the first paper reproductions work? My recommendation: wait.
 
 ## 10. Proposed AGENTS.md changes (for you to make, if you agree)
 
