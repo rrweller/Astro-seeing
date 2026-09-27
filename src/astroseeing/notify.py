@@ -209,8 +209,12 @@ def _hours_since(stamp: str, now: dt.datetime) -> float:
 
 
 def download_loop_running() -> bool:
-    """True if scripts/run_boxes.sh is running (checked with pgrep)."""
-    r = subprocess.run(["pgrep", "-f", "run_boxes.sh"], capture_output=True, text=True)
+    """True if scripts/run_boxes.sh is running (checked with pgrep).
+
+    The pattern is anchored to the end of the command line, so e.g. `tail -f
+    logs/run_boxes.log` or a shell mentioning the script don't count.
+    """
+    r = subprocess.run(["pgrep", "-f", r"run_boxes\.sh$"], capture_output=True, text=True)
     return r.returncode == 0
 
 
