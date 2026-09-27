@@ -199,3 +199,11 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Exception approved:** night-only downloads for those validation areas, although AGENTS.md says validation boxes keep all hours. Riley was told this when choosing C; the AGENTS.md wording change is his to make.
 - **Already running:** the Paranal 5×5 box for O&S's 2016-04..2018-01 continues with all hours. Its 2021–2025 part (180 requests) is `held`, to be replaced by the Chile area.
 - **Who:** Riley.
+
+### D32. Unattended running: system-level services, bounded retries, alerts only when retries run out
+- **Why:** Riley will close the chat session and wants downloads and notifications to keep going by themselves (2026-09-27).
+- **Choice:**
+  - The download loop, the ntfy watcher and the nightly manifest export run as **system-level systemd services** (the CT runs everything as root, D26; user units would need lingering). They start at boot and restart after crashes. Units are in `scripts/systemd/system/`, installed by `scripts/install_services.sh`.
+  - `scripts/run_boxes.sh` retries failed requests up to 5 times, counts retryable failures as unfinished, and backs off 10 min when a round makes no progress, so a CDS or network outage neither stops nor spins the loop.
+  - The watcher alerts only when a request has used up its 5 attempts (earlier failures are retried), and it never says "finished" while a retry is pending. Stalls (3 h without progress), a stopped loop and an unresponsive NAS still alert.
+- **Who:** agent, on Riley's instruction.

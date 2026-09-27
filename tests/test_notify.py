@@ -63,12 +63,24 @@ def test_finished_is_sent_once(m):
     assert run(m, st) == []  # not repeated
 
 
-def test_failures_are_reported_once(m):
+def test_failures_are_reported_once_when_retries_are_used_up(m):
     set_state(m, 1, "failed", last_error="cds rejected: cost limits exceeded")
     st = WatchState(last_daily=NOW.date().isoformat())
+    assert run(m, st) == []  # 1 attempt of 5: run_boxes.sh will retry it
+    assert snapshot(m, NOW).pending == 3  # and it still counts as unfinished
+    m.conn.execute("UPDATE requests SET attempts=5 WHERE id=1")
+    m.conn.commit()
     sent = run(m, st)
     assert len(sent) == 1 and sent[0][1] == "high" and "cost limits" in sent[0][2]
     assert run(m, st) == []
+
+
+def test_not_finished_while_a_failed_request_will_be_retried(m):
+    for rid in (1, 2):
+        set_state(m, rid, "ingested")
+    set_state(m, 3, "failed", last_error="timeout")
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert run(m, st) == []  # the loop's backoff: nothing pending but a retry to come
 
 
 def test_stall_and_stopped_loop(m):

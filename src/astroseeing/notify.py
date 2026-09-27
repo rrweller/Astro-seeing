@@ -9,7 +9,8 @@ lives outside git in ``~/.config/astro/notify.env`` (``NTFY_URL=...``, mode 600)
 
 * **finished**: nothing left to download, verify or ingest (held requests are
   paused on purpose and don't count);
-* **problems**: new failed requests; no progress for ``stall_hours``; the download
+* **problems**: requests that failed ``max_attempts`` times (earlier failures are
+  retried by ``scripts/run_boxes.sh``); no progress for ``stall_hours``; the download
   loop not running while work remains; the NAS not answering;
 * **daily progress**: once a day after ``daily_hour_utc``: done / left / failed,
   and an estimated finish from the fields the CDS processed in the last 24 h.
@@ -76,8 +77,8 @@ def request_fields(request: dict[str, Any]) -> int:
 @dataclass
 class Snapshot:
     counts: dict[str, int]
-    pending: int
-    failed: int
+    pending: int  # in flight, plus failed requests that will be retried
+    failed: int  # failed for good: max_attempts used up
     last_change: dt.datetime | None
     fields_left: int
     fields_done_24h: int
@@ -98,17 +99,18 @@ class Snapshot:
         return now + dt.timedelta(seconds=self.fields_left / rate)
 
 
-def snapshot(m: Manifest, now: dt.datetime) -> Snapshot:
+def snapshot(m: Manifest, now: dt.datetime, max_attempts: int = 5) -> Snapshot:
     counts = m.counts()
     rows = m.conn.execute(
-        "SELECT key, state, request_json, updated_at, cds_started_at, cds_finished_at,"
-        " last_error FROM requests"
+        "SELECT key, state, attempts, request_json, updated_at, cds_started_at,"
+        " cds_finished_at, last_error FROM requests"
     ).fetchall()
     last = max((dt.datetime.fromisoformat(r["updated_at"]) for r in rows), default=None)
     left = done24 = 0
     since = now - dt.timedelta(hours=24)
     starts, ends = [], []
     failed_examples = []
+    retryable = permanent = 0
     for r in rows:
         if r["state"] in ("planned", "submitted"):
             left += request_fields(json.loads(r["request_json"]))
@@ -119,11 +121,15 @@ def snapshot(m: Manifest, now: dt.datetime) -> Snapshot:
             if r["cds_started_at"]:
                 starts.append(dt.datetime.fromisoformat(r["cds_started_at"]).astimezone(dt.UTC))
         if r["state"] == "failed":
-            failed_examples.append(f"{r['key']}: {(r['last_error'] or '')[:100]}")
+            if r["attempts"] < max_attempts:
+                retryable += 1
+            else:
+                permanent += 1
+                failed_examples.append(f"{r['key']}: {(r['last_error'] or '')[:100]}")
     return Snapshot(
         counts=counts,
-        pending=sum(counts.get(s, 0) for s in PENDING),
-        failed=counts.get("failed", 0),
+        pending=sum(counts.get(s, 0) for s in PENDING) + retryable,
+        failed=permanent,
         last_change=last,
         fields_left=left,
         fields_done_24h=done24,
@@ -175,6 +181,7 @@ def check_once(
     stall_hours: float = 3.0,
     realert_hours: float = 12.0,
     daily_hour_utc: int = 6,
+    max_attempts: int = 5,
     loop_running: Callable[[], bool] = download_loop_running,
 ) -> list[str]:
     """One round of checks; returns the messages sent (for tests and logs)."""
@@ -184,7 +191,7 @@ def check_once(
         send(msg, title, priority)
         sent.append(msg)
 
-    s = snapshot(m, now)
+    s = snapshot(m, now, max_attempts)
 
     if data_root is not None:
         try:
@@ -198,8 +205,9 @@ def check_once(
     if s.failed > state.failed_reported:
         new = s.failed - state.failed_reported
         example = s.failed_examples[-1] if s.failed_examples else ""
-        emit(f"Problem: {new} download request(s) failed ({s.failed} in total). {example}",
-             "astro-seeing: failures", "high")  # fmt: skip
+        msg = (f"Problem: {new} download request(s) failed {max_attempts} times and need a "
+               f"look ({s.failed} in total). {example}")  # fmt: skip
+        emit(msg, "astro-seeing: failures", "high")
     state.failed_reported = s.failed
 
     if s.pending:

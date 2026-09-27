@@ -120,7 +120,9 @@ pixi run astro hold pl/paranal/202
 pixi run astro release pl/paranal/202
 pixi run astro cancel pl/paranal/202 --reason "superseded by the Chile area"
 
-# Long-running loops (tmux sessions)
+# Long-running loops: on CT 350 these run as system services (D32):
+#   bash scripts/install_services.sh; systemctl status astro-boxes astro-notify
+# or by hand in tmux:
 tmux new -d -s boxes  'bash scripts/run_boxes.sh 2>&1 | tee -a logs/run_boxes.log'
 tmux new -d -s notify 'pixi run astro notify-watch 2>&1 | tee -a logs/notify_watch.log'
 pixi run astro notify "test message"   # one-off; topic URL in ~/.config/astro/notify.env

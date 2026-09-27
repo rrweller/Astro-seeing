@@ -1,0 +1,21 @@
+# CT 350 (root, repo at /home/astro-seeing): the download -> verify -> ingest loop.
+# Resumable; exits by itself when nothing is left (then stays stopped until the next
+# boot or `systemctl start`). Installed by scripts/install_services.sh.
+[Unit]
+Description=astro-seeing: ERA5 download, verify and ingest loop
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=HOME=/root
+WorkingDirectory=/home/astro-seeing
+ExecStart=/bin/bash /home/astro-seeing/scripts/run_boxes.sh
+StandardOutput=append:/home/astro-seeing/logs/run_boxes.log
+StandardError=inherit
+Restart=on-failure
+RestartSec=10min
+TimeoutStopSec=2min
+
+[Install]
+WantedBy=multi-user.target

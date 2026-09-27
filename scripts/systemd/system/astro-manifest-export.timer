@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly manifest export (astro-seeing)
+
+[Timer]
+OnCalendar=*-*-* 03:17:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
