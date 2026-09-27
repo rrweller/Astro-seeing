@@ -64,6 +64,8 @@ class Downloader:
         max_active: int = 4,
         delete_remote_after_download: bool = True,
     ):
+        if max_active < 1:
+            raise ValueError(f"max_active must be >= 1, got {max_active}")
         self.m = manifest
         self.backend = backend
         self.grib_dir = Path(grib_dir)

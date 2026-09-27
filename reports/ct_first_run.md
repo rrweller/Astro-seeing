@@ -4,7 +4,7 @@ Claude Code on the CT, continuing from the cloud bootstrap (`docs/handoff_ct.md`
 
 ## Summary
 
-- **Done:** bootstrap (111 → 135 tests pass, ruff clean); papers (18 of 19); Haslebacher et al.'s code cloned and read; CDS smoke test passed; land mask built and stored on the NAS (phase 1 task 7); first validation-box downloads (Paranal) running.
+- **Done:** bootstrap (111 → 167 tests pass, ruff clean); papers (18 of 19); Haslebacher et al.'s code cloned and read; CDS smoke test passed; land mask built and stored on the NAS (phase 1 task 7); first validation-box downloads (Paranal) running.
 - **Fixed on real data:** a downloader bug that submitted every planned request at once, and rejected CDS jobs being polled forever (both with regression tests). Also split requests to the CDS cost limit (a month of pressure levels is over it).
 - **The big finding:** the CDS processes about **26 fields per second** for us (average of the first 9 files, 27–45 min each), **one request at a time per user**, and charges per field whatever the area. Phase 1 as planned needs about **72 million pressure-level fields: ~37 days of CDS time including single levels**, against 1–3.5 days in the plan. Paranal is continuing; **I have not queued any other site** and need your decision (§8, question 1).
 - **Also for you:** the Bi et al. PDF (MDPI blocks non-browser downloads), the scope of the Haslebacher reproduction (their in-situ data aren't published), and a few confirmations (§9).
@@ -30,7 +30,7 @@ Claude Code on the CT, continuing from the cloud bootstrap (`docs/handoff_ct.md`
 
 `bash scripts/ct_bootstrap.sh` (log `logs/bootstrap.log`): `pixi install --locked` fine; `/data/astro` shows `nfs4`, the state directory `ext4` ("state dir is local: ok"); DE440s ephemeris fetched and checksum-verified; ruff clean; **111 passed in 58 s**. `~/.cdsapirc` was missing; I created it with the token you sent (mode 600, written with `umask 077`, never printed or committed).
 
-Tests now: **135** (131 fast + 4 slow), all passing.
+Tests at the end of the session: **167** (163 fast + 4 slow), all passing. There were 135 before the download review and Copilot's review of PR #2 (D33).
 
 ## 3. Papers and the Bi et al. check
 

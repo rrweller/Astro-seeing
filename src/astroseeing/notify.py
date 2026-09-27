@@ -284,7 +284,7 @@ def check_once(
                 state.loop_alerted_at = now.isoformat()
         else:
             state.loop_alerted_at = ""
-    elif not state.finished_reported and s.done:
+    elif not state.finished_reported and (s.done or s.failed or s.refused):
         held = s.counts.get("held", 0)
         if s.failed or s.refused:
             msg = (f"Queue finished WITH PROBLEMS: {s.done} requests stored and verified, "

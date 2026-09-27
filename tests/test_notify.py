@@ -211,3 +211,19 @@ def test_fields_left_include_failed_requests_that_will_be_retried(m):
     m.conn.execute("UPDATE requests SET attempts=5 WHERE id=1")
     m.conn.commit()
     assert snapshot(m, NOW).fields_left == before - 12_648  # given up: not left any more
+
+
+def test_a_queue_where_everything_failed_is_reported_finished_with_problems(m):
+    """Copilot review of PR #2: nothing stored at all must still end with a summary."""
+    for rid in (1, 2, 3):
+        set_state(m, rid, "refused")
+    st = WatchState(last_daily=NOW.date().isoformat())
+    titles = [t for t, _, _ in run(m, st)]
+    assert titles == ["astro-seeing: refused", "astro-seeing: finished with problems"]
+    assert run(m, st) == []
+
+
+def test_a_queue_with_only_held_requests_is_not_finished(m):
+    m.hold("sl/x")
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert run(m, st) == []

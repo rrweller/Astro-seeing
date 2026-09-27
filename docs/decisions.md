@@ -226,3 +226,4 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - problem alerts are per event (request + time), so a requeue and a new refusal inside one check interval still alert;
   - a queue that drains with failed or refused requests is reported as "finished with problems";
   - the watcher's saved state ignores fields from older versions.
+- **Fourth round (3 findings, all addressed):** "finished with problems" is also sent when every request failed or was refused; `max_active` must be ≥ 1; the report's test count is updated (167).

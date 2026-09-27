@@ -231,6 +231,11 @@ def test_real_backend_reads_the_message_of_a_rejected_job():
     assert not is_queue_limit_rejection("cost limits exceeded")
 
 
+def test_max_active_must_be_positive(env):
+    with pytest.raises(ValueError, match="max_active"):
+        Downloader(env["m"], env["fake"], env["tmp"] / "staging" / "grib", max_active=0)
+
+
 def test_held_requests_are_not_submitted_until_released(env):
     m, fake = env["m"], env["fake"]
     assert m.hold("pl/") == 2 and m.counts() == {"held": 2, "planned": 1}
