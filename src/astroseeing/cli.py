@@ -119,20 +119,22 @@ def cmd_verify(args, paths: Paths) -> int:
 
 
 def cmd_ingest(args, paths: Paths) -> int:
+    from astroseeing.download.areas import mask_fn
     from astroseeing.ingest.pipeline import ingest_pending
 
-    # No land/night mask is wired in yet (the land-mask source is an open [ASK]), so
-    # only validation boxes are ingested; larger requests are refused and counted.
-    cfg = {"era5": load_config("era5"), "layout": "grid"}
-    out = ingest_pending(_manifest(paths), paths.data_root, cfg)
+    # Validation boxes keep the grid layout; declared validation areas store only their
+    # site boxes (cells layout, D31); anything else large is refused (D18).
+    cfg = {"era5": load_config("era5"), "validation_areas": load_config("validation_areas")}
+    out = ingest_pending(_manifest(paths), paths.data_root, cfg, mask_fn=mask_fn)
     log.info("ingest: %s", out)
     return 1 if out["failed"] or out["refused_unmasked"] else 0
 
 
 def cmd_cleanup_raw(args, paths: Paths) -> int:
+    from astroseeing.download.areas import mask_fn
     from astroseeing.ingest.pipeline import cleanup_raw
 
-    out = cleanup_raw(_manifest(paths), paths.staging)
+    out = cleanup_raw(_manifest(paths), paths.staging, mask_fn=mask_fn)
     log.info("cleanup: %s", out)
     return 1 if out["failed"] or out["skipped"] else 0
 
@@ -141,6 +143,82 @@ def cmd_retry_failed(args, paths: Paths) -> int:
     log.info(
         "moved %d failed requests back to planned", _manifest(paths).retry_failed(args.max_attempts)
     )
+    return 0
+
+
+def cmd_cancel(args, paths: Paths) -> int:
+    n = _manifest(paths).cancel(args.prefix, args.reason)
+    log.info("cancelled %d planned/held requests with keys starting %r", n, args.prefix)
+    return 0
+
+
+#: Measured CDS throughput (fields/s, D24), for the time estimates printed when planning.
+CDS_FIELDS_PER_S = 26.4
+
+
+def _parse_variables(kind: str, spec: str) -> tuple[str, ...] | None:
+    if not spec:
+        return None
+    ds = load_config("era5")["datasets"][kind]
+    allvars = {**ds["variables"], **ds.get("optional_variables", {})}
+    by_short = {v["short_name"]: name for name, v in allvars.items()}
+    out = []
+    for v in spec.split(","):
+        name = by_short.get(v, v)
+        if name not in allvars:
+            raise SystemExit(f"unknown {kind} variable {v!r}")
+        out.append(name)
+    return tuple(out)
+
+
+def cmd_plan_area(args, paths: Paths) -> int:
+    """Plan downloads for a validation area (configs/validation_areas.yaml, D31)."""
+    from astroseeing.download.areas import load_areas
+    from astroseeing.download.requests import plan_requests, static_request
+
+    areas = load_areas()
+    if args.name not in areas:
+        raise SystemExit(f"unknown area {args.name!r}; known: {sorted(areas)}")
+    area = areas[args.name]
+    if args.hours == "all":
+        hours = tuple(range(24))
+    elif args.hours == "night":
+        hours = area.night_hours()
+    else:
+        hours = tuple(int(h) for h in args.hours.split(","))
+    cfg_pl = load_config("era5")["datasets"]["pl"]
+    levels = {"29": None, "37": tuple(cfg_pl["levels_hpa_all"])}.get(args.levels)
+    if levels is None and args.levels not in ("29",):
+        levels = tuple(int(x) for x in args.levels.split(","))
+    region = args.name + (f"@every{args.day_step}d" if args.day_step > 1 else "")
+    m = _manifest(paths)
+    total_fields = n = 0
+    for kind in args.kinds.split(","):
+        if kind == "static":
+            specs = [static_request(region, area.area)]
+        else:
+            specs = plan_requests(
+                kind,
+                region,
+                _date(args.start),
+                _date(args.end),
+                area.area,
+                granularity="month",
+                variables=_parse_variables(kind, args.variables if kind == "pl" else ""),
+                levels=levels if kind == "pl" else None,
+                hours=hours,
+                day_step=args.day_step,
+            )
+        for spec in specs:
+            m.add_request(spec)
+            total_fields += spec.n_fields
+            n += 1
+    log.info(
+        "planned %d requests for area %s (%s; UTC hours %s): %.2f M fields, ~%.1f days of CDS "
+        "processing at %.1f fields/s",
+        n, region, area.area.as_cds(), ",".join(map(str, hours)), total_fields / 1e6,
+        total_fields / CDS_FIELDS_PER_S / 86400, CDS_FIELDS_PER_S,
+    )  # fmt: skip
     return 0
 
 
@@ -390,6 +468,21 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--stall-hours", type=float, default=3.0)
     p.add_argument("--daily-hour-utc", type=int, default=6)
     p.set_defaults(fn=cmd_notify_watch)
+
+    p = sub.add_parser("plan-area", help="plan downloads for a validation area (D31)")
+    p.add_argument("name", help="area in configs/validation_areas.yaml")
+    p.add_argument("--start", required=True)
+    p.add_argument("--end", required=True)
+    p.add_argument("--kinds", default="pl", help="comma list of pl, sl, static")
+    p.add_argument("--hours", default="all", help="all | night | comma list of UTC hours")
+    p.add_argument("--variables", default="", help="pl variables, e.g. z,t,u,v (default all)")
+    p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
+    p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
+    p.set_defaults(fn=cmd_plan_area)
+    p = sub.add_parser("cancel", help="drop planned/held requests whose key starts with PREFIX")
+    p.add_argument("prefix")
+    p.add_argument("--reason", required=True)
+    p.set_defaults(fn=cmd_cancel)
 
     p = sub.add_parser("hold", help="pause planned requests whose key starts with PREFIX")
     p.add_argument("prefix", help="e.g. pl/paranal/2021 (keys are kind/region/period)")

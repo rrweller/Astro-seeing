@@ -206,13 +206,20 @@ def plan_requests(
     levels: tuple[int, ...] | None = None,
     hours: tuple[int, ...] = ALL_HOURS,
     split: bool = True,
+    day_step: int = 1,
 ) -> list[RequestSpec]:
     """Split [start, end] (inclusive) into day- or month-sized requests.
 
     With ``split`` (the default), any request over the CDS cost limit for its dataset
     (:func:`max_fields`) is cut into the fewest near-equal runs of days under it; a
     whole month of 5×5-box pressure levels (107,880 fields) becomes two requests.
+
+    ``day_step`` > 1 keeps only days 1, 1 + step, 1 + 2·step, … of each month (e.g.
+    Priyatikanto et al.'s 20 years sampled every 4th day, D31); mark such plans in the
+    region name (e.g. ``timau@every4d``) so their stores are never mistaken for full ones.
     """
+    if day_step < 1:
+        raise ValueError("day_step must be >= 1")
     cfg = load_config("era5")["datasets"][kind]
     variables = tuple(variables or cfg["variables"].keys())
     if kind == "pl":
@@ -220,6 +227,7 @@ def plan_requests(
     if granularity not in ("day", "month"):
         raise ValueError("granularity must be 'day' or 'month'")
     days = [start + dt.timedelta(days=i) for i in range((end - start).days + 1)]
+    days = [d for d in days if (d.day - 1) % day_step == 0]
     groups: list[list[dt.date]] = []
     for d in days:
         if (

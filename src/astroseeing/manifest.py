@@ -37,6 +37,7 @@ STATES = (
     "ingested",
     "raw_deleted",
     "failed",
+    "cancelled",  # planned or held, then dropped on purpose (astro cancel); never submitted
 )
 
 SCHEMA = """
@@ -304,6 +305,15 @@ class Manifest:
         for r in self.by_state("held"):
             if r.key.startswith(key_prefix):
                 self.transition(r.id, ["held"], "planned", detail=f"release {key_prefix}")
+                n += 1
+        return n
+
+    def cancel(self, key_prefix: str, reason: str) -> int:
+        """Drop planned or held requests whose key starts with ``key_prefix``."""
+        n = 0
+        for r in self.by_state("planned", "held"):
+            if r.key.startswith(key_prefix):
+                self.transition(r.id, ["planned", "held"], "cancelled", detail=reason)
                 n += 1
         return n
 
