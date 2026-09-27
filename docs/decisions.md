@@ -127,3 +127,42 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Smoke test:** exits 1 unless every smoke request ends `verified`; the report includes the download summary and an `ok` flag.
 - **Configs in the wheel:** `configs/*.yaml` are packaged as `astroseeing/configs`. Lookup order is `$ASTRO_CONFIG_DIR`, then the repo checkout, then the packaged copy. Logs go to `$ASTRO_LOG_DIR`, else `logs/` in a checkout, else the state directory. Checked by building the wheel and loading the configs from a clean virtualenv.
 - **Who:** agent.
+
+---
+
+## 2026-09-27 — First session on CT 350 (Claude Code on the CT)
+
+### D22. Land-mask buffer: distance to the nearest point of a land cell
+- **Options:** a 30″ cell is in the 1 km buffer if its centre is within 1 km of (a) a land cell's *centre* or (b) the *nearest point* of a land cell (the land cell as an area).
+- **Evidence:** both built on the full GLOBE grid (`reports/landmask.md`). (a) 29.066% of Earth's area, 366,305 ERA5 cells kept, 4-neighbours at the equator; (b) 29.131%, 366,604 cells, 8-neighbours at the equator. RESEARCH §8 estimated 29.19% and 367,051 without recording its method; neither variant reproduces it. (b) is "within 1 km of land" taken literally.
+- **Choice:** (b), `measure: edge` in `configs/landmask.yaml`. Great-circle distance on a sphere of the WGS84 mean radius (2a + b)/3. ERA5 cells are ±0.125° boxes centred on the grid points; a cell is kept if it holds any land-or-buffer cell. Stores: `/data/astro/static/landmask/*_v1.zarr` (commit a2e97dc). The unbuffered count is 365,100, 12 cells more than the cloud session's 365,088, whose method wasn't recorded (two plausible alternatives give 364,408 and 365,113).
+- **Who:** agent (provisional).
+
+### D23. Request size: split to the CDS cost limit (amends D16's fallback)
+- **Evidence (smoke test, `reports/cds_smoke_test.json`):** the CDS "cost" of a request is its number of fields (variables × levels × hours × days) whatever the area. ECMWF staff define an ERA5 "item" as one variable on one 2-D field at one level and one time step (forum.ecmwf.int/t/cdsapi-limitations-and-restrictions/1639, 2019). Limits today: 60,000 fields for pressure levels, 121,000 for single levels. A month of a 5×5 box on 29 levels × 5 variables is 107,880 fields, over the limit; single levels (12,648) fit.
+- **Options:** D16's stated fallback, day-sized requests (31 per month); or split each month into the fewest runs of days under the limit (2 for pressure levels, 1 for single levels).
+- **Choice:** split to the limit (`plan_requests(split=True)`, limits in `configs/era5.yaml: request.max_fields`). It keeps D16's aim (few queued jobs) with ~15× fewer requests than daily; content and verification are unchanged. Partial months are now labelled `first_last` (e.g. `2023-01-01_2023-01-16`) so chunks can never share a store path.
+- **Who:** agent (provisional); Riley to confirm, since D16's fallback said "day".
+
+### D24. CDS concurrency: at most 4 in flight; queue-limit rejections are transient
+- **Evidence:** the first real run submitted 29 requests at once (a downloader bug: `limit=0` meant "no limit"; fixed in fa1c95a with a regression test). The CDS accepted 5 and rejected 24 with "Number queued requests for this dataset is temporarily limited. Please configure your scripts accordingly". Of the 5 accepted, the CDS ran one at a time. I found no published per-user limit, so these are observations, not documented limits.
+- **Choice:** keep `--max-active 4` (below the observed 5 accepted). A rejection carrying that message sends the request back to `planned` (the remote job is deleted); any other rejection still fails the request. Rejected jobs raise `requests.HTTPError`, not `ProcessingFailedError`; the backend now records the server's message either way (previously the downloader kept polling dead jobs).
+- **Who:** agent.
+
+### D25. The CDS pressure-level time-series dataset is not a substitute for validation boxes
+- **Evidence:** `reanalysis-era5-pressure-levels-timeseries` (published 2026-08-07, CC-BY) serves long point time series cheaply, but only on 13 levels (1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50 hPa) and without cloud fraction `cc` (catalogue form read 2026-09-27). Our method and every paper we reproduce use the 25 hPa spacing near the surface, and vertical resolution changes Cₙ² directly.
+- **Choice:** don't use it for reproductions or calibration. It may serve quick sanity checks later.
+- **Who:** agent.
+
+### D26. Running on the CT: root, tmux from conda-forge, repo at /home/astro-seeing
+- **Facts:** the CT has one login user, `root`; the repo is at `/home/astro-seeing` (HOME is `/root`, so `~/astro-seeing` in the runbook and `%h/astro-seeing` in the systemd units are wrong here). `systemctl --user` has no user manager for root (no lingering). tmux wasn't installed.
+- **Choice:** pixi (user-level installer, runbook §1) and `pixi global install tmux` (conda-forge tmux 3.7c in `~/.pixi`), so nothing was installed system-wide. Long jobs run in tmux with logs in `logs/`. The systemd units are unchanged until Riley decides on a user (question in `reports/ct_first_run.md`).
+- **Who:** agent.
+
+### D27. Haslebacher et al.: what their code needs, and what can be reproduced **[ASK]**
+- **Evidence (their code at commit 1da3712, `code` branch; paper arXiv:2208.04918):**
+  - Inputs: ERA5 u, v, t, z on up to 28 pressure levels (no 70 hPa; the Chile download lists 27, also without 975), hourly, all 24 hours, **1979–2020**, nearest grid point to each site; plus surface pressure to pick the lowest level (the level closest to the site's time-mean ERA5 surface pressure).
+  - The in-situ seeing that sets each site's calibration (`mean_insitu`) and all skill scores is **not published**. Their `data` branch holds only skill-score CSVs, trend posteriors and PRIMAVERA IDs. The in-situ data come from observatory archives and private communication (their Table 2).
+  - Calibration scales seeing (not J) by mean in-situ / mean ERA5 seeing over all loaded hours. Comparison periods differ from Table 2 (e.g. Paranal 2000–2016 in code vs 2000–2019 in the table). La Palma's lower level is 975 hPa in their site table but 1000 hPa in the paper's Table 4.
+- **Consequence:** the approved tolerance "reproduces their published numbers (skill scores ±0.01)" needs their in-situ series. Without it, what can be reproduced is (1) their code vs ours on the same ERA5 input (≤ 0.1%, D19), (2) Table 4's lower levels from ERA5 surface pressure, and (3) the ERA5 trends of Tables A.13–A.14 up to the unknown calibration factor. A full 1979–2020 download for 8 sites is roughly 35–50 GB and, at the measured CDS speed, days to weeks of queue time (`reports/ct_first_run.md`).
+- **Who:** open, for Riley.
