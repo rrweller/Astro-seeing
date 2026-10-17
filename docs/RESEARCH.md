@@ -46,12 +46,18 @@
   - Seeing ε = 5.25 λ^(−1/5) (∫Cₙ²dh)^(3/5), with **λ = 550 nm**.
   - ERA5 at 0.25°, hourly, using the nearest grid point to each site.
 - **Typo:** they print the dry adiabatic lapse rate as 9.8×10³ K/m. The correct value is **9.8×10⁻³ K/m**.
-- **Ambiguity [check]:** the text mentions "137 vertical levels", but the paper never says whether they used pressure-level or model-level data. Try both in phase 1 and see which reproduces their Table 3.
-- **Findings:** the best seeing is over the Tibetan Plateau and the Andes/Cordillera (the Tibetan Plateau is best in spring). Antarctica is low in all seasons.
+- **Checked against the PDF (2026-10-17, `papers/bi2023_remotesensing.pdf`):** λ, the 5.25 coefficient, eq. 4–7 and the HMNSP99 coefficients (§4.4) and Tables 2–3 (§6.1) all match these notes. The paper also calls u the north–south and v the east–west wind component (swapped); this doesn't matter, because S uses both the same way.
+- **Ambiguity [check]:** the paper never says whether they used pressure-level or model-level data. Its text says "137 vertical levels from the surface to 0.01 hPa", which describes model levels. Its Table 1 says "137 level, 1000 hPa to 1 hPa", which is the pressure-level range. Try both in phase 1 and see which reproduces their Table 3.
+  - If they used pressure levels, they probably went up to 1 hPa (37 levels). Our Bi downloads stop at 50 hPa (29 levels). Measured at Timau, 50–1 hPa adds about +0.002″ (max +0.003″) of seeing, so this doesn't matter (D35).
+- **Not stated in the paper [check]:**
+  - which ERA5 hours went into Table 3: the paper never mentions night or matching the balloon launch times. Reproduce with all hours, with night hours, and (for the balloon sites) with the launch hours. Report which one matches;
+  - how they decide between the troposphere and stratosphere formulas (§4.4);
+  - the lower limit of the integral for ERA5. Eq. 7 runs from 0 to ∞, and h is "height above ground".
+- **Findings:** the best seeing is over the Tibetan Plateau and the Andes/Cordillera (the Tibetan Plateau is best in spring). Antarctica has small (that is, good) seeing values, with a similar distribution in all seasons.
 - **Validation:** 3 radiosonde campaigns and 4 DIMM sites (§6.1).
-  - Medians are within about ±0.2″ of the measurements, with errors in both directions.
+  - Their ERA5 medians differ from the measured ones by −0.21″ (Ali) to +0.21″ (Lenghu), in both directions.
   - ERA5 interquartile ranges are much narrower than the measured ones.
-  - Their DIMMs sit on towers several metres high.
+  - Their DIMMs sit on roofs or towers several metres above the ground.
 
 ### 3.2 Priyatikanto et al. 2026: Timau Observatory (Indonesia) from ERA5
 - **Citation:** "Seeing at Timau National Observatory Based on ERA5 Dataset", *Experimental Astronomy* 61(3), article 16 (2026). DOI 10.1007/s10686-026-10054-y. arXiv:2604.19023; use the HTML version https://arxiv.org/html/2604.19023 because our fetcher couldn't read text from the PDF.
@@ -372,9 +378,15 @@ For each ERA5 cell c and hour t:
 | Daocheng | 100.11E, 29.11N | 100.00E, 29.00N | Mar 2017 – Feb 2019 (DIMM) | 1.01 [0.84, 1.22] | 0.96 [0.85, 1.10] |
 | Muztagh-ata | 74.90E, 38.33N | 75.00E, 38.25N | Mar 2017 – Feb 2019 (DIMM) | 0.82 [0.64, 1.06] | 0.85 [0.78, 0.92] |
 | Lenghu | 93.89E, 38.61N | 94.00E, 38.50N | "Oct. 2018 to 2020" (DIMM) | 0.75 [0.61, 1.03] | 0.96 [0.88, 1.07] |
-- **Rongcheng coordinates [check]:** as listed (122.11E, 36.46N) the site is in the Yellow Sea, 34.6 km from the nearest GLOBE land; the listed ERA5 point (122.00E, 36.50N) is 36.0 km from land (checked 2026-09-27, `reports/landmask.md`). Rongcheng is on the Shandong coast; 37.46N would put it on land near Weihai. Check both against the PDF (not yet obtained: MDPI blocks non-browser downloads). To reproduce Bi's ERA5 value, use the grid point they list whatever the site's true location.
-- **Balloon timing:** flights were launched in the early morning or late evening local time, so match those hours.
-- **Altitudes:** the DIMM site altitudes aren't in these tables; get them from the paper or its references.
+- **Table values checked against the PDF (2026-10-17):** every coordinate, period and median/quartile above matches Tables 2 and 3.
+- **Rongcheng coordinates:** as listed (122.11E, 36.46N) the site is in the Yellow Sea, 34.6 km from the nearest GLOBE land; the listed ERA5 point (122.00E, 36.50N) is 36.0 km from land (checked 2026-09-27, `reports/landmask.md`).
+  - The PDF prints the same coordinates in Table 2 and in the Figure 1 caption (checked 2026-10-17), so the sea location is the paper's own, not a copying error here.
+  - Rongcheng is on the Shandong coast, so the coordinates are probably wrong in the paper; 37.46N would put it on land near Weihai. To reproduce Bi's ERA5 value, use the grid point they list, wherever the site really is.
+- **Balloon flights:** "all of the flights were released during the early morning or late evening at local time".
+  - After they removed abnormal flights (too low, because of strong winds), 29, 30 and 14 profiles remained at Da Qaidam, Haikou and Rongcheng.
+  - The balloons rose at about 5 m s⁻¹ to about 30 km above sea level.
+- **Altitudes:** the paper gives only the balloon sites' altitudes (~3200, ~15 and ~80 m above sea level). The DIMM site altitudes aren't in it. They should be in its references: [44] Cao et al. 2020, *RAA* 20, 082 (Ali, Daocheng, Muztagh-ata); [45] Feng et al. 2020, *RAA* 20, 080 (campaign overview); and [5] Deng et al. 2021, *Nature* 596, 353 (Lenghu). Not fetched yet.
+- **DIMM heights:** the DIMMs were on roofs or towers several metres above the ground. At Ali, the DIMM moved from a 3 m rooftop to a 5 m tower after May 2017, and the paper says the two heights gave no noticeably different seeing.
 
 ### 6.2 Timau (Priyatikanto et al.)
 - **Site:** 123.9472E, 9.5971S, ~1300 m.

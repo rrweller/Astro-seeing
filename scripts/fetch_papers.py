@@ -27,6 +27,7 @@ PAUSE_S = 5.0
 
 # (file name, URL) — RESEARCH.md §10
 SOURCES = [
+    # MDPI answers 403 to this container; Riley saved this one from a browser (2026-09-27).
     ("bi2023_remotesensing.pdf", "https://www.mdpi.com/2072-4292/15/9/2225/pdf"),
     ("priyatikanto2026_timau.pdf", "https://arxiv.org/pdf/2604.19023"),
     ("priyatikanto2026_timau.html", "https://arxiv.org/html/2604.19023"),
@@ -49,6 +50,11 @@ SOURCES = [
         "copernicus_dem_handbook.pdf",
         "https://dataspace.copernicus.eu/sites/default/files/media/files/2024-06/"
         "geo1988-copernicusdem-spe-002_producthandbook_i5.0.pdf",
+    ),
+    # Land-mask source (D20, reports/landmask.md); fetched 2026-09-27.
+    (
+        "globe_documentation.pdf",
+        "https://www.ngdc.noaa.gov/mgg/topo/report/globedocumentationmanual.pdf",
     ),
 ]
 MANUAL = [

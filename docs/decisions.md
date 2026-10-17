@@ -236,3 +236,14 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Evidence:** three Tibet requests submitted on 2026-10-12 (`pl/tibet/2019-04-16_2019-04-30`, `…2019-05-01_2019-05-16`, `…2019-05-17_2019-05-31`) returned **404 Not Found** for their job IDs from about an hour after submission. A 3 h stall the same afternoon suggests a CDS-side incident. The downloader logged each 404 as "poll failed, will retry" and polled the dead jobs for 5 days (39,504 polls). The watcher's "stuck at the CDS" alert fired every 12 h, as designed. All other 469 requests completed meanwhile.
 - **Choice:** `DatastoresBackend.info` maps HTTP 404 to status `deleted`, which the downloader already treats as GONE: it plans the request again (not counted as a failure) and logs why. Other HTTP errors while polling stay transient. Regression tests added.
 - **Who:** agent.
+
+### D35. Bi et al. 2023 checked against the PDF (plan task 3)
+- **Evidence:** `papers/bi2023_remotesensing.pdf` (Riley, 12 pages; SHA-256 in `papers/INDEX.md`).
+  - λ = 550 nm, ε = 5.25 λ^(−1/5) J^(3/5), eq. 4–6 (P in hPa, HMNSP99 coefficients) and Tables 2–3 match RESEARCH §3.1, §4.4 and §6.1.
+  - The Rongcheng coordinates in the sea are printed that way in the paper itself (Table 2 and the Figure 1 caption).
+  - The paper doesn't say: whether it used pressure or model levels (the text says model levels, Table 1 gives the pressure-level range); which ERA5 hours Table 3 uses; how the troposphere/stratosphere switch is made; or the DIMM site altitudes (these are in its refs [44], [45], [5]).
+- **Choice:**
+  - RESEARCH §3.1 and §6.1 updated: the unstated points are marked [check], plus the balloon details (29/30/14 profiles; launches in the early morning or late evening local time).
+  - The reproduction will try all hours, night hours and the launch hours, and both level types.
+  - Our pressure-level downloads for Bi stop at 50 hPa. Measured at Timau (24 stores, 193,536 columns, all 37 levels, Bi's model), the 50–1 hPa slabs add a median 0.7% to J (max 1.2%), that is +0.0024″ of seeing at 550 nm (max +0.0032″). That is far below the ±0.05″ tolerance (D19), so no extra download is needed. Tibet itself wasn't measured: the P² factor in Cₙ² makes the contribution small at any site, but this is an estimate.
+- **Who:** agent.
