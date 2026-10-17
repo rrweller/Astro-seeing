@@ -229,3 +229,10 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Fourth round (3 findings, all addressed):** "finished with problems" is also sent when every request failed or was refused; `max_active` must be ≥ 1; the report's test count is updated (167).
 - **Fifth round (4 findings, all addressed):** the installer creates `logs/`; the export and download services require the `/data/astro` mount (`RequiresMountsFor`), and the export checks the NAS answers (child-process probe with a timeout) before writing; the report and plan now show the download schedule as decided (option C) rather than an open question.
 - **Sixth round:** no new findings on the diff; one previously missed item fixed (the finish estimate counts downloaded/verified requests still awaiting ingest). Merged after this round.
+
+## 2026-10-17 — Second CT session
+
+### D34. A job the CDS no longer knows (HTTP 404) is submitted again
+- **Evidence:** three Tibet requests submitted on 2026-10-12 (`pl/tibet/2019-04-16_2019-04-30`, `…2019-05-01_2019-05-16`, `…2019-05-17_2019-05-31`) returned **404 Not Found** for their job IDs from about an hour after submission. A 3 h stall the same afternoon suggests a CDS-side incident. The downloader logged each 404 as "poll failed, will retry" and polled the dead jobs for 5 days (39,504 polls). The watcher's "stuck at the CDS" alert fired every 12 h, as designed. All other 469 requests completed meanwhile.
+- **Choice:** `DatastoresBackend.info` maps HTTP 404 to status `deleted`, which the downloader already treats as GONE: it plans the request again (not counted as a failure) and logs why. Other HTTP errors while polling stay transient. Regression tests added.
+- **Who:** agent.

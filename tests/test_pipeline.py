@@ -201,6 +201,59 @@ def test_queue_limit_rejection_is_planned_again(env):
     assert m.by_state("downloaded")[0].attempts == 0  # not counted as a failure
 
 
+def test_a_job_the_cds_no_longer_knows_is_submitted_again(env):
+    """Regression (2026-10-12): the CDS lost three jobs; every status check returned 404."""
+    import requests
+
+    from astroseeing.download.cds import DatastoresBackend
+
+    class _Response:
+        status_code = 404
+
+    class _Client:
+        @staticmethod
+        def get_remote(request_id):
+            raise requests.HTTPError("404 Client Error: Not Found", response=_Response())
+
+    backend = object.__new__(DatastoresBackend)
+    backend.client = _Client()
+    info = backend.info("vanished")
+    assert info.status == "deleted" and "404" in info.error
+
+    # The downloader then plans the request again (not "poll failed, will retry").
+    m, fake = env["m"], env["fake"]
+    env["dl"].step()  # submits 2
+    rid = m.by_state("submitted")[0].id
+    lost = m.get(rid).cds_request_id  # only this job vanishes; its resubmission is fine
+    fake.info = lambda request_id, _orig=fake.info: (
+        info if request_id == lost else _orig(request_id)
+    )
+    env["dl"].step()
+    assert m.get(rid).state in ("planned", "submitted")  # planned again, maybe resubmitted
+    assert m.get(rid).attempts == 0
+    drain(env["dl"])
+    assert m.counts() == {"downloaded": 3}
+
+
+def test_other_http_errors_while_polling_stay_transient():
+    import requests
+
+    from astroseeing.download.cds import DatastoresBackend
+
+    class _Response:
+        status_code = 502
+
+    class _Client:
+        @staticmethod
+        def get_remote(request_id):
+            raise requests.HTTPError("502 Bad Gateway", response=_Response())
+
+    backend = object.__new__(DatastoresBackend)
+    backend.client = _Client()
+    with pytest.raises(requests.HTTPError):
+        backend.info("job")
+
+
 def test_real_backend_reads_the_message_of_a_rejected_job():
     """Rejected jobs raise requests.HTTPError, not ProcessingFailedError (seen on the CT)."""
     import requests
