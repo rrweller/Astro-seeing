@@ -235,6 +235,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 ### D34. A job the CDS no longer knows (HTTP 404) is submitted again
 - **Evidence:** three Tibet requests submitted on 2026-10-12 (`pl/tibet/2019-04-16_2019-04-30`, `…2019-05-01_2019-05-16`, `…2019-05-17_2019-05-31`) returned **404 Not Found** for their job IDs from about an hour after submission. A 3 h stall the same afternoon suggests a CDS-side incident. The downloader logged each 404 as "poll failed, will retry" and polled the dead jobs for 5 days (39,504 polls). The watcher's "stuck at the CDS" alert fired every 12 h, as designed. All other 469 requests completed meanwhile.
 - **Choice:** `DatastoresBackend.info` maps HTTP 404 to status `deleted`, which the downloader already treats as GONE: it plans the request again (not counted as a failure) and logs why. Other HTTP errors while polling stay transient. Regression tests added.
+- **Outcome:** after the restart, the three requests were submitted again at 10:43 UTC on 2026-10-17 and ingested at 11:14, 12:15 and 12:35 UTC. All 472 requests are now ingested (`reports/validation_downloads.md`).
 - **Who:** agent.
 
 ### D35. Bi et al. 2023 checked against the PDF (plan task 3)
