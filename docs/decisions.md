@@ -248,3 +248,22 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - The reproduction will try all hours, night hours and the launch hours, and both level types.
   - Our pressure-level downloads for Bi stop at 50 hPa. Measured at Timau (24 stores, 193,536 columns, all 37 levels, Bi's model), the 50–1 hPa slabs add a median 0.7% to J (max 1.2%), that is +0.0024″ of seeing at 550 nm (max +0.0032″). That is far below the ±0.05″ tolerance (D19), so no extra download is needed. Tibet itself wasn't measured: the P² factor in Cₙ² makes the contribution small at any site, but this is an estimate.
 - **Who:** agent.
+
+## 2026-10-24 — Wrap-up before the planning pivot
+
+### D36. TMT option A queued; Chile's extra single levels not queued (needs a code change)
+- **Riley's answers (2026-10-24) to `reports/validation_downloads.md` §7:** TMT terms approved (Riley registers and saves the login in `/root/.config/astro/tmt.env`); TMT ERA5 option A; PR #3 as the checkpoint; CDS token rotated (new one checked: authentication OK); the AGENTS.md wording is handled in the cloud planning session.
+- **TMT option A, checked against what phase 1 needs at those sites:**
+  - **Seeing:** z, t, u, v on 29 levels; 50–1 hPa adds ~0.002″ (D35).
+  - **Cloud above a height:** `cc` at Mauna Kea, an experiment site. `plan-box` has no variable choice, so San Pedro Mártir gets `cc` too (+0.28 M fields).
+  - **Ground-layer options and underground-level masking:** all 17 single-level variables (sp, 2t, 10 m and 100 m wind, zust, ishf, blh, …), night hours.
+  - **Terrain experiment:** static z, lsm, sdor for the two new boxes. Chile's static store already covers the Chile rectangle.
+  - **Not included:** model levels (a separate experiment).
+- **Queued (2026-10-24 21:48 UTC), 146 requests, 4.34 M fields (+20% on the 3.6 M estimate, inside Riley's 25%), ~2 GB:**
+  - `astro plan-area chile --start 2006-01-01 --end 2007-12-31 --kinds pl,sl --variables z,t,u,v --hours night` (UTC 23, 0–11): pressure levels 1.10 M fields, single levels 0.16 M;
+  - `astro plan-box --region tmt_spm --lat 31.0456 --lon -115.4691 … --kinds pl,sl,static --hours 2-14` (UTC): pressure levels 1.38 M fields, single levels 0.16 M;
+  - `astro plan-box --region tmt_mauna_kea --lat 19.833 --lon -155.481 … --kinds pl,sl,static --hours 4-16` (UTC): pressure levels 1.38 M fields, single levels 0.16 M.
+  - The Haslebacher et al. San Pedro Mártir and Mauna Kea sites fall in the same 5×5 boxes.
+- **Not queued:** Chile's extra single levels (lcc, mcc, hcc, zust, ishf, tcwv). `astro plan-area` ignores `--variables` for single levels, and `plan-box` has no `--variables`. Selecting 6 variables needs a code change, which Riley asked not to write in this session.
+  - Queuing all 17 variables instead would be 0.40 M fields (11–30 h), and 11 of them should come from the time-series product. Left for a ticket (`docs/handoff_pivot.md`).
+- **Who:** Riley (choices); agent (plan check).
