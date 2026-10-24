@@ -28,18 +28,29 @@ def main() -> int:
     paths = Paths.from_env()
     db = sqlite3.connect(f"file:{paths.manifest}?mode=ro", uri=True)
     wanted = defaultdict(set)  # (kind, region) -> days requested
-    rows = db.execute("select kind, region, expected_json from requests where state = 'ingested'")
+    # raw_deleted requests were ingested too; only their GRIB is gone (cleanup-raw).
+    rows = db.execute(
+        "select kind, region, expected_json from requests"
+        " where state in ('ingested', 'raw_deleted')"
+    )
     for kind, region, ej in rows:
         for t in json.loads(ej)["times"]:
             wanted[(kind, region)].add(t[:10])
 
     problems = 0
     for kind in ("pl", "sl"):
-        for d in sorted((paths.data_root / "era5" / kind).glob("*/")):
-            region = d.name
+        root = paths.data_root / "era5" / kind
+        on_disk = {d.name for d in root.glob("*/")}
+        in_manifest = {r for k, r in wanted if k == kind}
+        for region in sorted(on_disk | in_manifest):
             if region.startswith("smoke"):
                 continue
-            stores = sorted(d.glob("*.zarr"))
+            stores = sorted((root / region).glob("*.zarr"))
+            if not stores:
+                # A region the manifest says was ingested but with no stores on disk.
+                print(f"{kind}/{region}: NO STORES ({len(wanted[(kind, region)])} days expected)")
+                problems += 1
+                continue
             times, cells, levels, unsorted = [], set(), set(), 0
             nan, total = Counter(), 0
             for p in stores:
