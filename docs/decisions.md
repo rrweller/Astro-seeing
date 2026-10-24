@@ -267,3 +267,21 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Not queued:** Chile's extra single levels (lcc, mcc, hcc, zust, ishf, tcwv). `astro plan-area` ignores `--variables` for single levels, and `plan-box` has no `--variables`. Selecting 6 variables needs a code change, which Riley asked not to write in this session.
   - Queuing all 17 variables instead would be 0.40 M fields (11–30 h), and 11 of them should come from the time-series product. Left for a ticket (`docs/handoff_pivot.md`).
 - **Who:** Riley (choices); agent (plan check).
+
+### D37. TMT queue held: the CDS now wants sequential requests and rejects our parallel ones
+- **Evidence (2026-10-24, 21:48–22:05 UTC):** within minutes of starting the TMT queue, the CDS rejected 29 jobs (all 24 Chile pressure-level months and 5 single-level months). The message was new: "Maximum number queued requests for this dataset has been reached. Please configure your scripts to request data sequentially". 3 single-level jobs were accepted.
+  - Our D24 matcher only knows the old wording ("…is temporarily limited"), so each rejection counted as a failure, and `run_boxes.sh` resubmitted at once.
+  - ECMWF announced on 2026-10-22 (forum.ecmwf.int/t/15481, "Data Stores Service protection measures…"): "Submit requests sequentially, rather than in parallel or in large batches", and "Repeated submission of invalid requests may result in your account being disabled". The same week a user reported their account disabled after repeated submit/delete cycles (forum.ecmwf.int/t/15487).
+- **What I did:**
+  - stopped `astro-boxes`;
+  - moved the failed requests back to planned and **held all 143 TMT requests** (`astro hold`);
+  - am collecting only the 3 accepted jobs, with a one-off `astro download --max-active 1` (no retries, nothing new submitted), then verify and ingest.
+  - Nothing has been resubmitted since 22:05 UTC.
+- **Needs a code change (not written; Riley asked for no new code this session):**
+  - sequential submission (`max_active` 1 by default);
+  - the new wording treated as a queue-limit rejection;
+  - a backoff after any rejection (e.g. 30–60 min) with a cap on rejections per day, and an alert when it fires.
+  - Then release the holds (`astro release pl/chile/2006` etc.) and start `astro-boxes`.
+- **At one request at a time:** expect roughly the 5.6 fields/s measured when only one job was in flight (D34 period), so ~9–10 days for the 4.34 M fields.
+- **Also (licence, Riley):** the CDS terms of use change on 2026-10-28 (Art. 1); using the CDS after that date counts as accepting them. Anyone who doesn't accept must tell ECMWF before 27 Oct (forum.ecmwf.int/t/15374).
+- **Who:** agent (hold and investigation); Riley (the fix and the terms).
