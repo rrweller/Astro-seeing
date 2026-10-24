@@ -142,11 +142,11 @@ class Downloader:
             self.m.fail(req.id, ["submitted"], f"cds {info.status}: {info.error}")
             return
         if info.status in GONE:
-            # Result expired or was removed at the CDS: submit again.
+            # Result expired, or the job was removed or lost at the CDS: submit again.
             s.resubmit += 1
-            self.m.transition(
-                req.id, ["submitted"], "planned", detail=f"cds {info.status}", cds_request_id=None
-            )
+            why = f"cds {info.status}" + (f": {info.error}" if info.error else "")
+            self.m.transition(req.id, ["submitted"], "planned", detail=why, cds_request_id=None)
+            log.warning("%s: %s; planned again", req.key, why)
             return
         if info.status != DONE:
             s.failed += 1

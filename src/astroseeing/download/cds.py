@@ -84,10 +84,19 @@ class DatastoresBackend:
         return self.client.submit(dataset, request).request_id
 
     def info(self, request_id: str) -> RemoteInfo:
+        import requests
         from ecmwf.datastores.processing import ProcessingFailedError
 
-        remote = self.client.get_remote(request_id)
-        status = remote.status
+        try:
+            remote = self.client.get_remote(request_id)
+            status = remote.status
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 404:
+                # The CDS no longer knows the job. Seen 2026-10-12: three jobs vanished
+                # within an hour of submission and were polled for 5 days as "transient".
+                # Treat it like a deleted job, which the downloader submits again.
+                return RemoteInfo(status="deleted", error="job not found at the CDS (HTTP 404)")
+            raise
         info = RemoteInfo(status=status)
         for attr in ("created_at", "started_at", "finished_at"):
             try:

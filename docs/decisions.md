@@ -229,3 +229,41 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Fourth round (3 findings, all addressed):** "finished with problems" is also sent when every request failed or was refused; `max_active` must be ≥ 1; the report's test count is updated (167).
 - **Fifth round (4 findings, all addressed):** the installer creates `logs/`; the export and download services require the `/data/astro` mount (`RequiresMountsFor`), and the export checks the NAS answers (child-process probe with a timeout) before writing; the report and plan now show the download schedule as decided (option C) rather than an open question.
 - **Sixth round:** no new findings on the diff; one previously missed item fixed (the finish estimate counts downloaded/verified requests still awaiting ingest). Merged after this round.
+
+## 2026-10-17 — Second CT session
+
+### D34. A job the CDS no longer knows (HTTP 404) is submitted again
+- **Evidence:** three Tibet requests submitted on 2026-10-12 (`pl/tibet/2019-04-16_2019-04-30`, `…2019-05-01_2019-05-16`, `…2019-05-17_2019-05-31`) returned **404 Not Found** for their job IDs from about an hour after submission. A 3 h stall the same afternoon suggests a CDS-side incident. The downloader logged each 404 as "poll failed, will retry" and polled the dead jobs for 5 days (39,504 polls). The watcher's "stuck at the CDS" alert fired every 12 h, as designed. All other 469 requests completed meanwhile.
+- **Choice:** `DatastoresBackend.info` maps HTTP 404 to status `deleted`, which the downloader already treats as GONE: it plans the request again (not counted as a failure) and logs why. Other HTTP errors while polling stay transient. Regression tests added.
+- **Outcome:** after the restart, the three requests were submitted again at 10:43 UTC on 2026-10-17 and ingested at 11:14, 12:15 and 12:35 UTC. All 472 requests are now ingested (`reports/validation_downloads.md`).
+- **Who:** agent.
+
+### D35. Bi et al. 2023 checked against the PDF (plan task 3)
+- **Evidence:** `papers/bi2023_remotesensing.pdf` (Riley, 12 pages; SHA-256 in `papers/INDEX.md`).
+  - λ = 550 nm, ε = 5.25 λ^(−1/5) J^(3/5), eq. 4–6 (P in hPa, HMNSP99 coefficients) and Tables 2–3 match RESEARCH §3.1, §4.4 and §6.1.
+  - The Rongcheng coordinates in the sea are printed that way in the paper itself (Table 2 and the Figure 1 caption).
+  - The paper doesn't say: whether it used pressure or model levels (the text says model levels, Table 1 gives the pressure-level range); which ERA5 hours Table 3 uses; how the troposphere/stratosphere switch is made; or the DIMM site altitudes (these are in its refs [44], [45], [5]).
+- **Choice:**
+  - RESEARCH §3.1 and §6.1 updated: the unstated points are marked [check], plus the balloon details (29/30/14 profiles; launches in the early morning or late evening local time).
+  - The reproduction will try all hours, night hours and the launch hours, and both level types.
+  - Our pressure-level downloads for Bi stop at 50 hPa. Measured at Timau (24 stores, 193,536 columns, all 37 levels, Bi's model), the 50–1 hPa slabs add a median 0.7% to J (max 1.2%), that is +0.0024″ of seeing at 550 nm (max +0.0032″). That is far below the ±0.05″ tolerance (D19), so no extra download is needed. Tibet itself wasn't measured: the P² factor in Cₙ² makes the contribution small at any site, but this is an estimate.
+- **Who:** agent.
+
+## 2026-10-24 — Wrap-up before the planning pivot
+
+### D36. TMT option A queued; Chile's extra single levels not queued (needs a code change)
+- **Riley's answers (2026-10-24) to `reports/validation_downloads.md` §7:** TMT terms approved (Riley registers and saves the login in `/root/.config/astro/tmt.env`); TMT ERA5 option A; PR #3 as the checkpoint; CDS token rotated (new one checked: authentication OK); the AGENTS.md wording is handled in the cloud planning session.
+- **TMT option A, checked against what phase 1 needs at those sites:**
+  - **Seeing:** z, t, u, v on 29 levels; 50–1 hPa adds ~0.002″ (D35).
+  - **Cloud above a height:** `cc` at Mauna Kea, an experiment site. `plan-box` has no variable choice, so San Pedro Mártir gets `cc` too (+0.28 M fields).
+  - **Ground-layer options and underground-level masking:** all 17 single-level variables (sp, 2t, 10 m and 100 m wind, zust, ishf, blh, …), night hours.
+  - **Terrain experiment:** static z, lsm, sdor for the two new boxes. Chile's static store already covers the Chile rectangle.
+  - **Not included:** model levels (a separate experiment).
+- **Queued (2026-10-24 21:48 UTC), 146 requests, 4.34 M fields (+20% on the 3.6 M estimate, inside Riley's 25%), ~2 GB:**
+  - `astro plan-area chile --start 2006-01-01 --end 2007-12-31 --kinds pl,sl --variables z,t,u,v --hours night` (UTC 23, 0–11): pressure levels 1.10 M fields, single levels 0.16 M;
+  - `astro plan-box --region tmt_spm --lat 31.0456 --lon -115.4691 … --kinds pl,sl,static --hours 2-14` (UTC): pressure levels 1.38 M fields, single levels 0.16 M;
+  - `astro plan-box --region tmt_mauna_kea --lat 19.833 --lon -155.481 … --kinds pl,sl,static --hours 4-16` (UTC): pressure levels 1.38 M fields, single levels 0.16 M.
+  - The Haslebacher et al. San Pedro Mártir and Mauna Kea sites fall in the same 5×5 boxes.
+- **Not queued:** Chile's extra single levels (lcc, mcc, hcc, zust, ishf, tcwv). `astro plan-area` ignores `--variables` for single levels, and `plan-box` has no `--variables`. Selecting 6 variables needs a code change, which Riley asked not to write in this session.
+  - Queuing all 17 variables instead would be 0.40 M fields (11–30 h), and 11 of them should come from the time-series product. Left for a ticket (`docs/handoff_pivot.md`).
+- **Who:** Riley (choices); agent (plan check).

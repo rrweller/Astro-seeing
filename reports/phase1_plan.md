@@ -47,7 +47,7 @@ Details in D15 and RESEARCH.md (all edits dated 2026-09-27):
 - **TMT Table 2** checked; Mauna Kea 13N θ₀ = 2.69″ filled in.
 - **ERA5:** all variable names are on the live CDS forms. The CDS attribution wording is copied from the dataset pages (my first draft of it, written from memory, was replaced before commit).
 - **Nights per year with ≥2 h darkness**, measured: 365.2 / 349.6 / 308.8 / 268.0 / 237.2 / 210.6 at 45 / 47.5 / 50 / 55 / 60 / 65°. The §4.1 estimates were 1–3 nights high at 55–65°.
-- **Still unverified:** the Bi et al. PDF (§3.1, §4.4); whether c_p = 3.5 R_d and T_v = T(1 + 0.608q) match ECMWF's own recipe; the cos ζ factor in RESEARCH's τ₀ formula (our product is zenith-only, so it doesn't matter yet).
+- **Still unverified:** the Bi et al. PDF (§3.1, §4.4; checked 2026-10-17, D35); whether c_p = 3.5 R_d and T_v = T(1 + 0.608q) match ECMWF's own recipe; the cos ζ factor in RESEARCH's τ₀ formula (our product is zenith-only, so it doesn't matter yet).
 
 ## 4. Tasks and order
 
