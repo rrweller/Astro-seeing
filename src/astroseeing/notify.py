@@ -12,7 +12,8 @@ lives outside git in ``~/.config/astro/notify.env`` (``NTFY_URL=...``, mode 600)
 * **problems**: requests that failed ``max_attempts`` times (earlier failures are
   retried by ``scripts/run_boxes.sh``) or were refused by ingest (D18); no progress
   for ``stall_hours``; a request sitting at the CDS for ``stuck_hours``; the download
-  loop not running while work remains; the NAS not answering;
+  loop not running while work remains; the NAS not answering; CDS submissions paused
+  after repeated rejections (D39), with what to do next;
 * **daily progress**: once a day after ``daily_hour_utc``: done / left / failed,
   and an estimated finish from the fields the CDS processed in the last 24 h.
 
@@ -162,6 +163,9 @@ def snapshot(
                 problem_events.append(f"failed {r['key']} @ {r['updated_at']}")
         elif r["state"] == "refused":
             problem_events.append(f"refused {r['key']} @ {r['updated_at']}")
+    ctl = m.cds_control()
+    if ctl.get("paused_at"):
+        problem_events.append(f"cds_paused @ {ctl['paused_at']}")
     return Snapshot(
         counts=counts,
         pending=sum(counts.get(s, 0) for s in PENDING) + retryable,
@@ -263,6 +267,12 @@ def check_once(
         emit(f"Problem: {len(new_refused)} downloaded request(s) were refused by ingest (not a "
              "declared validation area, D18) and need a look.", "astro-seeing: refused",
              "high")  # fmt: skip
+    if [e for e in new_events if e.startswith("cds_paused ")]:
+        reason = m.cds_control().get("pause_reason") or ""
+        emit(f"Problem: CDS submissions are PAUSED after repeated rejections ({reason}). "
+             "Nothing more is submitted. Next: read the ECMWF forum announcements and "
+             "logs/run_boxes.log; fix the cause; then run `astro cds-resume --reason "
+             "'...'` on the CT (D39).", "astro-seeing: CDS paused", "high")  # fmt: skip
     state.reported_events = list(s.problem_events)  # keeps the state as small as the problems
 
     if s.stuck:
@@ -277,7 +287,8 @@ def check_once(
     if s.pending:
         state.finished_reported = False
         idle = (now - s.last_change).total_seconds() / 3600 if s.last_change else 0.0
-        if idle >= stall_hours:
+        cds_paused = bool(m.cds_control().get("paused_at"))  # has its own alert (D39)
+        if idle >= stall_hours and not cds_paused:
             if _hours_since(state.stall_alerted_at, now) >= realert_hours:
                 emit(f"Problem: no download progress for {idle:.1f} h; {s.pending} requests "
                      "still pending.", "astro-seeing: stalled", "high")  # fmt: skip

@@ -59,6 +59,14 @@ def _date(s: str) -> dt.date:
 def cmd_status(args, paths: Paths) -> int:
     m = _manifest(paths)
     print(json.dumps({"manifest": str(paths.manifest), "counts": m.counts()}, indent=2))
+    ctl = m.cds_control()
+    if ctl.get("paused_at"):
+        print(f"CDS SUBMISSIONS PAUSED since {ctl['paused_at']}: {ctl['pause_reason']}")
+        print("  check the ECMWF forum and the log, then `astro cds-resume --reason ...` (D39)")
+    since = (dt.datetime.now(dt.UTC) - dt.timedelta(hours=24)).isoformat(timespec="seconds")
+    if rej := m.rejections_since(since):
+        print(f"CDS rejections in the last 24 h (since the last resume): {len(rej)}, "
+              f"last at {rej[-1]}")  # fmt: skip
     for r in m.by_state("failed"):
         print(f"FAILED {r.key} (attempts {r.attempts}): {r.last_error}")
     return 0
@@ -104,9 +112,25 @@ def cmd_download(args, paths: Paths) -> int:
     max_s = args.max_hours * 3600 if args.max_hours else None
     s = dl.run(poll_seconds=args.poll, max_seconds=max_s)
     log.info("download finished: %s", s)
-    if s.failed:
-        log.error("%d request(s) failed in this run; see `astro status`", s.failed)
+    if s.paused:
+        log.error("CDS submissions are paused (D39); see `astro status`")
+        return 3
+    if s.backoff_until:
+        log.warning("CDS backoff after a rejection: nothing submitted until %s (D39)",
+                    s.backoff_until.isoformat(timespec="seconds"))  # fmt: skip
+    if s.failed or s.rejected:
+        log.error("%d request(s) failed and %d submission(s) were rejected in this run; see "
+                  "`astro status`", s.failed, s.rejected)  # fmt: skip
         return 1
+    return 0
+
+
+def cmd_cds_resume(args, paths: Paths) -> int:
+    m = _manifest(paths)
+    if not m.cds_control().get("paused_at"):
+        log.info("CDS submissions were not paused; recording the resume anyway")
+    m.resume_cds(args.reason)
+    log.info("CDS submissions allowed again; earlier rejections no longer count (D39)")
     return 0
 
 
@@ -152,10 +176,6 @@ def cmd_cancel(args, paths: Paths) -> int:
     return 0
 
 
-#: Measured CDS throughput (fields/s, D24), for the time estimates printed when planning.
-CDS_FIELDS_PER_S = 26.4
-
-
 def _parse_variables(kind: str, spec: str) -> tuple[str, ...] | None:
     if not spec:
         return None
@@ -169,6 +189,18 @@ def _parse_variables(kind: str, spec: str) -> tuple[str, ...] | None:
             raise SystemExit(f"unknown {kind} variable {v!r}")
         out.append(name)
     return tuple(out)
+
+
+def _subset_region(region: str, kind: str, variables: tuple[str, ...] | None) -> str:
+    """``chile@vars-lcc-zust`` for a subset of a kind's default variables (D40).
+
+    Like ``@every4d``, the suffix keeps keys and stores of a subset apart from full ones.
+    """
+    ds = load_config("era5")["datasets"][kind]
+    if variables is None or set(variables) == set(ds["variables"]):
+        return region
+    allvars = {**ds["variables"], **ds.get("optional_variables", {})}
+    return f"{region}@vars-" + "-".join(allvars[v]["short_name"] for v in variables)
 
 
 def cmd_plan_area(args, paths: Paths) -> int:
@@ -191,33 +223,45 @@ def cmd_plan_area(args, paths: Paths) -> int:
     if levels is None and args.levels not in ("29",):
         levels = tuple(int(x) for x in args.levels.split(","))
     region = args.name + (f"@every{args.day_step}d" if args.day_step > 1 else "")
-    m = _manifest(paths)
-    total_fields = n = 0
-    for kind in args.kinds.split(","):
+    kinds = args.kinds.split(",")
+    # Check every kind's variables before planning anything, so a bad name never
+    # leaves a partial plan behind (D40).
+    variables = {k: _parse_variables(k, args.variables) for k in kinds if k != "static"}
+    specs = []
+    for kind in kinds:
         if kind == "static":
-            specs = [static_request(region, area.area)]
-        else:
-            specs = plan_requests(
-                kind,
-                region,
-                _date(args.start),
-                _date(args.end),
-                area.area,
-                granularity="month",
-                variables=_parse_variables(kind, args.variables if kind == "pl" else ""),
-                levels=levels if kind == "pl" else None,
-                hours=hours,
-                day_step=args.day_step,
-            )
-        for spec in specs:
-            m.add_request(spec)
-            total_fields += spec.n_fields
-            n += 1
+            specs.append(static_request(region, area.area))
+            continue
+        specs += plan_requests(
+            kind,
+            _subset_region(region, kind, variables[kind]),
+            _date(args.start),
+            _date(args.end),
+            area.area,
+            granularity="month",
+            variables=variables[kind],
+            levels=levels if kind == "pl" else None,
+            hours=hours,
+            day_step=args.day_step,
+        )
+    m = _manifest(paths)
+    for spec in specs:  # a key already used by a different request: refuse before adding
+        row = m.conn.execute(
+            "SELECT request_hash FROM requests WHERE key=?", (spec.key,)
+        ).fetchone()
+        if row is not None and row["request_hash"] != spec.request_hash():
+            raise SystemExit(f"{spec.key} is already planned as a different request; nothing added")
+    total_fields = n = 0
+    for spec in specs:
+        m.add_request(spec)
+        total_fields += spec.n_fields
+        n += 1
+    rate = load_config("era5")["request"]["fields_per_s"]  # measured, one job at a time (D40)
     log.info(
         "planned %d requests for area %s (%s; UTC hours %s): %.2f M fields, ~%.1f days of CDS "
-        "processing at %.1f fields/s",
+        "processing at %.1f fields/s (measured on pressure levels, one job at a time)",
         n, region, area.area.as_cds(), ",".join(map(str, hours)), total_fields / 1e6,
-        total_fields / CDS_FIELDS_PER_S / 86400, CDS_FIELDS_PER_S,
+        total_fields / rate / 86400, rate,
     )  # fmt: skip
     return 0
 
@@ -356,7 +400,7 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
     ]
     m = _manifest(paths)
     ids = [m.add_request(s) for s in specs]
-    dl = Downloader(m, backend, paths.grib_dir, max_active=len(specs))
+    dl = Downloader(m, backend, paths.grib_dir)  # one at a time (D39)
     t0 = time.monotonic()
     summary = dl.run(poll_seconds=args.poll, max_seconds=args.timeout_hours * 3600)
     report["download"] = summary.__dict__
@@ -459,10 +503,16 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(fn=cmd_plan_box)
 
     p = sub.add_parser("download", help="submit, poll and download planned requests")
-    p.add_argument("--max-active", type=int, default=4)
+    p.add_argument(
+        "--max-active", type=int, default=1, choices=[1],
+        help="jobs at the CDS at once; only 1 is allowed (D39, needs Riley's OK to change)",
+    )  # fmt: skip
     p.add_argument("--poll", type=float, default=60.0)
     p.add_argument("--max-hours", type=float, default=None)
     p.set_defaults(fn=cmd_download)
+    p = sub.add_parser("cds-resume", help="allow CDS submissions again after a pause (D39)")
+    p.add_argument("--reason", required=True, help="what was checked, for the event log")
+    p.set_defaults(fn=cmd_cds_resume)
 
     sub.add_parser("verify", help="verify downloaded GRIB files").set_defaults(fn=cmd_verify)
     sub.add_parser("ingest", help="ingest verified files into Zarr").set_defaults(fn=cmd_ingest)
@@ -490,7 +540,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--end", required=True)
     p.add_argument("--kinds", default="pl", help="comma list of pl, sl, static")
     p.add_argument("--hours", default="all", help="all | night | comma list of UTC hours")
-    p.add_argument("--variables", default="", help="pl variables, e.g. z,t,u,v (default all)")
+    p.add_argument(
+        "--variables", default="",
+        help="variables for every kind in --kinds, e.g. z,t,u,v for pl or lcc,zust for sl "
+        "(default all); a name the kind doesn't have is an error, so plan pl and sl separately",
+    )  # fmt: skip
     p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
     p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
     p.set_defaults(fn=cmd_plan_area)

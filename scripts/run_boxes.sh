@@ -9,6 +9,11 @@
 # look at (the notify watcher reports it). A round that makes no progress backs off.
 # The loop ends when nothing is left to do.
 #
+# The CDS gate is in the downloader, not here (D39): one job at a time, a backoff after
+# each rejection (60, then 120 min), and a pause after 3 rejections in 24 h that only `astro cds-resume`
+# lifts. While paused, `astro download` submits nothing and returns at once, and this
+# loop just waits; retry-failed only moves requests back to planned.
+#
 # On CT 350 it runs as the systemd service astro-boxes.service
 # (scripts/systemd/system/, installed by scripts/install_services.sh); by hand:
 #   tmux new -s boxes 'bash scripts/run_boxes.sh 2>&1 | tee -a logs/run_boxes.log'
@@ -35,7 +40,7 @@ PY
 while true; do
   t0=$(date +%s)
   pixi run astro retry-failed --max-attempts "$MAX_ATTEMPTS"
-  pixi run astro download --max-active "${MAX_ACTIVE:-4}" --poll 30 --max-hours 0.5
+  pixi run astro download --poll 30 --max-hours 0.5
   rc_d=$?
   pixi run astro verify
   rc_v=$?

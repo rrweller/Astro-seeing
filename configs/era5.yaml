@@ -74,3 +74,8 @@ request:
     pl: 60000
     sl: 121000
     static: 121000
+  # CDS throughput for the time estimates printed when planning (D40). With one job
+  # at a time (D39), the measured rate is the one from 12-17 Oct 2026, when only one
+  # of our jobs was running (D34): 5.6 fields/s (pressure levels). The 26.4 fields/s
+  # of the first day (D24) was with several jobs queued and is no longer reachable.
+  fields_per_s: 5.6

@@ -86,7 +86,7 @@ Validation boxes use one request per month (decision D16; `plan-box` defaults to
 pixi run astro plan-box --region paranal --lat -24.63 --lon -70.40 \
     --start 2023-06-01 --end 2023-06-30 --kinds pl,sl,static
 pixi run astro status
-pixi run astro download --max-active 4      # resumable; Ctrl-C is safe
+pixi run astro download                    # one CDS job at a time (D39); resumable; Ctrl-C is safe
 pixi run astro verify
 pixi run astro ingest
 pixi run astro cleanup-raw                  # deletes staging GRIB only after re-verifying the store

@@ -22,15 +22,23 @@ PENDING = ("accepted", "running")
 FAILED = ("failed", "rejected")
 GONE = ("dismissed", "deleted")
 
-#: The CDS rejects a job outright when a user has too many queued for one dataset
-#: (seen on the CT, 2026-09-27: 24 of 29 simultaneous submissions rejected with
+#: The CDS rejects a job outright when a user has too many queued for one dataset.
+#: Old wording (seen on the CT, 2026-09-27: 24 of 29 simultaneous submissions):
 #: "Number queued requests for this dataset is temporarily limited. Please configure
-#: your scripts accordingly"). That is transient: the request is planned again.
-QUEUE_LIMIT_MESSAGE = "queued requests for this dataset is temporarily limited"
+#: your scripts accordingly". New wording since the sequential-only policy (2026-10-24,
+#: D37): "Maximum number queued requests for this dataset has been reached. Please
+#: configure your scripts to request data sequentially". The request itself is fine,
+#: so it is planned again without counting as a failure, but it is still a rejection
+#: for the backoff and the pause (D39).
+QUEUE_LIMIT_MESSAGES = (
+    "queued requests for this dataset is temporarily limited",
+    "maximum number queued requests for this dataset has been reached",
+)
 
 
 def is_queue_limit_rejection(error: str | None) -> bool:
-    return bool(error) and QUEUE_LIMIT_MESSAGE in error.lower()
+    low = (error or "").lower()
+    return any(m in low for m in QUEUE_LIMIT_MESSAGES)
 
 
 @dataclass
@@ -48,6 +56,7 @@ class CdsBackend(Protocol):
     def info(self, request_id: str) -> RemoteInfo: ...
     def download(self, request_id: str, target: Path) -> int: ...
     def delete(self, request_id: str) -> None: ...
+    def active_jobs(self) -> list[str]: ...
 
 
 def read_cdsapirc(path: Path | None = None) -> tuple[str, str]:
@@ -124,3 +133,12 @@ class DatastoresBackend:
 
     def delete(self, request_id: str) -> None:
         self.client.delete(request_id)
+
+    def active_jobs(self) -> list[str]:
+        """Ids of this account's jobs queued or running at the CDS, in any dataset.
+
+        The downloader submits only when this is empty (D39), so a job left over from a
+        crash, a timed-out submission or another process still blocks the next one.
+        """
+        jobs = self.client.get_jobs(limit=100, status=["accepted", "running"])
+        return list(jobs.request_ids)
