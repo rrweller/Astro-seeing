@@ -191,6 +191,18 @@ def _parse_variables(kind: str, spec: str) -> tuple[str, ...] | None:
     return tuple(out)
 
 
+def _subset_region(region: str, kind: str, variables: tuple[str, ...] | None) -> str:
+    """``chile@vars-lcc-zust`` for a subset of a kind's default variables (D40).
+
+    Like ``@every4d``, the suffix keeps keys and stores of a subset apart from full ones.
+    """
+    ds = load_config("era5")["datasets"][kind]
+    if variables is None or set(variables) == set(ds["variables"]):
+        return region
+    allvars = {**ds["variables"], **ds.get("optional_variables", {})}
+    return f"{region}@vars-" + "-".join(allvars[v]["short_name"] for v in variables)
+
+
 def cmd_plan_area(args, paths: Paths) -> int:
     """Plan downloads for a validation area (configs/validation_areas.yaml, D31)."""
     from astroseeing.download.areas import load_areas
@@ -211,32 +223,43 @@ def cmd_plan_area(args, paths: Paths) -> int:
     if levels is None and args.levels not in ("29",):
         levels = tuple(int(x) for x in args.levels.split(","))
     region = args.name + (f"@every{args.day_step}d" if args.day_step > 1 else "")
-    m = _manifest(paths)
-    total_fields = n = 0
-    for kind in args.kinds.split(","):
+    kinds = args.kinds.split(",")
+    # Check every kind's variables before planning anything, so a bad name never
+    # leaves a partial plan behind (D40).
+    variables = {k: _parse_variables(k, args.variables) for k in kinds if k != "static"}
+    specs = []
+    for kind in kinds:
         if kind == "static":
-            specs = [static_request(region, area.area)]
-        else:
-            specs = plan_requests(
-                kind,
-                region,
-                _date(args.start),
-                _date(args.end),
-                area.area,
-                granularity="month",
-                variables=_parse_variables(kind, args.variables),
-                levels=levels if kind == "pl" else None,
-                hours=hours,
-                day_step=args.day_step,
-            )
-        for spec in specs:
-            m.add_request(spec)
-            total_fields += spec.n_fields
-            n += 1
+            specs.append(static_request(region, area.area))
+            continue
+        specs += plan_requests(
+            kind,
+            _subset_region(region, kind, variables[kind]),
+            _date(args.start),
+            _date(args.end),
+            area.area,
+            granularity="month",
+            variables=variables[kind],
+            levels=levels if kind == "pl" else None,
+            hours=hours,
+            day_step=args.day_step,
+        )
+    m = _manifest(paths)
+    for spec in specs:  # a key already used by a different request: refuse before adding
+        row = m.conn.execute(
+            "SELECT request_hash FROM requests WHERE key=?", (spec.key,)
+        ).fetchone()
+        if row is not None and row["request_hash"] != spec.request_hash():
+            raise SystemExit(f"{spec.key} is already planned as a different request; nothing added")
+    total_fields = n = 0
+    for spec in specs:
+        m.add_request(spec)
+        total_fields += spec.n_fields
+        n += 1
     rate = load_config("era5")["request"]["fields_per_s"]  # measured, one job at a time (D40)
     log.info(
         "planned %d requests for area %s (%s; UTC hours %s): %.2f M fields, ~%.1f days of CDS "
-        "processing at %.1f fields/s",
+        "processing at %.1f fields/s (measured on pressure levels, one job at a time)",
         n, region, area.area.as_cds(), ",".join(map(str, hours)), total_fields / 1e6,
         total_fields / rate / 86400, rate,
     )  # fmt: skip
