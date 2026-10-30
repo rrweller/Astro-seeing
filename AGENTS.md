@@ -19,7 +19,7 @@ Build a self-hostable web app: a 3D globe you can drag and zoom, with toggleable
   3. good seeing.
 - **Component layers:** dark hours, clear nights, median seeing, best month.
 
-No free or cheap source has multi-year global historical seeing. So seeing is computed from ERA5 reanalysis profiles, and validated againast published papers and observatory measurements before scaling up.
+No free or cheap source has multi-year global historical seeing. So seeing is computed from ERA5 reanalysis profiles, and validated against published papers and observatory measurements before scaling up.
 
 **Correct results matter more than speed.** Multi-day compute is fine; unverified numbers are not.
 
@@ -42,9 +42,13 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 
 **Decision log:** record every non-trivial decision in `docs/decisions.md` (date, options, evidence, choice, who decided).
 
+**Planning and tickets (from 2026-10-30):** planning happens in Claude Code cloud sessions, which can read the repo but have no `/data`, `/staging`, CDS access, manifest or logs. The CT works from the tickets they write, in GitHub Issues (`docs/agents/issue-tracker.md`). Anything that needs the data, a download or Haslebacher et al.'s code is a `runs-on:ct` ticket.
+
 ## Environment (as of 2026-09-26)
 
 - **Container:** Proxmox LXC CT 350 `astro-seeing` on node `procyon` (i7-10700T, 8 cores, no hyper-threading). The CT has 6 cores, 24 GB RAM and 8 GB swap, runs Ubuntu 26.04 and is unprivileged. Use at most 5 worker processes. Everything runs in UTC.
+  - The repo is at `/home/astro-seeing` and everything runs as root (D26). pixi is in `/root/.pixi/bin`; tmux is installed with `pixi global`.
+  - Long jobs run as system-level systemd services: `astro-boxes`, `astro-notify` and `astro-manifest-export.timer` (D32). Systemd user units would need a non-root user or lingering.
 - **`/data` (the NAS):** QNAP NAS over NFSv4.1, hard-mounted on the host and bind-mounted into the CT; ~3.4 TB, ~110 MB/s.
   - It's the durable store, with no snapshots or backups, so treat it as the only copy.
   - Files show as `nobody:nogroup`. Never `chown` there or rely on ownership.
@@ -73,8 +77,12 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 
 **Data safety**
 - **Downloads:** GRIB, day-sized requests, each tracked in the SQLite manifest (request → file → checksum → verification → ingest). Downloads must be resumable and idempotent.
+  - **One CDS job at a time:** at most one request queued or running per account, across all datasets (D39; ECMWF asks for sequential requests and may disable accounts that keep sending invalid ones, forum.ecmwf.int/t/15481). Raising it needs Riley's OK. After a rejection, back off; after repeated rejections, stop and alert.
+  - **Validation boxes:** month-sized requests, split to the CDS cost limit (D16, D23). The limits (60,000 fields for pressure levels and 121,000 for single levels, measured 2026-09-27) come from `configs/era5.yaml`. The CDS changes them with its workload (forum.ecmwf.int/t/15337), so re-check before a campaign.
+  - **Restarting after a pause:** read the CDS forum announcements, then submit one request and check that it's accepted before queuing more.
+  - Global and regional runs stay one day per request unless gate 1 changes it.
 - **Verify before ingest:** check field count, grid, levels, times, and fill/NaN counts. Delete a raw GRIB only after its ingested Zarr data has been verified.
-- **What gets stored:** only land cells (with the 1 km buffer) and night hours (Sun below −12°). Validation boxes keep all hours.
+- **What gets stored:** only land cells (with the 1 km buffer) and night hours (Sun below −12°). Validation boxes keep all hours, except areas used only for night-time comparisons, which may be night-only (D31).
 - **Writes:** atomic (write temp → verify → rename). Never delete or overwrite `/data` content without [ASK].
 - **Provenance:** every product records the git commit, config hash, input manifest IDs and software versions.
 
@@ -85,9 +93,9 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 - **Attribution:** products carry the ERA5 (CC-BY 4.0) and Copernicus DEM attributions (text in `docs/RESEARCH.md` §7).
 
 **Code**
-- **Environment:** Python ≥ 3.12 in a conda-forge environment managed by pixi, with `pixi.toml` and a committed `pixi.lock`. Use `ruff` for lint and format; `pytest` with `hypothesis` for tests.
+- **Environment:** Python ≥ 3.12 in a conda-forge environment managed by pixi, with `pixi.toml` and a committed `pixi.lock`. Use `ruff` for lint and format; `pytest` with `hypothesis` for tests. CDS access uses `ecmwf-datastores-client` (the library behind `cdsapi 0.7.7`) asynchronously, reading `~/.cdsapirc` (D2).
 - **Git:** small commits on branches, pushed to origin. Never force-push `main`.
-- **Long jobs:** run under systemd user services or `tmux`, log to `logs/`, and can resume after interruption.
+- **Long jobs:** run as system-level systemd services (D32) or in `tmux`, log to `logs/`, and can resume after interruption.
 
 ## Architecture
 

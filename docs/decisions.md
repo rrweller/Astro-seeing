@@ -318,3 +318,28 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - The rate is `request.fields_per_s` in `configs/era5.yaml`, set to 5.6 fields/s. That was measured on 12–17 Oct 2026, when only one of our jobs was running (D34), and it is pressure levels only. I'll update it from the first days of the sequential queue.
 - **Review (2026-10-30):** Copilot again took no request, so an independent review ran instead. Fixed: no partial plans, subset regions, and the estimate now says the rate is a pressure-level one. Its other findings were about D39 code already merged, and were either deliberate (submit errors and failed jobs count as rejections, as Riley asked) or minor. They're listed in handoff §6.
 - **Who:** Riley (asked for both); agent (details).
+
+## 2026-10-30 — Cloud planning session: switch to Matt Pocock's skills
+
+### D41. Planning skills set up: tickets in GitHub Issues, one decision log
+- **Options (tickets):** GitHub Issues; local Markdown in `.scratch/` committed to the repo; another tracker (Linear, Notion, …).
+- **Evidence:** both sides must read and update tickets. The cloud session reaches GitHub Issues through its GitHub tools; the CT has `gh` logged in as rrweller. Committed Markdown would need a commit and push for every update, with the cloud session and the CT editing the same files on different branches. The cloud session can't set GitHub's native "blocked by" links (no `gh`, no raw API), but it can create sub-issues.
+- **Choice:**
+  - Tickets live in GitHub Issues on `rrweller/Astro-seeing` (`docs/agents/issue-tracker.md`). The wayfinder map is one issue labelled `wayfinder:map`; tickets are its sub-issues.
+  - Blocking is a `Blocked by: #n` line at the top of each ticket body; that line is the source of truth, and the CT may mirror it as a native dependency.
+  - Every ticket carries `runs-on:cloud` or `runs-on:ct`.
+  - Default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`).
+  - `CLAUDE.md` starts with `@AGENTS.md` and holds the skills' config; AGENTS.md stays Riley's.
+  - `docs/decisions.md` stays the only decision log: skills that would write an ADR to `docs/adr/` add a D-entry here instead (`docs/agents/domain.md`).
+- **Who:** Riley.
+
+### D42. AGENTS.md wording updated (proposals from `docs/handoff_pivot.md` §4)
+- **Applied (Riley approved all six, 2026-10-30):**
+  1. Data safety → Downloads: one CDS job queued or running per account (D39, replacing the "at most 4 in flight" of the old proposal, which D37 made obsolete); month-sized validation-box requests split to the CDS cost limit (D16, D23), limits read from config and re-checked before a campaign, because the CDS changes them with its workload (forum.ecmwf.int/t/15337); after a pause, read the CDS announcements and check that one request is accepted before queuing more (the lesson of D37); global and regional runs one day per request unless gate 1 changes it.
+  2. What gets stored: night-only validation areas allowed (D31).
+  3. Code → Environment: the CDS client (D2).
+  4. Environment and Code → Long jobs: repo at `/home/astro-seeing`, root, system-level services (D26, D32), pixi's path.
+  5. Working with Riley: planning in cloud sessions, the CT works from GitHub Issues tickets (D41).
+  6. A typo ("againast").
+- **Evidence for 1:** ECMWF's announcement of 2026-10-22 asks for sequential requests and warns that repeated invalid submissions may get an account disabled (forum.ecmwf.int/t/15481). An ECMWF staff reply of 2026-10-16 says the limits "are changed from time to time according to the current workload of the system" (forum.ecmwf.int/t/15337). Neither thread gives a number. Both were read on 2026-10-30.
+- **Who:** Riley.
