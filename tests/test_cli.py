@@ -246,3 +246,77 @@ def test_build_landmask_dry_run_writes_nothing_by_default(ct, monkeypatch):
     monkeypatch.setattr(cli.Path, "write_text", lambda self, *a, **k: written.append(self))
     assert cli.main(["build-landmask", "--dry-run"]) == 0
     assert written == []
+
+
+def _planned(ct) -> list[dict]:
+    m = Manifest(ct / "state" / "manifest.sqlite")
+    rows = m.conn.execute("SELECT kind, request_json, region FROM requests").fetchall()
+    m.close()
+    return [{"kind": r[0], "region": r[2], **json.loads(r[1])} for r in rows]
+
+
+def test_plan_area_passes_variables_for_single_levels(ct):
+    """Regression (D36): --variables was ignored for sl, which got all 17 variables."""
+    args = ["plan-area", "chile", "--start", "2021-01-01", "--end", "2021-02-28",
+            "--kinds", "sl", "--variables", "lcc,mcc,hcc,zust,ishf,tcwv",
+            "--hours", "night"]  # fmt: skip
+    assert cli.main(args) == 0
+    reqs = _planned(ct)
+    assert len(reqs) == 2 and {r["kind"] for r in reqs} == {"sl"}
+    # its own region, so keys and stores never mix with full single-level requests
+    assert {r["region"] for r in reqs} == {"chile@vars-lcc-mcc-hcc-zust-ishf-tcwv"}
+    want = {
+        "low_cloud_cover",
+        "medium_cloud_cover",
+        "high_cloud_cover",
+        "friction_velocity",
+        "instantaneous_surface_sensible_heat_flux",
+        "total_column_water_vapour",
+    }
+    assert all(set(r["variable"]) == want for r in reqs)
+
+
+def test_plan_area_pl_variables_still_work_and_unknown_names_fail(ct):
+    args = ["plan-area", "chile", "--start", "2021-01-01", "--end", "2021-01-31",
+            "--kinds", "pl", "--variables", "z,t,u,v", "--hours", "night"]  # fmt: skip
+    assert cli.main(args) == 0
+    assert all(len(r["variable"]) == 4 for r in _planned(ct))
+    # one list for both kinds can't be right for both: refused, not silently ignored
+    bad = ["plan-area", "chile", "--start", "2021-03-01", "--end", "2021-03-31",
+           "--kinds", "pl,sl", "--variables", "z,t", "--hours", "night"]  # fmt: skip
+    before = len(_planned(ct))
+    with pytest.raises(SystemExit, match="unknown sl variable"):
+        cli.main(bad)
+    assert len(_planned(ct)) == before  # nothing half-planned
+
+
+def test_plan_area_full_and_subset_plans_do_not_collide(ct):
+    common = ["plan-area", "chile", "--start", "2006-06-01", "--end", "2006-06-30",
+              "--kinds", "sl", "--hours", "night"]  # fmt: skip
+    assert cli.main(common) == 0  # all 17 variables, region chile
+    assert cli.main([*common, "--variables", "lcc,zust"]) == 0
+    assert sorted(r["region"] for r in _planned(ct)) == ["chile", "chile@vars-lcc-zust"]
+    # naming every default variable is the full set, not a subset
+    sl = load_config_sl_short_names()
+    assert cli.main([*common, "--variables", ",".join(sl)]) == 0
+    assert len(_planned(ct)) == 2
+
+
+def load_config_sl_short_names() -> list[str]:
+    from astroseeing.config import load_config
+
+    return [v["short_name"] for v in load_config("era5")["datasets"]["sl"]["variables"].values()]
+
+
+def test_plan_area_estimate_uses_the_configured_rate(ct, caplog):
+    import logging
+
+    from astroseeing.config import load_config
+
+    rate = load_config("era5")["request"]["fields_per_s"]
+    assert rate == 5.6  # measured with one job at a time (D40)
+    args = ["plan-area", "chile", "--start", "2021-01-01", "--end", "2021-01-31",
+            "--kinds", "sl", "--variables", "lcc", "--hours", "night"]  # fmt: skip
+    with caplog.at_level(logging.INFO):
+        assert cli.main(args) == 0
+    assert f"at {rate:.1f} fields/s" in caplog.text
