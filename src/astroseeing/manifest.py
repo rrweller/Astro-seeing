@@ -90,6 +90,21 @@ CREATE TABLE IF NOT EXISTS ingests (
     provenance_json TEXT NOT NULL,
     ingested_at     TEXT NOT NULL
 );
+-- Every submission the CDS refused or failed, and every submit error (D39). The
+-- downloader backs off and pauses from these rows, so the limits hold across restarts.
+CREATE TABLE IF NOT EXISTS cds_rejections (
+    id         INTEGER PRIMARY KEY,
+    request_id INTEGER REFERENCES requests(id),
+    at         TEXT NOT NULL,
+    error      TEXT
+);
+-- One row: when CDS submissions were paused and why, and the last resume (D39).
+CREATE TABLE IF NOT EXISTS cds_control (
+    id           INTEGER PRIMARY KEY CHECK (id = 1),
+    paused_at    TEXT,
+    pause_reason TEXT,
+    resumed_at   TEXT
+);
 CREATE TABLE IF NOT EXISTS events (
     id         INTEGER PRIMARY KEY,
     request_id INTEGER REFERENCES requests(id),
@@ -98,6 +113,10 @@ CREATE TABLE IF NOT EXISTS events (
     detail     TEXT
 );
 """
+
+
+#: Event detail that marks a job the CDS lost (expired, deleted, HTTP 404).
+LOST_PREFIX = "lost at the CDS"
 
 
 def utcnow() -> str:
@@ -335,6 +354,70 @@ class Manifest:
                 self.transition(r.id, ["failed"], "planned", detail="retry", cds_request_id=None)
                 n += 1
         return n
+
+    def lost_count(self, request_id: int) -> int:
+        """How many times the CDS lost this request's job (D34; bounded by D39)."""
+        row = self.conn.execute(
+            "SELECT COUNT(*) FROM events WHERE request_id=? AND detail LIKE ?",
+            (request_id, f"{LOST_PREFIX}%"),
+        ).fetchone()
+        return int(row[0])
+
+    # --- CDS rejections and pause (D39) ------------------------------------------
+    def record_rejection(self, request_id: int | None, error: str, at: str | None = None) -> None:
+        at = at or utcnow()
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO cds_rejections (request_id, at, error) VALUES (?,?,?)",
+                (request_id, at, error),
+            )
+            c.execute(
+                "INSERT INTO events (request_id, at, event, detail) VALUES (?,?,?,?)",
+                (request_id, at, "cds_rejection", error[:500]),
+            )
+
+    def rejections_since(self, since: str) -> list[str]:
+        """Times (ISO, oldest first) of rejections after ``since`` and after the last resume."""
+        resumed = self.cds_control().get("resumed_at") or ""
+        rows = self.conn.execute(
+            "SELECT at FROM cds_rejections WHERE at > ? AND at > ? ORDER BY at",
+            (since, resumed),
+        )
+        return [r["at"] for r in rows]
+
+    def cds_control(self) -> dict[str, Any]:
+        r = self.conn.execute("SELECT * FROM cds_control WHERE id=1").fetchone()
+        return dict(r) if r else {}
+
+    def pause_cds(self, reason: str, at: str | None = None) -> None:
+        """Stop all CDS submissions until :meth:`resume_cds` (``astro cds-resume``)."""
+        at = at or utcnow()
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO cds_control (id, paused_at, pause_reason) VALUES (1,?,?)"
+                " ON CONFLICT(id) DO UPDATE SET paused_at=excluded.paused_at,"
+                " pause_reason=excluded.pause_reason",
+                (at, reason),
+            )
+            c.execute(
+                "INSERT INTO events (request_id, at, event, detail) VALUES (NULL,?,?,?)",
+                (at, "cds_paused", reason),
+            )
+
+    def resume_cds(self, reason: str, at: str | None = None) -> None:
+        """Allow submissions again; rejections before now no longer count (D39)."""
+        at = at or utcnow()
+        with self.tx() as c:
+            c.execute(
+                "INSERT INTO cds_control (id, resumed_at) VALUES (1,?)"
+                " ON CONFLICT(id) DO UPDATE SET paused_at=NULL, pause_reason=NULL,"
+                " resumed_at=excluded.resumed_at",
+                (at,),
+            )
+            c.execute(
+                "INSERT INTO events (request_id, at, event, detail) VALUES (NULL,?,?,?)",
+                (at, "cds_resumed", reason),
+            )
 
     # --- files, verification, ingest ---------------------------------------------
     def add_file(

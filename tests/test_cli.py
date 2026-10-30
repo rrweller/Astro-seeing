@@ -105,8 +105,9 @@ def test_cli_exit_codes_report_failures(ct, monkeypatch):
     assert cli.main(args) == 0
     fake = _fake_from_manifest(ct / "state" / "manifest.sqlite")
     first, second = list(fake.expected)
-    fake.behaviour[first] = "reject"
-    fake.behaviour[second] = "drop"
+    # the rejection comes second: after it the CDS gate backs off (D39)
+    fake.behaviour[first] = "drop"
+    fake.behaviour[second] = "reject"
     monkeypatch.setattr(cli, "_backend", lambda: fake)
     assert cli.main(["download", "--poll", "0"]) == 1  # one CDS rejection
     assert cli.main(["verify"]) == 1  # one file missing a message
@@ -159,14 +160,14 @@ def test_smoke_test_passes_when_everything_verifies(ct, monkeypatch):
 
 
 def test_smoke_test_fails_when_a_request_is_rejected(ct, monkeypatch):
-    fake = _smoke_fake(reject_kind="pl")
+    fake = _smoke_fake(reject_kind="sl")  # submitted last, so the backoff stops nothing
     monkeypatch.setattr(cli, "_backend", lambda: fake)
     out = ct / "smoke.json"
     assert cli.main(["cds-smoke-test", "--out", str(out), "--poll", "0"]) == 1
     rep = json.loads(out.read_text())
     assert rep["ok"] is False and rep["download"]["failed"] == 1
     states = {r["key"].split("/")[0]: r["state"] for r in rep["requests"]}
-    assert states == {"pl": "failed", "sl": "verified"}
+    assert states == {"pl": "verified", "sl": "failed"}
 
 
 def test_config_lookup_order(tmp_path, monkeypatch):

@@ -285,3 +285,23 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **At one request at a time:** expect roughly the 5.6 fields/s measured when only one job was in flight (D34 period), so ~9–10 days for the 4.34 M fields.
 - **Also (licence, Riley):** the CDS terms of use change on 2026-10-28 (Art. 1); using the CDS after that date counts as accepting them. Anyone who doesn't accept must tell ECMWF before 27 Oct (forum.ecmwf.int/t/15374).
 - **Who:** agent (hold and investigation); Riley (the fix and the terms).
+
+### D38. CDS terms of use of 2026-10-28 accepted (Riley, 2026-10-30)
+- **Context:** the CDS terms of use changed on 2026-10-28 (Art. 1); continued use counts as acceptance (forum.ecmwf.int/t/15374, flagged in D37).
+- **Choice:** Riley accepts the new terms. Continued use would count as acceptance anyway.
+- **Who:** Riley.
+
+### D39. One CDS job at a time: the downloader's gate, backoff and pause
+- **Why:** since 2026-10-22 the CDS wants requests one after another, and it may disable accounts that keep sending invalid ones (forum.ecmwf.int/t/15481; D37). In that thread, a user was disabled with "up to two concurrent monthly requests", so one is a hard limit (Riley, 2026-10-30).
+- **Options:** (a) keep `max_active` as a setting with default 1; (b) a hard limit of 1, plus a check that the account has nothing else queued; (c) also back off and pause after rejections. Riley asked for (b) + (c).
+- **Design** (`download/downloader.py`, state in the manifest):
+  - **At most one job queued or running per account, in any dataset.** `Downloader` refuses `max_active` above 1, and changing that needs Riley's OK. Before each submission, our own job is counted from its status, and `active_jobs()` (the CDS job list, status accepted or running) must also be empty. That catches a job left over from a crash, a submission that timed out after the CDS took it, or another process. If either can't be read, nothing is submitted.
+  - **Pipelined:** a step polls first, submits the next request as soon as the previous job has finished at the CDS, and only then downloads the finished result. The CDS queue still holds one job.
+  - **Rejections:** any job the CDS rejected or failed, and any submit error, is a rejection. Both queue-limit wordings (2026-09: "…is temporarily limited"; 2026-10: "Maximum number queued requests for this dataset has been reached") send the request back to planned without counting as a failure. Other rejections fail it as before (`retry-failed` retries up to 5 times). An unrecognised submit error leaves the request planned.
+  - **Backoff:** after a rejection, nothing is submitted for 60 min, doubling with each rejection in the last 24 h, up to 4 h.
+  - **Pause:** 3 rejections within 24 h pause all submissions until a person runs `astro cds-resume --reason …`. Rejections before the resume no longer count. The notify watcher sends a high-priority alert once, saying what to check and how to resume, and `astro status` shows the pause.
+  - **Lost jobs (D34):** a request whose job the CDS loses (HTTP 404, deleted, expired) is submitted again at most twice, then fails. After `retry-failed`, each further loss fails it at once, so the total is bounded.
+  - **Can't be bypassed:** the rejections and the pause are rows in the manifest (`cds_rejections`, `cds_control`), so they survive restarts. `run_boxes.sh` no longer passes `MAX_ACTIVE`. `retry-failed` only moves requests to planned. `astro download` submits nothing and returns while backing off or paused. The smoke test runs one at a time too.
+- **Counting failed jobs:** a job that failed in processing (not only "rejected") also counts. That is conservative: it costs an hour's pause now and then, against an account that is our only route to ERA5.
+- **Tests (`tests/test_cds_gate.py`, fake backend):** one job in flight under random status sequences, poll errors and clock steps (hypothesis; it fails if the gate is removed); both wordings; nothing submitted during a backoff, even after `retry-failed`; the doubling; a stray job at the CDS blocks submission; an unreadable job list blocks submission; a submit error counts; 3 in 24 h pause and alert, and the pause holds until resumed; rejections older than 24 h don't count; lost-job resubmission is bounded; the next job goes in before the finished one is downloaded.
+- **Who:** Riley (the rules); agent (the design).

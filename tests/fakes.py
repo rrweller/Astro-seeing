@@ -24,8 +24,12 @@ class FakeCdsBackend:
     """Jobs go accepted → running → successful after ``polls_to_finish`` polls.
 
     ``behaviour`` maps a request key (canonical JSON of the request) to one of:
-    "reject", "queue_limit" (rejected once like the real CDS when too many jobs are
-    queued, then fine), "expire", "truncate", "drop", "duplicate", "shift".
+    "reject", "queue_limit" / "queue_limit_new" (rejected once with the old or the
+    2026-10 wording, then fine), "expire", "lost" (always 404, like D34), "truncate",
+    "drop", "duplicate", "shift".
+
+    ``calls`` logs ("submit"|"download", id) in order; ``max_in_flight`` is the most
+    jobs ever queued or running at once, as the CDS would count them.
     """
 
     def __init__(self, expected_by_request: dict[str, dict], polls_to_finish: int = 2):
@@ -36,23 +40,38 @@ class FakeCdsBackend:
         self.ids = (f"job-{i}" for i in itertools.count(1))
         self.submits = 0
         self.deleted: list[str] = []
+        self.calls: list[tuple[str, str]] = []
+        self.max_in_flight = 0
+        self.submit_error: Exception | None = None  # raised by the next submit, once
+
+    def active_jobs(self) -> list[str]:
+        return [rid for rid, j in self.jobs.items() if not j.get("terminal")]
 
     @staticmethod
     def req_key(request: dict) -> str:
         return canonical_json(request)
 
     def submit(self, dataset: str, request: dict[str, Any]) -> str:
+        if self.submit_error is not None:
+            e, self.submit_error = self.submit_error, None
+            raise e
         self.submits += 1
         rid = next(self.ids)
         key = self.req_key(request)
         self.jobs[rid] = {"key": key, "polls": 0, "behaviour": self.behaviour.get(key)}
+        self.calls.append(("submit", rid))
+        self.max_in_flight = max(self.max_in_flight, len(self.active_jobs()))
         return rid
 
     def info(self, request_id: str) -> RemoteInfo:
         job = self.jobs[request_id]
         job["polls"] += 1
-        if job["polls"] < self.polls_to_finish:
+        if job["behaviour"] == "lost":
+            job["terminal"] = True
+            return RemoteInfo(status="deleted", error="job not found at the CDS (HTTP 404)")
+        if job["polls"] < job.get("polls_to_finish", self.polls_to_finish):
             return RemoteInfo(status="accepted" if job["polls"] == 1 else "running")
+        job["terminal"] = True
         if job["behaviour"] == "reject":
             return RemoteInfo(status="rejected", error="cost limits exceeded (fake)")
         if job["behaviour"] == "queue_limit":
@@ -64,6 +83,15 @@ class FakeCdsBackend:
                 "Number queued requests for this dataset is temporarily limited. Please "
                 "configure your scripts accordingly",
             )
+        if job["behaviour"] == "queue_limit_new":
+            job["behaviour"] = None
+            self.behaviour.pop(job["key"], None)
+            return RemoteInfo(
+                status="rejected",
+                error="HTTPError: 400 Client Error: Bad Request\nThe job has been rejected\n"
+                "Maximum number queued requests for this dataset has been reached. Please "
+                "configure your scripts to request data sequentially",
+            )
         if job["behaviour"] == "expire":
             job["behaviour"] = None  # the resubmitted job will succeed
             self.behaviour.pop(job["key"], None)
@@ -74,6 +102,7 @@ class FakeCdsBackend:
 
     def download(self, request_id: str, target: Path) -> int:
         job = self.jobs[request_id]
+        self.calls.append(("download", request_id))
         b = job["behaviour"]
         kwargs = {"drop": 1} if b == "drop" else {"duplicate": 1} if b == "duplicate" else {}
         if b == "shift":
