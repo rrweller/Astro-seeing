@@ -10,7 +10,7 @@
 # The loop ends when nothing is left to do.
 #
 # The CDS gate is in the downloader, not here (D39): one job at a time, a backoff after
-# each rejection, and a pause after 3 rejections in 24 h that only `astro cds-resume`
+# each rejection (60, then 120 min), and a pause after 3 rejections in 24 h that only `astro cds-resume`
 # lifts. While paused, `astro download` submits nothing and returns at once, and this
 # loop just waits; retry-failed only moves requests back to planned.
 #

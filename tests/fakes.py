@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import itertools
 from pathlib import Path
 from typing import Any
@@ -117,3 +118,16 @@ class FakeCdsBackend:
 
     def delete(self, request_id: str) -> None:
         self.deleted.append(request_id)
+
+
+class Clock:
+    """A settable clock for the downloader (``now=``), so tests can step past backoffs."""
+
+    def __init__(self, t: dt.datetime = dt.datetime(2026, 10, 30, tzinfo=dt.UTC)):
+        self.t = t
+
+    def __call__(self) -> dt.datetime:
+        return self.t
+
+    def advance(self, **kw) -> None:
+        self.t += dt.timedelta(**kw)

@@ -13,7 +13,8 @@ The CDS gate (D39; the CDS wants sequential requests since 2026-10-22, D37):
   (it catches jobs from a crash, a timed-out submission or another process). A job
   whose status can't be read counts as running;
 * after a rejection (any rejected or failed job, or any submit error) nothing is
-  submitted for 60 min, doubling with each further rejection up to 4 h;
+  submitted for 60 min, doubling with each further rejection in 24 h (so 60 then
+  120 min; BACKOFF_MAX caps it if REJECTIONS_TO_PAUSE is ever raised);
 * after 3 rejections within 24 h, submissions pause until a person runs
   ``astro cds-resume`` (the notify watcher sends the alert);
 * a request whose job the CDS loses (D34) is submitted again at most twice, then
@@ -212,6 +213,9 @@ class Downloader:
         except Exception as e:  # unknown submit errors count as rejections (D39)
             log.error("submit %s failed (counted as a rejection): %s", req.key, e)
             self._rejected(req, f"submit: {e}")
+            # failed, so `astro status` shows it and attempts count; retry-failed
+            # replans it, and the backoff and pause still apply (D39)
+            self.m.fail(req.id, ["planned"], f"submit: {e}")
             return False
         self.m.transition(
             req.id, ["planned"], "submitted", detail=rid, cds_request_id=rid,
@@ -231,6 +235,7 @@ class Downloader:
             return "in_flight", info
         if info.status in FAILED:
             error = f"cds {info.status}: {info.error}"
+            s.rejected += 1
             self._rejected(req, error)
             if is_queue_limit_rejection(info.error):
                 # The request is fine, the CDS queue was full: plan it again (transient).
@@ -250,7 +255,10 @@ class Downloader:
             return "done_with", info
         if info.status in GONE:
             # Result expired, or the job was removed or lost at the CDS: submit again,
-            # but only MAX_LOST_RESUBMITS times (D39), so it can never loop.
+            # but only MAX_LOST_RESUBMITS times (D39), so it can never loop. Both the
+            # replan and the final failure write a detail starting with LOST_PREFIX, so
+            # after retry-failed the count is already over the limit and the next loss
+            # fails at once.
             why = f"cds {info.status}" + (f": {info.error}" if info.error else "")
             lost = self.m.lost_count(req.id)
             if lost >= MAX_LOST_RESUBMITS:

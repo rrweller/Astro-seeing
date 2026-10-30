@@ -484,7 +484,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("download", help="submit, poll and download planned requests")
     p.add_argument(
-        "--max-active", type=int, default=1,
+        "--max-active", type=int, default=1, choices=[1],
         help="jobs at the CDS at once; only 1 is allowed (D39, needs Riley's OK to change)",
     )  # fmt: skip
     p.add_argument("--poll", type=float, default=60.0)

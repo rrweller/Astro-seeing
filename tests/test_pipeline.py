@@ -30,7 +30,7 @@ from astroseeing.paths import assert_local_filesystem, filesystem_type
 from astroseeing.synthetic import write_synthetic_grib
 from astroseeing.verify.grib import verify_grib
 
-from fakes import FakeCdsBackend, era5_param_ids
+from fakes import Clock, FakeCdsBackend, era5_param_ids
 
 AREA = Area.around(-24.63, -70.40, half_width_cells=1)  # 3×3 box at Paranal
 HOURS = (0, 6, 12, 18)  # keeps synthetic files small; full days are tested in _decoded
@@ -53,21 +53,11 @@ def env(tmp_path):
     m.close()
 
 
-class Clock:
-    """A clock for the downloader that the tests move on, so backoffs (D39) end."""
-
-    def __init__(self):
-        self.t = dt.datetime(2026, 10, 30, tzinfo=dt.UTC)
-
-    def __call__(self) -> dt.datetime:
-        return self.t
-
-
 def drain(dl: Downloader, max_steps: int = 50) -> None:
     for _ in range(max_steps):
         dl.step()
-        if isinstance(dl.now, Clock):
-            dl.now.t += dt.timedelta(hours=5)  # past any backoff (at most 4 h)
+        if isinstance(dl.now, Clock):  # drain() also runs downloaders on the real clock
+            dl.now.advance(hours=5)  # past any backoff (D39)
         if not dl.m.by_state("planned", "submitted"):
             return
     raise AssertionError("downloader did not finish")

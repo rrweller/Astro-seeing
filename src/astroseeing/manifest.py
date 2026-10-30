@@ -380,7 +380,7 @@ class Manifest:
         """Times (ISO, oldest first) of rejections after ``since`` and after the last resume."""
         resumed = self.cds_control().get("resumed_at") or ""
         rows = self.conn.execute(
-            "SELECT at FROM cds_rejections WHERE at > ? AND at > ? ORDER BY at",
+            "SELECT at FROM cds_rejections WHERE at > ? AND at >= ? ORDER BY at",
             (since, resumed),
         )
         return [r["at"] for r in rows]

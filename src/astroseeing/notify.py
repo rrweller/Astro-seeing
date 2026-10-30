@@ -287,7 +287,8 @@ def check_once(
     if s.pending:
         state.finished_reported = False
         idle = (now - s.last_change).total_seconds() / 3600 if s.last_change else 0.0
-        if idle >= stall_hours:
+        cds_paused = bool(m.cds_control().get("paused_at"))  # has its own alert (D39)
+        if idle >= stall_hours and not cds_paused:
             if _hours_since(state.stall_alerted_at, now) >= realert_hours:
                 emit(f"Problem: no download progress for {idle:.1f} h; {s.pending} requests "
                      "still pending.", "astro-seeing: stalled", "high")  # fmt: skip

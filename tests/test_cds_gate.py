@@ -14,7 +14,7 @@ from astroseeing.download.requests import Area, plan_requests
 from astroseeing.manifest import Manifest
 from astroseeing.notify import WatchState, check_once
 
-from fakes import FakeCdsBackend
+from fakes import Clock, FakeCdsBackend
 
 AREA = Area.around(-24.63, -70.40, half_width_cells=1)
 HOURS = (0, 6, 12, 18)
@@ -34,17 +34,6 @@ NEW = (
 BEHAVIOURS = [None, None, "queue_limit", "queue_limit_new", "reject", "expire", "lost"]
 
 
-class Clock:
-    def __init__(self, t: dt.datetime = T0):
-        self.t = t
-
-    def __call__(self) -> dt.datetime:
-        return self.t
-
-    def advance(self, **kw) -> None:
-        self.t += dt.timedelta(**kw)
-
-
 def make(tmp_path, days: int = 4, polls_to_finish: int = 2):
     m = Manifest(tmp_path / "state" / "manifest.sqlite")
     specs = plan_requests(
@@ -55,7 +44,7 @@ def make(tmp_path, days: int = 4, polls_to_finish: int = 2):
     )
     for s in specs:
         m.add_request(s)
-    clock = Clock()
+    clock = Clock(T0)
     dl = Downloader(m, fake, tmp_path / "staging" / "grib", now=clock)
     return m, fake, dl, clock, specs
 
@@ -154,7 +143,9 @@ def test_a_submit_error_counts_as_a_rejection(tmp_path):
     m, fake, dl, _clock, _ = make(tmp_path)
     fake.submit_error = RuntimeError("500 Server Error (something new)")
     s = dl.step()
-    assert s.rejected == 1 and m.counts() == {"planned": 4}
+    assert s.rejected == 1 and m.counts() == {"failed": 1, "planned": 3}
+    assert m.get(1).attempts == 1 and "500 Server Error" in m.get(1).last_error
+    m.retry_failed()  # replanned, but the backoff still holds
     assert m.rejections_since("2000") and dl.backoff_until() == T0 + dt.timedelta(hours=1)
     dl.step()
     assert fake.submits == 0
@@ -180,6 +171,7 @@ def test_three_rejections_in_24h_pause_and_alert(tmp_path):
     check_once(m, WatchState(), lambda msg, t, p: sent.append((t, msg)), clock(),
                loop_running=lambda: True)  # fmt: skip
     paused = [msg for t, msg in sent if t == "astro-seeing: CDS paused"]
+    assert not [t for t, _ in sent if t == "astro-seeing: stalled"]  # the pause explains it
     assert len(paused) == 1 and "astro cds-resume" in paused[0] and "forum" in paused[0]
 
     fake.behaviour.clear()
