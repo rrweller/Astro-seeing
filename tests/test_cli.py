@@ -246,3 +246,55 @@ def test_build_landmask_dry_run_writes_nothing_by_default(ct, monkeypatch):
     monkeypatch.setattr(cli.Path, "write_text", lambda self, *a, **k: written.append(self))
     assert cli.main(["build-landmask", "--dry-run"]) == 0
     assert written == []
+
+
+def _planned(ct) -> list[dict]:
+    m = Manifest(ct / "state" / "manifest.sqlite")
+    rows = m.conn.execute("SELECT kind, request_json FROM requests").fetchall()
+    m.close()
+    return [{"kind": r[0], **json.loads(r[1])} for r in rows]
+
+
+def test_plan_area_passes_variables_for_single_levels(ct):
+    """Regression (D36): --variables was ignored for sl, which got all 17 variables."""
+    args = ["plan-area", "chile", "--start", "2021-01-01", "--end", "2021-02-28",
+            "--kinds", "sl", "--variables", "lcc,mcc,hcc,zust,ishf,tcwv",
+            "--hours", "night"]  # fmt: skip
+    assert cli.main(args) == 0
+    reqs = _planned(ct)
+    assert len(reqs) == 2 and {r["kind"] for r in reqs} == {"sl"}
+    want = {
+        "low_cloud_cover",
+        "medium_cloud_cover",
+        "high_cloud_cover",
+        "friction_velocity",
+        "instantaneous_surface_sensible_heat_flux",
+        "total_column_water_vapour",
+    }
+    assert all(set(r["variable"]) == want for r in reqs)
+
+
+def test_plan_area_pl_variables_still_work_and_unknown_names_fail(ct):
+    args = ["plan-area", "chile", "--start", "2021-01-01", "--end", "2021-01-31",
+            "--kinds", "pl", "--variables", "z,t,u,v", "--hours", "night"]  # fmt: skip
+    assert cli.main(args) == 0
+    assert all(len(r["variable"]) == 4 for r in _planned(ct))
+    # one list for both kinds can't be right for both: refused, not silently ignored
+    bad = ["plan-area", "chile", "--start", "2021-03-01", "--end", "2021-03-31",
+           "--kinds", "pl,sl", "--variables", "z,t", "--hours", "night"]  # fmt: skip
+    with pytest.raises(SystemExit, match="unknown sl variable"):
+        cli.main(bad)
+
+
+def test_plan_area_estimate_uses_the_configured_rate(ct, caplog):
+    import logging
+
+    from astroseeing.config import load_config
+
+    rate = load_config("era5")["request"]["fields_per_s"]
+    assert rate == 5.6  # measured with one job at a time (D40)
+    args = ["plan-area", "chile", "--start", "2021-01-01", "--end", "2021-01-31",
+            "--kinds", "sl", "--variables", "lcc", "--hours", "night"]  # fmt: skip
+    with caplog.at_level(logging.INFO):
+        assert cli.main(args) == 0
+    assert f"at {rate:.1f} fields/s" in caplog.text

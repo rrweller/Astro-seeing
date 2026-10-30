@@ -309,3 +309,10 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - If a submission times out after the CDS has taken it, that job is orphaned: we have no id for it. The job-list check still blocks any parallel submission, so the cost is only that the CDS does that request twice.
   - A request the CDS keeps rejecting for its own reasons trips the pause instead of letting the queue move on. That is wanted: repeated invalid requests are what gets accounts disabled.
 - **Review (2026-10-30):** Copilot didn't take the review request on PR #4. The API accepted it, but no request was recorded (on PR #3 it was), so an independent code review was run in its place. It had 10 findings and 8 were fixed: submit errors now fail the request (visible, counted); poll-time rejections count in the run summary; the stall alert is suppressed while paused; `--max-active` accepts only 1; a rejection in the same second as a resume counts; the backoff text matches the code; the lost-job count is commented; one shared test clock. The 2 others are the known limits above.
+
+### D40. `plan-area --variables` for single levels; planning rate from config
+- **Why:** `plan-area` passed `--variables` only for pressure levels, so Chile's extra single levels couldn't be planned without all 17 variables (D36, handoff §2). The time estimate it printed used the first-day rate, 26.4 fields/s (D24), which one job at a time (D39) can't reach.
+- **Choice:**
+  - `--variables` now applies to every kind in `--kinds`. A name the kind doesn't have stops with an error, so a mixed pl,sl plan with one list fails loudly instead of being ignored.
+  - The rate is `request.fields_per_s` in `configs/era5.yaml`, set to 5.6 fields/s. That was measured on 12–17 Oct 2026, when only one of our jobs was running (D34), and it is pressure levels only. I'll update it from the first days of the sequential queue.
+- **Who:** Riley (asked for both); agent (details).

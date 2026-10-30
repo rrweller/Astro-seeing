@@ -176,10 +176,6 @@ def cmd_cancel(args, paths: Paths) -> int:
     return 0
 
 
-#: Measured CDS throughput (fields/s, D24), for the time estimates printed when planning.
-CDS_FIELDS_PER_S = 26.4
-
-
 def _parse_variables(kind: str, spec: str) -> tuple[str, ...] | None:
     if not spec:
         return None
@@ -228,7 +224,7 @@ def cmd_plan_area(args, paths: Paths) -> int:
                 _date(args.end),
                 area.area,
                 granularity="month",
-                variables=_parse_variables(kind, args.variables if kind == "pl" else ""),
+                variables=_parse_variables(kind, args.variables),
                 levels=levels if kind == "pl" else None,
                 hours=hours,
                 day_step=args.day_step,
@@ -237,11 +233,12 @@ def cmd_plan_area(args, paths: Paths) -> int:
             m.add_request(spec)
             total_fields += spec.n_fields
             n += 1
+    rate = load_config("era5")["request"]["fields_per_s"]  # measured, one job at a time (D40)
     log.info(
         "planned %d requests for area %s (%s; UTC hours %s): %.2f M fields, ~%.1f days of CDS "
         "processing at %.1f fields/s",
         n, region, area.area.as_cds(), ",".join(map(str, hours)), total_fields / 1e6,
-        total_fields / CDS_FIELDS_PER_S / 86400, CDS_FIELDS_PER_S,
+        total_fields / rate / 86400, rate,
     )  # fmt: skip
     return 0
 
@@ -520,7 +517,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--end", required=True)
     p.add_argument("--kinds", default="pl", help="comma list of pl, sl, static")
     p.add_argument("--hours", default="all", help="all | night | comma list of UTC hours")
-    p.add_argument("--variables", default="", help="pl variables, e.g. z,t,u,v (default all)")
+    p.add_argument(
+        "--variables", default="",
+        help="variables for every kind in --kinds, e.g. z,t,u,v for pl or lcc,zust for sl "
+        "(default all); a name the kind doesn't have is an error, so plan pl and sl separately",
+    )  # fmt: skip
     p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
     p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
     p.set_defaults(fn=cmd_plan_area)
