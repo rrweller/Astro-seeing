@@ -30,7 +30,7 @@ from astroseeing.paths import assert_local_filesystem, filesystem_type
 from astroseeing.synthetic import write_synthetic_grib
 from astroseeing.verify.grib import verify_grib
 
-from fakes import FakeCdsBackend, era5_param_ids
+from fakes import Clock, FakeCdsBackend, era5_param_ids
 
 AREA = Area.around(-24.63, -70.40, half_width_cells=1)  # 3×3 box at Paranal
 HOURS = (0, 6, 12, 18)  # keeps synthetic files small; full days are tested in _decoded
@@ -47,7 +47,7 @@ def env(tmp_path):
     expected = {FakeCdsBackend.req_key(s.cds_request()): s.expected() for s in specs}
     fake = FakeCdsBackend(expected)
     ids = [m.add_request(s) for s in specs]
-    dl = Downloader(m, fake, tmp_path / "staging" / "grib", max_active=2)
+    dl = Downloader(m, fake, tmp_path / "staging" / "grib", now=Clock())
     (tmp_path / "data").mkdir()  # on the CT this is /data/astro (must already exist)
     yield {"m": m, "fake": fake, "dl": dl, "specs": specs, "ids": ids, "tmp": tmp_path}
     m.close()
@@ -56,6 +56,8 @@ def env(tmp_path):
 def drain(dl: Downloader, max_steps: int = 50) -> None:
     for _ in range(max_steps):
         dl.step()
+        if isinstance(dl.now, Clock):  # drain() also runs downloaders on the real clock
+            dl.now.advance(hours=5)  # past any backoff (D39)
         if not dl.m.by_state("planned", "submitted"):
             return
     raise AssertionError("downloader did not finish")
@@ -170,11 +172,11 @@ def test_full_pipeline_happy_path(env):
 
 def test_resume_after_crash_does_not_resubmit(env):
     m, fake, tmp = env["m"], env["fake"], env["tmp"]
-    env["dl"].step()  # submits 2 (max_active), nothing finished yet
-    assert fake.submits == 2 and len(m.by_state("submitted")) == 2
-    dl2 = Downloader(m, fake, tmp / "staging" / "grib", max_active=2)  # "restart"
+    env["dl"].step()  # submits 1 (D39), nothing finished yet
+    assert fake.submits == 1 and len(m.by_state("submitted")) == 1
+    dl2 = Downloader(m, fake, tmp / "staging" / "grib")  # "restart"
     drain(dl2)
-    assert fake.submits == 3  # the two in-flight jobs were re-attached, not resubmitted
+    assert fake.submits == 3  # the in-flight job was re-attached, not resubmitted
     assert m.counts() == {"downloaded": 3}
 
 
@@ -186,8 +188,8 @@ def test_never_more_than_max_active_in_flight(env):
     fake.polls_to_finish = 10  # jobs stay queued for several steps
     for _ in range(4):
         env["dl"].step()
-        assert len(m.by_state("submitted")) <= 2
-    assert fake.submits == 2 and len(m.by_state("planned")) == 1
+        assert len(m.by_state("submitted")) <= 1
+    assert fake.submits == 1 and len(m.by_state("planned")) == 2
     assert m.by_state("planned", limit=0) == []
 
 
@@ -222,9 +224,10 @@ def test_a_job_the_cds_no_longer_knows_is_submitted_again(env):
 
     # The downloader then plans the request again (not "poll failed, will retry").
     m, fake = env["m"], env["fake"]
-    env["dl"].step()  # submits 2
+    env["dl"].step()  # submits 1
     rid = m.by_state("submitted")[0].id
     lost = m.get(rid).cds_request_id  # only this job vanishes; its resubmission is fine
+    fake.jobs[lost]["terminal"] = True  # a 404 job isn't in the CDS job list either
     fake.info = lambda request_id, _orig=fake.info: (
         info if request_id == lost else _orig(request_id)
     )
@@ -654,7 +657,7 @@ def test_reingest_keeps_the_stores_own_provenance(env):
     m2 = Manifest(tmp / "state2" / "manifest.sqlite")
     for s in env["specs"]:
         m2.add_request(s)
-    drain(Downloader(m2, env["fake"], tmp / "staging2" / "grib", max_active=3))
+    drain(Downloader(m2, env["fake"], tmp / "staging2" / "grib"))
     verify_pending(m2)
     out = ingest_pending(m2, tmp / "data", {"config": "changed"})
     assert out["already_present"] == 3 and out["ingested"] == 0

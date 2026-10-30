@@ -59,6 +59,14 @@ def _date(s: str) -> dt.date:
 def cmd_status(args, paths: Paths) -> int:
     m = _manifest(paths)
     print(json.dumps({"manifest": str(paths.manifest), "counts": m.counts()}, indent=2))
+    ctl = m.cds_control()
+    if ctl.get("paused_at"):
+        print(f"CDS SUBMISSIONS PAUSED since {ctl['paused_at']}: {ctl['pause_reason']}")
+        print("  check the ECMWF forum and the log, then `astro cds-resume --reason ...` (D39)")
+    since = (dt.datetime.now(dt.UTC) - dt.timedelta(hours=24)).isoformat(timespec="seconds")
+    if rej := m.rejections_since(since):
+        print(f"CDS rejections in the last 24 h (since the last resume): {len(rej)}, "
+              f"last at {rej[-1]}")  # fmt: skip
     for r in m.by_state("failed"):
         print(f"FAILED {r.key} (attempts {r.attempts}): {r.last_error}")
     return 0
@@ -104,9 +112,25 @@ def cmd_download(args, paths: Paths) -> int:
     max_s = args.max_hours * 3600 if args.max_hours else None
     s = dl.run(poll_seconds=args.poll, max_seconds=max_s)
     log.info("download finished: %s", s)
-    if s.failed:
-        log.error("%d request(s) failed in this run; see `astro status`", s.failed)
+    if s.paused:
+        log.error("CDS submissions are paused (D39); see `astro status`")
+        return 3
+    if s.backoff_until:
+        log.warning("CDS backoff after a rejection: nothing submitted until %s (D39)",
+                    s.backoff_until.isoformat(timespec="seconds"))  # fmt: skip
+    if s.failed or s.rejected:
+        log.error("%d request(s) failed and %d submission(s) were rejected in this run; see "
+                  "`astro status`", s.failed, s.rejected)  # fmt: skip
         return 1
+    return 0
+
+
+def cmd_cds_resume(args, paths: Paths) -> int:
+    m = _manifest(paths)
+    if not m.cds_control().get("paused_at"):
+        log.info("CDS submissions were not paused; recording the resume anyway")
+    m.resume_cds(args.reason)
+    log.info("CDS submissions allowed again; earlier rejections no longer count (D39)")
     return 0
 
 
@@ -356,7 +380,7 @@ def cmd_cds_smoke_test(args, paths: Paths) -> int:
     ]
     m = _manifest(paths)
     ids = [m.add_request(s) for s in specs]
-    dl = Downloader(m, backend, paths.grib_dir, max_active=len(specs))
+    dl = Downloader(m, backend, paths.grib_dir)  # one at a time (D39)
     t0 = time.monotonic()
     summary = dl.run(poll_seconds=args.poll, max_seconds=args.timeout_hours * 3600)
     report["download"] = summary.__dict__
@@ -459,10 +483,16 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(fn=cmd_plan_box)
 
     p = sub.add_parser("download", help="submit, poll and download planned requests")
-    p.add_argument("--max-active", type=int, default=4)
+    p.add_argument(
+        "--max-active", type=int, default=1, choices=[1],
+        help="jobs at the CDS at once; only 1 is allowed (D39, needs Riley's OK to change)",
+    )  # fmt: skip
     p.add_argument("--poll", type=float, default=60.0)
     p.add_argument("--max-hours", type=float, default=None)
     p.set_defaults(fn=cmd_download)
+    p = sub.add_parser("cds-resume", help="allow CDS submissions again after a pause (D39)")
+    p.add_argument("--reason", required=True, help="what was checked, for the event log")
+    p.set_defaults(fn=cmd_cds_resume)
 
     sub.add_parser("verify", help="verify downloaded GRIB files").set_defaults(fn=cmd_verify)
     sub.add_parser("ingest", help="ingest verified files into Zarr").set_defaults(fn=cmd_ingest)

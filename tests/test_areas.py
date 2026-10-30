@@ -101,7 +101,7 @@ def test_area_ingest_stores_only_the_site_boxes(tmp_path, monkeypatch):
                           polls_to_finish=1)  # fmt: skip
     for s in specs:
         m.add_request(s)
-    dl = Downloader(m, fake, tmp_path / "staging" / "grib", max_active=2)
+    dl = Downloader(m, fake, tmp_path / "staging" / "grib")
     for _ in range(10):
         dl.step()
     assert verify_pending(m)["verified"] == 1
