@@ -1,14 +1,28 @@
 # astro-seeing
 
-How many good astronomical viewing nights a year each land location gets, computed from ERA5 reanalysis profiles and terrain, and validated against published papers and observatory measurements.
+Astronomical observing conditions from weather models and terrain, in two products on one shared physics engine: a forecast of tonight's cloud and seeing for any place, and a climatology of how many good viewing nights a year each land location gets, both validated against published papers and observatory measurements.
 
 ## Language
+
+### Products
+
+**Forecast track**:
+The product that shows Tonight's cloud and seeing, forecast model by forecast model, for a place the user picks.
+_Avoid_: next-night forecast, Tonight (as a product name)
+
+**Historical track**:
+The product that shows the climatology of good nights, dark time, cloud and seeing for every land location, computed from ERA5 reanalysis.
+_Avoid_: global run, climatology app
 
 ### Time
 
 **Night**:
 The span from local mean solar noon to the next local mean solar noon, named by the date of its evening.
 _Avoid_: day, date (for this span)
+
+**Tonight**:
+The Night that has not yet reached its sunrise; from sunrise on, the Night that begins at the coming sunset.
+_Avoid_: next night, coming night
 
 **Dark time**:
 The part of a night when the Sun is more than 18° below the horizon (astronomical darkness).
@@ -21,3 +35,31 @@ _Avoid_: night hours, night filter
 **Night window**:
 A fixed set of UTC hours downloaded for a validation area whose comparisons all happen at night (for example 23–11 UTC for Chile).
 _Avoid_: night hours, night-only hours
+
+### Forecasts
+
+**Forecast model**:
+One numerical weather-prediction system whose open output we use, such as ECMWF IFS or ICON-EU. The members of an ensemble are not separate forecast models.
+_Avoid_: model (alone), source, provider
+
+**Run**:
+One forecast model started at one time, for example IFS from 00 UTC on 5 November.
+_Avoid_: cycle, forecast (for this)
+
+**Total cloud**:
+The fraction of the sky covered by cloud at any height, as a forecast model reports it. It is not the sum of low, mid and high cloud, because layers overlap.
+_Avoid_: cloud cover (unqualified), tcc (outside code)
+
+**Cloud class**:
+One of clear, some cloud or cloudy, given to one forecast model's hour from its total cloud.
+_Avoid_: cloud category, sky state
+
+**Model agreement**:
+How many forecast models put an hour in the same cloud class.
+_Avoid_: consensus, ensemble agreement
+
+### Turbulence
+
+**Cₙ² model**:
+A formula that gives the refractive-index structure constant Cₙ² from a temperature and wind profile, such as Osborn–Sarazin or Tatarskii + HMNSP99.
+_Avoid_: model (alone), seeing model, turbulence model

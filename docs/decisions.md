@@ -343,3 +343,28 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   6. A typo ("againast").
 - **Evidence for 1:** ECMWF's announcement of 2026-10-22 asks for sequential requests and warns that repeated invalid submissions may get an account disabled (forum.ecmwf.int/t/15481). An ECMWF staff reply of 2026-10-16 says the limits "are changed from time to time according to the current workload of the system" (forum.ecmwf.int/t/15337). Neither thread gives a number. Both were read on 2026-10-30.
 - **Who:** Riley.
+
+## 2026-11-05 — Cloud planning session: the forecast track
+
+### D43. A forecast track alongside the historical one, on one shared engine
+- **Context:** Riley's experience: Yr said clear, meteoblue's astronomy page showed 10–20% low cloud, and the sky was clear. Riley wants several forecasts side by side for tonight, with seeing computed by the methods of the papers being reproduced, and later a public site (handoff of 2026-11-05 §3). AGENTS.md's phases are historical-only, so this is a new phase [ASK].
+- **Options (gate 1 map #6):** pause it; keep it as the historical track and work both in parallel; close it and move its tickets to a forecast map.
+- **Evidence:**
+  - The physics is shared: both Cₙ² models, the integrals, cloud overlap and calibration already exist in `src/astroseeing/physics/`. The paper reproductions on #6 are what show that physics works, for either track.
+  - ERA5 is a reanalysis, so forecasts don't use the CDS and don't compete with the CT's downloads.
+  - Global-model seeing forecasts are weak for total seeing: at Paranal, O&S got r = 0.64 for the free atmosphere but 0.30 for total seeing; Ye 2011 reports errors of 0.2–0.4″ (RESEARCH §1, §3.3, §3.5).
+  - Kongsberg (59.669° N, 9.652° E; en.wikipedia.org/wiki/Kongsberg) has no astronomical darkness from 22 Apr to 19 Aug, and the Sun never gets below −12° from 13 May to 29 Jul (NOAA solar approximation, 1-minute steps, 2026; 239 nights with ≥2 dark hours, as in RESEARCH §4.1). The night mask would leave the forecast empty for 11 weeks.
+- **Choice (Riley, 2026-11-05):**
+  1. **Two tracks in parallel, one engine.** The forecast track and the historical track share the physics code; they differ in data and UI. #6 stays open as the historical track.
+  2. **Area:** the user picks a place on the map; Kongsberg is the default. Each run computes a fixed large domain (northern Europe first, global once download sizes are known), and picking a place only chooses where to look. Places covered by fewer forecast models show fewer.
+  3. **Inputs:** raw output from open forecast models only, never other services' finished forecasts. Each new source is a licence [ASK].
+  4. **v1 shows, per forecast model, side by side:** low, mid, high and total cloud each hour; model agreement on cloud class (clear ≤10%, some cloud 10–50%, cloudy >50% total cloud; placeholders, in config). No claim to beat Yr or meteoblue; a combining method comes later.
+  5. **Seeing:** both Cₙ² models (O&S K = 6 as the main figure, Tatarskii + HMNSP99 in the detail), per forecast model with enough pressure levels, plus 200 hPa wind and the height of the most turbulent layer. Labelled "uncalibrated" until the historical track's calibration (#15) exists.
+  6. **Hours:** all 24, in local time (stored in UTC), shaded for daylight, twilight and dark time. The night mask stays a historical-track rule. A night with no dark time says so and still shows cloud and seeing.
+  7. **Moon:** rise, set, phase and hourly altitude. No sky-brightness model; "not now: moonlight" still applies to the historical layers.
+  8. **Windward/lee seeing:** later, after a research ticket. v1 uses model-cell values or the height-only method (RESEARCH §5).
+  9. **Hosting:** private, on CT 350 as its own systemd service, writing to `/data/astro/forecast/` and logging downloads in the manifest. Each run's derived hourly values for the default area are kept indefinitely (the record a combining method will need); raw downloads are deleted once processed. Later public via Pangolin on Riley's domain. Free sources first; paid only if nothing free has the data, cheapest first.
+  10. **Globe display:** two throwaway prototypes (an hourly time slider, and a "tonight" summary map) before the spec. Seeing is never blended between hours.
+  11. **Seeing measurements:** research which observatory, amateur or citizen-science sources measure seeing and could validate either track.
+  12. **AGENTS.md:** the mission names both products; the forecast track gets milestones F1 (Kongsberg default, multi-model timeline, private), F2 (any place in the domain, the globe), F3 (global, public); phases 1–3 stay as the historical track. Diff to follow for Riley's approval.
+- **Who:** Riley.
