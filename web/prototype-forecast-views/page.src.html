@@ -1,0 +1,470 @@
+<title>Forecast View Prototypes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: instrument panel. Globe or table is the hero; the hourly strip sits under it; a floating bar switches variants. Dark-first (it's used at night). */
+:root {
+  color-scheme: dark;
+  --bg: #0b111b; --panel: #111a28; --raise: #172234; --line: #24324a;
+  --fg: #dde6f1; --muted: #8796ad; --accent: #e9a94b; --sel: #7cc8f2;
+  --coast: rgba(226, 235, 246, .62); --grat: rgba(226, 235, 246, .09);
+  --s-day: #3a3524; --s-civil: #2f3550; --s-naut: #212b4a; --s-astro: #172040; --s-dark: #0a0f22;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  color-scheme: light;
+  --bg: #eef2f7; --panel: #ffffff; --raise: #f4f7fb; --line: #d3dbe7;
+  --fg: #132035; --muted: #56677f; --accent: #a8640f; --sel: #0b6aa8;
+  --coast: rgba(19, 32, 53, .7); --grat: rgba(19, 32, 53, .1);
+  --s-day: #f3e7c4; --s-civil: #d6dcef; --s-naut: #aeb8dc; --s-astro: #7d89bb; --s-dark: #46507f;
+} }
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #eef2f7; --panel: #ffffff; --raise: #f4f7fb; --line: #d3dbe7;
+  --fg: #132035; --muted: #56677f; --accent: #a8640f; --sel: #0b6aa8;
+  --coast: rgba(19, 32, 53, .7); --grat: rgba(19, 32, 53, .1);
+  --s-day: #f3e7c4; --s-civil: #d6dcef; --s-naut: #aeb8dc; --s-astro: #7d89bb; --s-dark: #46507f;
+}
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { grid-template-columns: minmax(0, 1fr); max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 110px; display: grid; gap: 20px; }
+header { display: grid; gap: 8px; }
+#view { display: grid; gap: 16px; min-width: 0; }
+#view > * { min-width: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 600; font-size: clamp(28px, 5vw, 40px); line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 20px; margin: 0; letter-spacing: .02em; }
+.lede { margin: 0; color: var(--muted); max-width: 65ch; }
+.places { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { font: 500 13px var(--body); padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--sel); color: var(--sel); }
+.chip:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+.here { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 820px) { .row2 { grid-template-columns: minmax(0, 1fr); } }
+.globe-box { position: relative; min-width: 0; }
+.globe-box canvas { display: block; width: 100%; aspect-ratio: 1; max-width: 100%; touch-action: none; cursor: grab; }
+.globe-box canvas:active { cursor: grabbing; }
+.zoom { position: absolute; right: 6px; top: 6px; display: grid; gap: 4px; }
+.zoom button { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font: 600 16px var(--body); cursor: pointer; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.controls label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+select, .btn { font: 500 13px var(--body); color: var(--fg); background: var(--raise); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; }
+.btn { cursor: pointer; }
+.btn.primary { border-color: var(--accent); color: var(--accent); }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.frame-time { font-family: var(--mono); font-size: 13px; }
+.legend { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.legend .bar { height: 10px; border-radius: 3px; }
+.legend .ticks { display: flex; justify-content: space-between; font-family: var(--mono); }
+.note { font-size: 12px; color: var(--muted); }
+.tag { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.warn { color: var(--accent); border-color: var(--accent); }
+/* hourly strip */
+.scroll { overflow-x: auto; min-width: 0; }
+table.strip { border-collapse: separate; border-spacing: 2px; font-family: var(--mono); font-size: 11px; }
+table.strip th, table.strip td { min-width: 30px; height: 22px; text-align: center; padding: 0 2px; border-radius: 3px; font-variant-numeric: tabular-nums; }
+table.strip th.lab { position: sticky; left: 0; z-index: 1; background: var(--panel); text-align: left; font: 500 11px var(--body); color: var(--muted); padding-right: 8px; min-width: 92px; white-space: nowrap; }
+table.strip tr.grp th.lab { color: var(--fg); font-weight: 600; padding-top: 8px; }
+table.strip td.hsel { box-shadow: inset 0 0 0 2px var(--sel); }
+table.strip thead td { color: var(--muted); cursor: pointer; }
+table.strip td.na { color: var(--muted); }
+table.strip td.hi { font-weight: 600; color: var(--accent); }
+.toggles { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.toggles label { display: flex; gap: 6px; align-items: center; }
+/* verdict */
+.verdict { display: grid; gap: 6px; }
+.verdict .big { font-family: var(--display); font-size: 26px; line-height: 1.1; font-weight: 600; text-wrap: balance; }
+.verdict .runs { display: flex; flex-wrap: wrap; gap: 6px; }
+.run { font: 500 12px var(--mono); padding: 3px 8px; border-radius: 5px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.meta b { color: var(--fg); font-weight: 500; }
+/* table variant */
+table.night { border-collapse: separate; border-spacing: 0 2px; font-family: var(--mono); font-size: 12px; min-width: 760px; width: 100%; }
+table.night th { font: 500 11px var(--body); color: var(--muted); text-align: center; padding: 4px; position: sticky; top: 0; background: var(--panel); }
+table.night th.grp { color: var(--fg); font-weight: 600; border-bottom: 1px solid var(--line); }
+table.night td { text-align: center; padding: 3px 4px; font-variant-numeric: tabular-nums; }
+table.night td.t { text-align: left; color: var(--fg); padding-left: 8px; }
+.cc { display: grid; gap: 2px; justify-items: center; border-radius: 4px; padding: 2px 0; }
+.lmh { display: flex; gap: 1px; height: 4px; width: 30px; }
+.lmh i { flex: 1; border-radius: 1px; }
+.skych { display: inline-block; width: 64px; border-radius: 4px; padding: 1px 0; font-size: 11px; }
+.split { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 720px) { .split { grid-template-columns: minmax(0, 1fr); } .split .globe-box { max-width: 300px; } }
+/* asks */
+aside.asks ul { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 6px; max-width: 70ch; }
+details { margin-top: 10px; color: var(--muted); font-size: 13px; max-width: 75ch; }
+details summary { cursor: pointer; color: var(--fg); }
+/* switcher */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 20; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: #f6c453; color: #1b1405; box-shadow: 0 6px 24px rgba(0, 0, 0, .35); font: 600 13px var(--body); }
+.switcher button { border: 0; background: rgba(0, 0, 0, .1); color: inherit; width: 34px; height: 34px; border-radius: 999px; font: 700 16px var(--body); cursor: pointer; }
+.switcher span { padding: 0 10px; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Prototype · synthetic forecast data · night of 5–6 Nov 2026</div>
+    <h1 id="vtitle">Forecast views</h1>
+    <p class="lede" id="vlede"></p>
+    <div class="places" id="places"></div>
+  </header>
+  <main id="view"></main>
+  <aside class="asks panel">
+    <h2>React to this view</h2>
+    <ul id="asks"></ul>
+    <details>
+      <summary>What's real and what's made up</summary>
+      <p>Real: Sun and Moon positions, from low-precision formulas. For Kongsberg on 5 Nov they agree with meteoblue's page to within 3 minutes (sunset 16:17 vs 16:19, moonrise 02:52 vs 02:50, moonset 14:59, phase 14%).</p>
+      <p>Made up: every cloud, seeing and wind value, the four model names and the two regional domains. Model D shows no seeing, to show how a model with too few pressure levels would look. Time zones are approximated from longitude. Seeing carries the "uncalibrated" label it will carry until the historical track's calibration exists.</p>
+      <p>Seeing is never blended between hours or grid cells here: the globe steps hour by hour and shows each 2° or 3° cell as a block.</p>
+    </details>
+  </aside>
+</div>
+<nav class="switcher" aria-label="Prototype variant">
+  <button id="prev" aria-label="Previous variant">‹</button>
+  <span id="vlabel"></span>
+  <button id="next" aria-label="Next variant">›</button>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+const LAND_TOPO = __LAND__;
+__CORE__
+</script>
+<script>
+// ---------- shared helpers ----------
+const LANDF = topojson.feature(LAND_TOPO, LAND_TOPO.objects.land);
+const GRAT = d3.geoGraticule10();
+const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const PLACES = [
+  { name: 'Kongsberg', lat: 59.669, lon: 9.652 },
+  { name: 'La Palma', lat: 28.76, lon: -17.89 },
+  { name: 'Paranal', lat: -24.63, lon: -70.40 },
+  { name: 'Mauna Kea', lat: 19.82, lon: -155.47 },
+];
+let place = PLACES[0];
+const listeners = new Set();
+function setPlace(p) { place = p; listeners.forEach((f) => f()); renderPlaces(); }
+
+function ramp(stops) {
+  return (v) => {
+    if (v <= stops[0][0]) return stops[0][1];
+    for (let i = 1; i < stops.length; i++) if (v <= stops[i][0]) {
+      const [a, ca] = stops[i - 1], [b, cb] = stops[i], f = (v - a) / (b - a);
+      return [0, 1, 2].map((k) => Math.round(ca[k] + (cb[k] - ca[k]) * f));
+    }
+    return stops[stops.length - 1][1];
+  };
+}
+const CLOUD_STOPS = [[0, [12, 26, 64]], [0.3, [40, 64, 112]], [0.6, [122, 140, 168]], [1, [234, 239, 245]]];
+const SEE_STOPS = [[0.5, [31, 170, 135]], [0.9, [150, 200, 70]], [1.3, [238, 190, 76]], [1.8, [232, 122, 78]], [2.4, [196, 62, 94]]];
+const CLEARH_STOPS = [[0, [52, 56, 72]], [3, [56, 78, 130]], [8, [48, 140, 186]], [14, [150, 228, 200]]];
+const cloudRamp = ramp(CLOUD_STOPS), seeRamp = ramp(SEE_STOPS), clearHRamp = ramp(CLEARH_STOPS);
+const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+const inkOn = (c) => (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) > 140 ? '#0d1422' : '#eef3f9';
+function legend(stops, fmt, label, extra) {
+  const lo = stops[0][0], hi = stops[stops.length - 1][0];
+  const g = stops.map(([v, c]) => `${rgb(c)} ${((v - lo) / (hi - lo) * 100).toFixed(0)}%`).join(',');
+  return `<div class="legend"><div>${label}</div><div class="bar" style="background:linear-gradient(90deg,${g})"></div><div class="ticks">${stops.map(([v]) => `<span>${fmt(v)}</span>`).join('')}</div>${extra || ''}</div>`;
+}
+const pad2 = (n) => String(n).padStart(2, '0');
+const localHour = (ms, lon) => new Date(ms + tzOf(lon) * 3600000).getUTCHours();
+const localHM = (ms, lon) => { const d = new Date(ms + tzOf(lon) * 3600000); return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`; };
+const tzLabel = (lon) => { const z = tzOf(lon); return `UTC${z >= 0 ? '+' : '−'}${Math.abs(z)}`; };
+const fmtLL = (p) => `${Math.abs(p.lat).toFixed(2)}°${p.lat >= 0 ? 'N' : 'S'} ${Math.abs(p.lon).toFixed(2)}°${p.lon >= 0 ? 'E' : 'W'}`;
+
+function renderPlaces() {
+  const el = document.getElementById('places');
+  const custom = !PLACES.includes(place);
+  el.innerHTML = PLACES.map((p, i) => `<button class="chip" data-i="${i}" aria-pressed="${p === place}">${p.name}</button>`).join('') +
+    `<span class="here">${custom ? 'Picked ' : ''}${fmtLL(place)} · ${tzLabel(place.lon)} (approx.) · click the globe to pick anywhere</span>`;
+  el.querySelectorAll('.chip').forEach((b) => b.onclick = () => setPlace(PLACES[+b.dataset.i]));
+}
+
+// ---------- fields on a coarse grid (cell blocks, no interpolation) ----------
+const fieldCache = new Map();
+function cached(key, build) { if (!fieldCache.has(key)) { if (fieldCache.size > 80) fieldCache.delete(fieldCache.keys().next().value); fieldCache.set(key, build()); } return fieldCache.get(key); }
+function makeField(d, fn) {
+  const nI = 180 / d, nJ = 360 / d, rgbA = new Uint8ClampedArray(nI * nJ * 3), nodata = new Uint8Array(nI * nJ), dim = new Float32Array(nI * nJ);
+  for (let i = 0; i < nI; i++) for (let j = 0; j < nJ; j++) {
+    const lat = 90 - d * (i + 0.5), lon = -180 + d * (j + 0.5), k = i * nJ + j;
+    const r = fn(lat, lon);
+    if (!r || !r.c) nodata[k] = 1; else { rgbA[k * 3] = r.c[0]; rgbA[k * 3 + 1] = r.c[1]; rgbA[k * 3 + 2] = r.c[2]; }
+    if (r && r.dim) dim[k] = r.dim;
+  }
+  return { d, nI, nJ, rgb: rgbA, nodata, dim };
+}
+function hourField(layer, modelId, h) {
+  return cached(`h|${layer}|${modelId}|${h}`, () => {
+    const sp = sunParams(T0 + h * 3600000);
+    const md = MODELS.find((m) => m.id === modelId);
+    return makeField(2, (lat, lon) => {
+      const alt = sunAlt(sp, lat, lon), dim = alt > -12 ? 0.62 : alt > -18 ? 0.28 : 0;
+      if (layer === 'agree') {
+        let n = 0, c = 0; for (const m of MODELS) { const r = modelHour(m, lat, lon, h); if (r) { n++; if (r.cls === 'clear') c++; } }
+        return { c: cloudRamp(1 - c / n), dim };
+      }
+      const r = modelHour(md, lat, lon, h);
+      if (!r) return { dim };
+      if (layer === 'cloud') return { c: cloudRamp(r.T / 100), dim };
+      return r.os == null ? { dim } : { c: seeRamp(r.os), dim };
+    });
+  });
+}
+function tonightField(layer) {
+  return cached(`t|${layer}`, () => makeField(3, (lat, lon) => {
+    const h0 = windowStart(lon); let dark = 0, clear = 0; const see = [];
+    for (let h = h0; h < h0 + 24; h++) {
+      if (sunAlt(sunParams(T0 + h * 3600000), lat, lon) > -18) continue;
+      dark++;
+      if (layer === 'dark') continue;
+      let n = 0, c = 0; const os = [];
+      for (const m of MODELS) { const r = modelHour(m, lat, lon, h); if (r) { n++; if (r.cls === 'clear') c++; if (r.os != null) os.push(r.os); } }
+      if (c * 2 > n) clear++;
+      see.push(median(os));
+    }
+    if (!dark) return null; // hatched: no dark time tonight
+    if (layer === 'dark') return { c: clearHRamp(dark) };
+    if (layer === 'clear') return { c: clearHRamp(clear) };
+    return { c: seeRamp(median(see)) };
+  }));
+}
+
+// ---------- globe (orthographic, drag to turn, wheel/pinch/buttons to zoom, click to pick) ----------
+const globeState = {};
+class Globe {
+  constructor(host, id, opts) {
+    this.opts = opts;
+    const st = globeState[id] || (globeState[id] = { c: [place.lon, Math.max(-60, Math.min(60, place.lat - 8))], k: 1 });
+    this.st = st;
+    host.classList.add('globe-box');
+    host.innerHTML = `<canvas aria-label="Globe. Drag to turn, click to pick a place."></canvas><div class="zoom"><button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button></div>`;
+    this.cv = host.querySelector('canvas'); this.ctx = this.cv.getContext('2d');
+    this.off = document.createElement('canvas'); this.octx = this.off.getContext('2d');
+    const [zi, zo] = host.querySelectorAll('.zoom button');
+    zi.onclick = () => { st.k = Math.min(8, st.k * 1.4); this.draw(); };
+    zo.onclick = () => { st.k = Math.max(1, st.k / 1.4); this.draw(); };
+    const ptr = new Map(); let moved = 0, pinch = null;
+    this.cv.addEventListener('pointerdown', (e) => { this.cv.setPointerCapture(e.pointerId); ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); moved = 0; if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: st.k }; } });
+    this.cv.addEventListener('pointermove', (e) => {
+      if (!ptr.has(e.pointerId)) return;
+      const p = ptr.get(e.pointerId), dx = e.clientX - p.x, dy = e.clientY - p.y; ptr.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptr.size === 1) { moved += Math.abs(dx) + Math.abs(dy); const s = 180 / (this.w * st.k); st.c[0] -= dx * s; st.c[1] = Math.max(-90, Math.min(90, st.c[1] + dy * s)); this.request(true); }
+      else if (ptr.size === 2 && pinch) { moved += 10; const [a, b] = [...ptr.values()]; st.k = Math.max(1, Math.min(8, pinch.k * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d)); this.request(true); }
+    });
+    const up = (e) => {
+      const was = ptr.size; ptr.delete(e.pointerId); if (ptr.size < 2) pinch = null;
+      if (e.type === 'pointerup' && was === 1 && moved < 6) {
+        const r = this.cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+        const R = this.w / 2 * 0.96 * st.k;
+        if ((x - this.w / 2) ** 2 + (y - this.w / 2) ** 2 <= R * R) { const ll = this.proj(1).invert([x, y]); if (ll && isFinite(ll[0])) opts.onPick && opts.onPick({ name: null, lat: ll[1], lon: ll[0] }); }
+      }
+      this.request(false);
+    };
+    this.cv.addEventListener('pointerup', up); this.cv.addEventListener('pointercancel', up);
+    this.cv.addEventListener('wheel', (e) => { e.preventDefault(); st.k = Math.max(1, Math.min(8, st.k * Math.exp(-e.deltaY * 0.0015))); this.request(true); clearTimeout(this.wt); this.wt = setTimeout(() => this.request(false), 160); }, { passive: false });
+    this.ro = new ResizeObserver(() => this.draw()); this.ro.observe(this.cv);
+  }
+  proj(sc) { const R = this.w / 2 * 0.96 * this.st.k; return d3.geoOrthographic().rotate([-this.st.c[0], -this.st.c[1]]).scale(R * sc).translate([this.w * sc / 2, this.w * sc / 2]).clipAngle(90); }
+  request(fast) { if (this.raf) cancelAnimationFrame(this.raf); this.raf = requestAnimationFrame(() => this.draw(fast)); }
+  draw(fast) {
+    const w = this.cv.clientWidth; if (!w) return; this.w = w;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (this.cv.width !== Math.round(w * dpr)) { this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(w * dpr); }
+    const ctx = this.ctx; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, w);
+    const F = this.opts.field();
+    const S = Math.max(120, Math.round(Math.min(w * dpr, 560) * (fast ? 0.45 : 1))), sc = S / w;
+    if (!this.img || this.img.width !== S) { this.off.width = S; this.off.height = S; this.img = this.octx.createImageData(S, S); }
+    const img = this.img, px = img.data; px.fill(0);
+    const P = this.proj(sc), R = this.w / 2 * 0.96 * this.st.k * sc, R2 = R * R, cx = S / 2;
+    for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cx; if (dx * dx + dy * dy > R2) continue;
+      const ll = P.invert([x + 0.5, y + 0.5]); if (!ll) continue;
+      const i = Math.min(F.nI - 1, Math.max(0, Math.floor((90 - ll[1]) / F.d)));
+      const j = Math.floor((((ll[0] + 180) % 360 + 360) % 360) / F.d) % F.nJ;
+      const k = i * F.nJ + j, o = (y * S + x) * 4;
+      let r, g, b;
+      if (F.nodata[k]) { const hatch = ((x + y) % 7) < 2; r = g = b = hatch ? 112 : 70; }
+      else { r = F.rgb[k * 3]; g = F.rgb[k * 3 + 1]; b = F.rgb[k * 3 + 2]; }
+      const dm = F.dim[k]; if (dm) { r = r * (1 - dm) + 96 * dm; g = g * (1 - dm) + 92 * dm; b = b * (1 - dm) + 84 * dm; }
+      px[o] = r; px[o + 1] = g; px[o + 2] = b; px[o + 3] = 255;
+    }
+    this.octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(this.off, 0, 0, w, w);
+    const PF = this.proj(1), path = d3.geoPath(PF, ctx);
+    ctx.beginPath(); path(GRAT); ctx.strokeStyle = tok('--grat'); ctx.lineWidth = 0.6; ctx.stroke();
+    ctx.beginPath(); path(LANDF); ctx.strokeStyle = tok('--coast'); ctx.lineWidth = 0.9; ctx.stroke();
+    if (this.opts.domains) for (const dmn of DOMAINS) { ctx.beginPath(); path(dmn.geo); ctx.setLineDash([4, 4]); ctx.strokeStyle = tok('--accent'); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]); }
+    ctx.beginPath(); path({ type: 'Sphere' }); ctx.strokeStyle = tok('--line'); ctx.lineWidth = 1; ctx.stroke();
+    if (d3.geoDistance([place.lon, place.lat], this.st.c) < Math.PI / 2 - 0.01) {
+      const [px0, py0] = PF([place.lon, place.lat]); ctx.strokeStyle = tok('--sel'); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px0, py0, 7, 0, 2 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px0 - 12, py0); ctx.lineTo(px0 - 4, py0); ctx.moveTo(px0 + 4, py0); ctx.lineTo(px0 + 12, py0); ctx.moveTo(px0, py0 - 12); ctx.lineTo(px0, py0 - 4); ctx.moveTo(px0, py0 + 4); ctx.lineTo(px0, py0 + 12); ctx.stroke();
+    }
+  }
+  destroy() { this.ro.disconnect(); }
+}
+function rectLine(lo0, la0, lo1, la1) { const c = []; for (let x = lo0; x <= lo1; x++) c.push([x, la0]); for (let y = la0; y <= la1; y++) c.push([lo1, y]); for (let x = lo1; x >= lo0; x--) c.push([x, la1]); for (let y = la1; y >= la0; y--) c.push([lo0, y]); return { type: 'LineString', coordinates: c }; }
+const DOMAINS = [{ id: 'C', geo: rectLine(-23.5, 30, 62.5, 70.5) }, { id: 'D', geo: rectLine(-12, 52, 38, 73) }];
+
+// ---------- hourly strip (rows grouped by variable) ----------
+const SUNLAB = { day: 'Day', civil: 'Civil twilight', nautical: 'Nautical twilight', astro: 'Astronomical twilight', dark: 'Dark time' };
+function moonLine(p) {
+  const h0 = windowStart(p.lon), a = T0 + h0 * 3600000, b = a + 24 * 3600000;
+  const ev = moonEvents(p.lat, p.lon, a, b).map((e) => `${e.kind === 'rise' ? 'rises' : 'sets'} ${localHM(e.ms, p.lon)}`);
+  return `Moon ${Math.round(moonPhase(a + 12 * 3600000) * 100)}% lit${ev.length ? ' · ' + ev.join(' · ') : ''}`;
+}
+function stripHTML(p, tn, o) {
+  const H = tn.hours, cov = MODELS.filter((m) => m.cov(p.lat, p.lon));
+  const td = (x, inner, style, extra) => `<td class="${o.sel === x.h ? 'hsel' : ''} ${extra || ''}" style="${style || ''}">${inner}</td>`;
+  let s = `<div class="scroll"><table class="strip"><thead><tr><th class="lab">${tzLabel(p.lon)}</th>${H.map((x) => `<td data-h="${x.h}" class="${o.sel === x.h ? 'hsel' : ''}">${pad2(localHour(x.ms, p.lon))}</td>`).join('')}</tr></thead><tbody>`;
+  s += `<tr><th class="lab">Sky</th>${H.map((x) => td(x, '', `background:var(--s-${x.sun})`, '')).join('')}</tr>`;
+  s += `<tr><th class="lab">Moon alt.</th>${H.map((x) => td(x, x.moon > 0 ? Math.round(x.moon) + '°' : '', '', 'na')).join('')}</tr>`;
+  s += `<tr class="grp"><th class="lab">Total cloud %</th>${H.map(() => '<td></td>').join('')}</tr>`;
+  for (const m of cov) {
+    s += `<tr><th class="lab">${m.name}</th>${H.map((x) => { const r = x.models[MODELS.indexOf(m)], c = cloudRamp(r.T / 100); return td(x, r.T, `background:${rgb(c)};color:${inkOn(c)}`); }).join('')}</tr>`;
+    if (o.layers) for (const [k, lab] of [['L', 'low'], ['M', 'mid'], ['H', 'high']]) s += `<tr><th class="lab">&nbsp;&nbsp;${lab}</th>${H.map((x) => { const r = x.models[MODELS.indexOf(m)], c = cloudRamp(r[k] / 100); return td(x, r[k], `background:${rgb(c)};color:${inkOn(c)};opacity:.8`); }).join('')}</tr>`;
+  }
+  s += `<tr><th class="lab">Models clear</th>${H.map((x) => { const c = cloudRamp(1 - x.fracClear); return td(x, `${x.count.clear}/${x.n}`, `background:${rgb(c)};color:${inkOn(c)};font-weight:500`); }).join('')}</tr>`;
+  s += `<tr class="grp"><th class="lab">Seeing ″ <span class="tag warn">uncal.</span></th>${H.map(() => '<td></td>').join('')}</tr>`;
+  for (const m of cov) {
+    s += `<tr><th class="lab">${m.name}${o.bi ? ' O&amp;S' : ''}</th>${H.map((x) => { const r = x.models[MODELS.indexOf(m)]; if (r.os == null) return td(x, '–', '', 'na'); const c = seeRamp(r.os); return td(x, r.os.toFixed(1), `background:${rgb(c)};color:${inkOn(c)}`); }).join('')}</tr>`;
+    if (o.bi && m.seeing) s += `<tr><th class="lab">&nbsp;&nbsp;Bi et al.</th>${H.map((x) => { const r = x.models[MODELS.indexOf(m)], c = seeRamp(r.bi); return td(x, r.bi.toFixed(1), `background:${rgb(c)};color:${inkOn(c)};opacity:.8`); }).join('')}</tr>`;
+  }
+  s += `<tr class="grp"><th class="lab">200 hPa wind m/s</th>${H.map(() => '<td></td>').join('')}</tr>`;
+  for (const m of cov) s += `<tr><th class="lab">${m.name}</th>${H.map((x) => { const r = x.models[MODELS.indexOf(m)]; return td(x, r.v200 == null ? '–' : Math.round(r.v200), '', r.v200 == null || r.v200 < 20 ? 'na' : 'hi'); }).join('')}</tr>`;
+  s += `<tr><th class="lab">Worst layer km</th>${H.map((x) => td(x, x.layerMed == null ? '–' : x.layerMed.toFixed(1), '', 'na')).join('')}</tr>`;
+  s += `</tbody></table></div>`;
+  return s;
+}
+function stripBlock(host, opts) {
+  const o = { layers: false, bi: false, ...opts };
+  host.innerHTML = `<div class="toggles"><label><input type="checkbox" id="t-layers"> Low, mid and high cloud</label><label><input type="checkbox" id="t-bi"> Bi et al. seeing too</label></div><div class="strip-host"></div><p class="note" id="moonline"></p>`;
+  const sh = host.querySelector('.strip-host');
+  const draw = () => {
+    const tn = tonight(place.lat, place.lon);
+    sh.innerHTML = stripHTML(place, tn, o);
+    host.querySelector('#moonline').textContent = `${moonLine(place)}. Shading: ${Object.values(SUNLAB).join(', ')}. 200 hPa wind of 20 m/s or more is highlighted; seeing below 1″ needs it under ~20 m/s (Haslebacher et al. 2022).`;
+    sh.querySelectorAll('thead td[data-h]').forEach((c) => c.onclick = () => o.onHour && o.onHour(+c.dataset.h));
+  };
+  host.querySelector('#t-layers').onchange = (e) => { o.layers = e.target.checked; draw(); };
+  host.querySelector('#t-bi').onchange = (e) => { o.bi = e.target.checked; draw(); };
+  draw();
+  return { draw, set(k, v) { o[k] = v; draw(); } };
+}
+function verdictHTML(p, tn) {
+  const name = p.name || fmtLL(p), n = tn.hours[0].n;
+  const basisTxt = { dark: 'dark hours', nautical: 'hours with the Sun below −12° (no astronomical darkness tonight)', 'below horizon': 'hours with the Sun down (no darkness below −12° tonight)' }[tn.basis];
+  const big = tn.pick.length ? `${tn.clearHours} of ${tn.pick.length} ${tn.basis === 'dark' ? 'dark hours' : 'night hours'} look clear on most models` : 'The Sun stays up all night';
+  const runs = tn.runs.map((r) => { const a = tn.hours.find((x) => x.h === r.start), b = tn.hours.find((x) => x.h === r.end); const c = r.st === 'clear' ? cloudRamp(0.05) : cloudRamp(0.85); return `<span class="run" style="background:${rgb(c)};color:${inkOn(c)}">${r.st === 'clear' ? 'Mostly clear' : 'Cloud likely'} ${pad2(localHour(a.ms, p.lon))}–${pad2((localHour(b.ms, p.lon) + 1) % 24)}</span>`; }).join('');
+  return `<div class="verdict"><div class="note">${name} · tonight · ${n} model${n === 1 ? '' : 's'} cover this place</div><div class="big">${big}</div><div class="runs">${runs}</div>
+    <div class="meta"><span>Counted over ${basisTxt}</span><span>Median seeing <b>${tn.osMed == null ? '–' : tn.osMed.toFixed(1) + '″'}</b> <span class="tag warn">uncalibrated</span></span><span>${moonLine(p)}</span></div></div>`;
+}
+
+// ---------- Variant A: hour by hour ----------
+const VARIANTS = [
+  { key: 'radar', short: 'A · Hour by hour', title: 'Hour by hour',
+    lede: 'The globe steps through the forecast an hour at a time, like a rain radar. Pick a layer, press play, and click anywhere to see that place\'s hours below. Daylight is dimmed.',
+    asks: ['Does stepping hour by hour help you decide, or is it more than you need?', 'One map has to stand for several forecast models. Is "how many models say clear" the right default, or would you rather choose one model?', 'Dimming daylight: useful, or clutter?', 'The strip under the globe groups rows by variable (cloud, then seeing, then wind). Easier or harder than the table view, which groups by model?'],
+    mount(el) {
+      const st = this.st || (this.st = { layer: 'agree', model: 'A', h: windowStart(place.lon) + 10, playing: null });
+      el.innerHTML = `<div class="row2"><div class="panel" style="display:grid;gap:12px"><div id="g"></div>
+        <div class="controls"><label>Layer <select id="layer"><option value="agree">Models saying clear</option><option value="cloud">Total cloud, one model</option><option value="seeing">Seeing (O&amp;S), one model</option></select></label>
+        <label>Model <select id="model">${MODELS.map((m) => `<option value="${m.id}">${m.name} (${m.scope})</option>`).join('')}</select></label>
+        <label><input type="checkbox" id="dom"> Regional model domains</label></div>
+        <div class="controls"><button class="btn primary" id="play">Play</button><span class="frame-time" id="ft"></span></div>
+        <input type="range" id="slider" min="0" max="${NH - 1}" step="1" aria-label="Forecast hour">
+        <div id="leg"></div></div>
+        <div class="panel" style="display:grid;gap:10px"><div id="vd"></div></div></div>
+        <div class="panel" id="stripA"></div>`;
+      const $ = (s) => el.querySelector(s);
+      $('#layer').value = st.layer; $('#model').value = st.model; $('#model').disabled = st.layer === 'agree';
+      const g = new Globe($('#g'), 'A', { field: () => hourField(st.layer, st.model, st.h), domains: false, onPick: (p) => setPlace(p) });
+      $('#dom').onchange = (e) => { g.opts.domains = e.target.checked; g.draw(); };
+      const strip = stripBlock($('#stripA'), { sel: st.h, onHour: (h) => setH(h) });
+      const leg = () => { $('#leg').innerHTML = st.layer === 'seeing' ? legend(SEE_STOPS, (v) => v.toFixed(1) + '″', 'Seeing, arcsec (uncalibrated). Grey: model has no seeing here') : legend(CLOUD_STOPS, (v) => st.layer === 'agree' ? `${Math.round((1 - v) * 100)}%` : `${Math.round(v * 100)}%`, st.layer === 'agree' ? 'Share of covering models that say clear (≤10% total cloud)' : 'Total cloud. Grey: outside this model\'s domain'); };
+      const setH = (h) => { st.h = Math.max(0, Math.min(NH - 1, h)); $('#slider').value = st.h; const ms = T0 + st.h * 3600000; $('#ft').textContent = `${new Date(ms).toISOString().slice(0, 16).replace('T', ' ')} UTC · ${localHM(ms, place.lon)} at ${place.name || 'the picked place'}`; g.draw(); strip.set('sel', st.h); };
+      $('#slider').oninput = (e) => setH(+e.target.value);
+      $('#layer').onchange = (e) => { st.layer = e.target.value; $('#model').disabled = st.layer === 'agree'; leg(); g.draw(); };
+      $('#model').onchange = (e) => { st.model = e.target.value; g.draw(); };
+      $('#play').onclick = () => { if (st.playing) { clearInterval(st.playing); st.playing = null; $('#play').textContent = 'Play'; } else { st.playing = setInterval(() => setH((st.h + 1) % NH), 700); $('#play').textContent = 'Pause'; } };
+      const upd = () => { $('#vd').innerHTML = verdictHTML(place, tonight(place.lat, place.lon)); strip.draw(); setH(st.h); };
+      leg(); upd();
+      return { update: upd, destroy: () => { g.destroy(); if (st.playing) { clearInterval(st.playing); st.playing = null; } } };
+    } },
+  // ---------- Variant B: tonight at a glance ----------
+  { key: 'tonight-map', short: 'B · Tonight map', title: 'Tonight at a glance',
+    lede: 'One map for the whole of tonight, wherever you look: each place\'s own evening to morning. Click a place for a one-line verdict and its hours.',
+    asks: ['Is "clear dark hours" the number you\'d want first? The alternatives are on the layer switch.', 'Does the verdict sentence match how you\'d describe the night?', 'Places with no dark time tonight are hatched. In summer at Kongsberg the verdict falls back to hours with the Sun below −12°, then below the horizon. Is that right?', 'Is a single summary map enough, with hourly detail only on click?'],
+    mount(el) {
+      const st = this.st || (this.st = { layer: 'clear' });
+      el.innerHTML = `<div class="row2"><div class="panel" style="display:grid;gap:12px"><div id="g"></div>
+        <div class="controls"><label>Map <select id="layer"><option value="clear">Clear dark hours (most models clear)</option><option value="see">Median seeing in dark time (O&amp;S)</option><option value="dark">Dark hours tonight</option></select></label></div><div id="leg"></div></div>
+        <div style="display:grid;gap:16px;min-width:0"><div class="panel" id="vd"></div><div class="panel" id="stripB"></div></div></div>`;
+      const $ = (s) => el.querySelector(s); $('#layer').value = st.layer;
+      const g = new Globe($('#g'), 'B', { field: () => tonightField(st.layer), onPick: (p) => setPlace(p) });
+      const strip = stripBlock($('#stripB'), {});
+      const hatch = '<div class="note">Hatched: no astronomical darkness tonight.</div>';
+      const leg = () => { $('#leg').innerHTML = st.layer === 'see' ? legend(SEE_STOPS, (v) => v.toFixed(1) + '″', 'Median seeing over dark hours and models, arcsec (uncalibrated)', hatch) : legend(CLEARH_STOPS, (v) => v + ' h', st.layer === 'clear' ? 'Dark hours that most covering models call clear' : 'Hours of astronomical darkness tonight', hatch); };
+      $('#layer').onchange = (e) => { st.layer = e.target.value; leg(); g.draw(); };
+      const upd = () => { $('#vd').innerHTML = verdictHTML(place, tonight(place.lat, place.lon)); strip.draw(); g.draw(); };
+      leg(); upd();
+      return { update: upd, destroy: () => g.destroy() };
+    } },
+  // ---------- Variant C: the night as a table ----------
+  { key: 'table', short: 'C · Table', title: 'The night as a table',
+    lede: 'Closest to meteoblue: one row per hour, a column per forecast model. The small globe only picks the place.',
+    asks: ['Columns per model (here) or rows per model (the other two views)?', 'Low, mid and high cloud as a three-segment bar inside each total-cloud cell: readable at a glance?', 'What would you drop, and what did you use on meteoblue that is missing?', 'Should daylight hours be in the table at all, or collapsed?'],
+    mount(el) {
+      el.innerHTML = `<div class="panel split"><div id="g"></div><div id="vd" style="min-width:0"></div></div><div class="panel"><div class="scroll" id="tbl"></div><p class="note" id="foot"></p></div>`;
+      const $ = (s) => el.querySelector(s);
+      const g = new Globe($('#g'), 'C', { field: () => tonightField('clear'), onPick: (p) => setPlace(p) });
+      const upd = () => {
+        const tn = tonight(place.lat, place.lon), cov = MODELS.filter((m) => m.cov(place.lat, place.lon));
+        $('#vd').innerHTML = verdictHTML(place, tn);
+        const bar = (r) => `<span class="lmh">${['L', 'M', 'H'].map((k) => `<i style="background:${rgb(cloudRamp(r[k] / 100))};outline:1px solid rgba(127,127,127,.35)"></i>`).join('')}</span>`;
+        let s = `<table class="night"><thead><tr><th rowspan="2">${tzLabel(place.lon)}</th><th rowspan="2">Sky</th><th rowspan="2">Moon</th><th rowspan="2">Models clear</th><th class="grp" colspan="${cov.length}">Total cloud % (bar: low · mid · high)</th><th class="grp" colspan="${cov.length}">Seeing ″, O&amp;S <span class="tag warn">uncalibrated</span></th><th rowspan="2">200 hPa<br>m/s</th><th rowspan="2">Worst layer<br>km</th></tr><tr>${cov.map((m) => `<th>${m.name}</th>`).join('')}${cov.map((m) => `<th>${m.name}</th>`).join('')}</tr></thead><tbody>`;
+        for (const x of tn.hours) {
+          const ag = cloudRamp(1 - x.fracClear);
+          s += `<tr><td class="t">${pad2(localHour(x.ms, place.lon))}:00</td><td><span class="skych" style="background:var(--s-${x.sun});color:${x.sun === 'day' || x.sun === 'civil' ? 'var(--fg)' : '#e9eef7'}">${{ day: 'day', civil: 'civil', nautical: 'naut.', astro: 'astro.', dark: 'dark' }[x.sun]}</span></td><td>${x.moon > 0 ? Math.round(x.moon) + '°' : ''}</td><td><span class="run" style="background:${rgb(ag)};color:${inkOn(ag)}">${x.count.clear}/${x.n}</span></td>`;
+          for (const m of cov) { const r = x.models[MODELS.indexOf(m)], c = cloudRamp(r.T / 100); s += `<td><div class="cc" style="background:${rgb(c)};color:${inkOn(c)}">${r.T}${bar(r)}</div></td>`; }
+          for (const m of cov) { const r = x.models[MODELS.indexOf(m)]; if (r.os == null) { s += '<td style="color:var(--muted)">–</td>'; continue; } const c = seeRamp(r.os); s += `<td><span class="run" style="background:${rgb(c)};color:${inkOn(c)}" title="Bi et al.: ${r.bi.toFixed(2)}″">${r.os.toFixed(2)}</span></td>`; }
+          s += `<td style="${x.v200Med != null && x.v200Med >= 20 ? 'font-weight:600' : 'color:var(--muted)'}">${x.v200Med == null ? '–' : Math.round(x.v200Med)}</td><td style="color:var(--muted)">${x.layerMed == null ? '–' : x.layerMed.toFixed(1)}</td></tr>`;
+        }
+        $('#tbl').innerHTML = s + '</tbody></table>';
+        $('#foot').textContent = `Hover a seeing value for the Bi et al. figure. 200 hPa wind and worst layer are medians across models. Model D has no seeing column. ${moonLine(place)}.`;
+        g.draw();
+      };
+      upd();
+      return { update: upd, destroy: () => g.destroy() };
+    } },
+];
+
+// ---------- variant switching (hash routing, floating bar, arrow keys) ----------
+let cur = null, curIdx = 0;
+function show(idx) {
+  curIdx = (idx + VARIANTS.length) % VARIANTS.length;
+  const v = VARIANTS[curIdx];
+  if (cur) { cur.destroy(); listeners.delete(cur.update); }
+  document.getElementById('vtitle').textContent = v.title;
+  document.getElementById('vlede').textContent = v.lede;
+  document.getElementById('asks').innerHTML = v.asks.map((a) => `<li>${a}</li>`).join('');
+  document.getElementById('vlabel').textContent = v.short;
+  cur = v.mount(document.getElementById('view'));
+  listeners.add(cur.update);
+  if (location.hash.slice(1) !== v.key) history.replaceState(null, '', '#' + v.key);
+}
+document.getElementById('prev').onclick = () => show(curIdx - 1);
+document.getElementById('next').onclick = () => show(curIdx + 1);
+document.addEventListener('keydown', (e) => { const t = e.target; if (t.closest && t.closest('input,textarea,select,[contenteditable]')) return; if (e.key === 'ArrowLeft') show(curIdx - 1); if (e.key === 'ArrowRight') show(curIdx + 1); });
+window.addEventListener('hashchange', () => { const i = VARIANTS.findIndex((v) => v.key === location.hash.slice(1)); if (i >= 0 && i !== curIdx) show(i); });
+renderPlaces();
+show(Math.max(0, VARIANTS.findIndex((v) => v.key === location.hash.slice(1))));
+</script>
