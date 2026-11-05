@@ -58,6 +58,10 @@ _Avoid_: cloud cover (unqualified), tcc (outside code)
 One of clear, some cloud or cloudy, given to one forecast model's hour from its total cloud.
 _Avoid_: cloud category, sky state
 
+**Model ground**:
+The ground height a forecast model assumes at a place, smoothed over its grid; it can lie well above or below the real ground.
+_Avoid_: model terrain, orography (outside code), surface (alone)
+
 **Model agreement**:
 How many of the global forecast models put an hour in the same cloud class.
 _Avoid_: consensus, ensemble agreement
@@ -67,3 +71,11 @@ _Avoid_: consensus, ensemble agreement
 **Cₙ² model**:
 A formula that gives the refractive-index structure constant Cₙ² from a temperature and wind profile, such as Osborn–Sarazin or Tatarskii + HMNSP99.
 _Avoid_: model (alone), seeing model, turbulence model
+
+**Free-atmosphere seeing**:
+The seeing caused by turbulence more than 1 km above the observer; the rest of the column is the ground layer.
+_Avoid_: upper seeing, high-altitude seeing
+
+**Effective turbulence altitude**:
+The height above the observer of the turbulence, averaged with each layer weighted by its Cₙ² and by height to the 5/3 power (written H̄); the height that sets the isoplanatic angle.
+_Avoid_: most turbulent layer, turbulence height, jet-stream layer

@@ -420,3 +420,22 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   6. "Forecast track: milestones" (F1–F3, each approved before the next), and phases 1–3 renamed "Historical track: phases and gates" with their text unchanged.
   7. Decisions already made: forecast data sources; Moon times in the forecast.
 - **Who:** Riley.
+
+## 2026-11-05 — Cloud planning session: seeing in F1
+
+### D47. Seeing in F1: observer height, limits, ground layer, numbers and labels (map #20, ticket #21)
+- **Evidence:**
+  - Ground heights at Kongsberg (59.669° N, 9.652° E), read from the 2026-11-05 00 UTC runs: Copernicus GLO-30 **162 m** (the town is in the valley); GFS `HGT:surface` 327 m (point 59.75° N 9.75° E); IFS open-data `z`/g₀ 261 m (same point); ICON-EU `HSURF` 347 m (59.688° N 9.625° E); MEPS `surface_geopotential`/g₀ 231 m (59.660° N 9.662° E). In the 0.25° cell around the town, GLO-30 runs 61–829 m (median 322 m).
+  - GFS surface pressure there was ≈992 hPa, so 1000 hPa is below ground in every model. Lowest level above the model ground: GFS 975, ICON-EU 950, MEPS and IFS 925 hPa, roughly 0.15, 0.35 and 0.55 km above it *[estimate]*.
+  - Ground-layer inputs for W71: GFS has `SHTFL` and `FRICV`; ICON-EU has `ashfl_s` and the momentum fluxes `aumfl_s`/`avmfl_s`; IFS open data has `ewss`/`nsss` but **no heat flux** (step-0 index, 2026-11-05 00z); MEPS not checked.
+  - Free atmosphere vs total at Paranal: r = 0.64 vs 0.30 (O&S 2018; RESEARCH §3.3).
+  - Effective turbulence altitude: Kornilov et al. 2007 §2.1 (arXiv:0709.2081) give θ₀ = 0.31 r₀/H̄, with H̄ the "Cₙ²-weighted average … altitude above site (Roddier, 1981)". From RESEARCH §4.5, H̄ = [∫Cₙ² h^(5/3) dh / ∫Cₙ² dh]^(3/5) and θ₀ = 0.314 r₀/H̄ ((0.423/2.914)^(3/5) = 0.3141). ESO's MASS data carries `MASS Turb Altitude [m]` (`docs/research/seeing-measurements.md`); how ESO computes it is *[check]* in the Paranal comparison ticket.
+- **Choice (Riley, 2026-11-05):**
+  1. **Observer height:** each place's real elevation from the DEM (GLO-30), raised to the model ground where it lies below it (counted, never silent). Kongsberg town (162 m) is below all four model grounds, so its values are at each model's ground.
+  2. **Limits:** from the lowest pressure level above the model ground up to 50 hPa. Levels with p > surface pressure are masked and counted. The gap between the model ground and that level is not filled; its depth is shown per model.
+  3. **Ground layer: none in F1** ("straightforward calculations directly from the research papers"; better ground-layer methods come later). Exception: Paranal also gets a second series with O&S 2018's own relocation of the model's lowest 1 km, as the paper did.
+  4. **Numbers, for both Cₙ² models (O&S K = 6 and Tatarskii + HMNSP99):** free-atmosphere seeing (above observer + 1 km), total seeing, and the effective turbulence altitude H̄ in km above the observer, over the column from the observer up. **Headline: O&S free-atmosphere seeing.**
+     - H̄ **replaces D43 item 5's "height of the most turbulent layer"** (Riley delegated the definition to the agent's research): it is a standard published quantity, it can be checked against ESO MASS, and it doesn't jump with each model's level placement as a single "most turbulent slab" would.
+  5. **Labels:** every seeing value carries (1) "uncalibrated", (2) the Cₙ² model, (3) the forecast model's level count (GFS 39, ICON-EU 20, MEPS 13, IFS 13), (4) the observer height used, including the raise to the model ground, (5) for total seeing, "no ground layer; the column starts N km above the model ground", (6) for free-atmosphere seeing, "above observer + 1 km". Items 1–2 also sit on the headline figure. Exact wording comes with the UI (D44 item 9).
+  6. **Historical-track defaults kept:** unstable layers set to zero and counted per model (D5); WMO lapse-rate tropopause for every model (GFS's own tropopause not used); 500 nm, zenith, exact 5.307 form.
+- **Who:** Riley (items 1–3, 4's headline, 5, 6); agent (H̄ as the definition in item 4, delegated by Riley).
