@@ -368,3 +368,29 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   11. **Seeing measurements:** research which observatory, amateur or citizen-science sources measure seeing and could validate either track.
   12. **AGENTS.md:** the mission names both products; the forecast track gets milestones F1 (Kongsberg default, multi-model timeline, private), F2 (any place in the domain, the globe), F3 (global, public); phases 1–3 stay as the historical track. Diff to follow for Riley's approval.
 - **Who:** Riley.
+
+### D44. Forecast sources, levels, F1 area, storage, and seeing checks
+- **Evidence:** `docs/research/forecast-sources.md` and `docs/research/seeing-measurements.md` (branches `research/forecast-sources`, `research/seeing-measurements`; primary sources read 2026-11-05). The prototype is on branch `prototype/forecast-views`.
+- **Choice (Riley, 2026-11-05):**
+  1. **Sources (licence [ASK], approved):**
+     - NOAA GFS 0.25° (US open data);
+     - DWD ICON-EU (CC BY 4.0);
+     - MET Norway MEPS (CC BY 4.0 / NLOD);
+     - ECMWF IFS open data 0.25° (CC BY 4.0).
+     - Only raw output. No paid ECMWF tier (cheapest band €500/yr). IFS is 3-hourly, so its in-between hours stay blank.
+     - **Riley prefers global sources**, so the same ones apply everywhere. Where only a regional source has what's needed, blend it on the globe, and the table shows which sources cover the clicked place. Every source must carry the data the site needs.
+  2. **Seeing levels:** pressure levels for every model in v1, with each model's level count shown beside its seeing (GFS 39, ICON-EU 20, MEPS 13, IFS 13 between 1000 and 50 hPa). A model-level path (MEPS 65, ICON-EU 74) is a later ticket, tied to the historical track's pressure-vs-model-levels experiment.
+  3. **F1 area and cadence:**
+     - F1 computes the box 4.65–14.65° E × 54.67–64.67° N around Kongsberg;
+     - four runs a day per model (00/06/12/18 UTC);
+     - F2 widens the area once timings are measured.
+  4. **Storage (NAS space is shared with the historical track):**
+     - download only the fields needed;
+     - raw files go to `/staging` and are deleted as soon as the derived values are computed and verified;
+     - keep computed values only (retention: D45).
+  5. **Paranal as a seeing check in F1:** forecast it with the global models, compare each night with ESO's DIMM and MASS (already approved, D28), and archive the comparison.
+  6. **Other monitors** (Maunakea MKWC, ING R2D2, Calar Alto): **internal verification only, no permission e-mails.** Never published or redistributed. Riley expects to stop using them once the models are verified.
+  7. **Seeing at Kongsberg:** nothing local for F1. A research ticket on a DIY DIMM with Riley's own telescope and camera. A commercial monitor would be an [ASK].
+  8. **Attribution (when public):** one "Data sources" panel with each provider's exact wording, plus a short credit beside each model's row.
+  9. **Prototype verdict:** layouts and visuals approved in general; UI details and wording come later. **B (tonight summary map) is the landing view, C's table opens when a place is clicked, and A's hour slider is an optional layer.**
+- **Who:** Riley.
