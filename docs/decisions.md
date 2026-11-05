@@ -318,3 +318,124 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - The rate is `request.fields_per_s` in `configs/era5.yaml`, set to 5.6 fields/s. That was measured on 12–17 Oct 2026, when only one of our jobs was running (D34), and it is pressure levels only. I'll update it from the first days of the sequential queue.
 - **Review (2026-10-30):** Copilot again took no request, so an independent review ran instead. Fixed: no partial plans, subset regions, and the estimate now says the rate is a pressure-level one. Its other findings were about D39 code already merged, and were either deliberate (submit errors and failed jobs count as rejections, as Riley asked) or minor. They're listed in handoff §6.
 - **Who:** Riley (asked for both); agent (details).
+
+## 2026-10-30 — Cloud planning session: switch to Matt Pocock's skills
+
+### D41. Planning skills set up: tickets in GitHub Issues, one decision log
+- **Options (tickets):** GitHub Issues; local Markdown in `.scratch/` committed to the repo; another tracker (Linear, Notion, …).
+- **Evidence:** both sides must read and update tickets. The cloud session reaches GitHub Issues through its GitHub tools; the CT has `gh` logged in as rrweller. Committed Markdown would need a commit and push for every update, with the cloud session and the CT editing the same files on different branches. The cloud session can't set GitHub's native "blocked by" links (no `gh`, no raw API), but it can create sub-issues.
+- **Choice:**
+  - Tickets live in GitHub Issues on `rrweller/Astro-seeing` (`docs/agents/issue-tracker.md`). The wayfinder map is one issue labelled `wayfinder:map`; tickets are its sub-issues.
+  - Blocking is a `Blocked by: #n` line at the top of each ticket body; that line is the source of truth, and the CT may mirror it as a native dependency.
+  - Every ticket carries `runs-on:cloud` or `runs-on:ct`.
+  - Default triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`).
+  - `CLAUDE.md` starts with `@AGENTS.md` and holds the skills' config; AGENTS.md stays Riley's.
+  - `docs/decisions.md` stays the only decision log: skills that would write an ADR to `docs/adr/` add a D-entry here instead (`docs/agents/domain.md`).
+- **Who:** Riley.
+
+### D42. AGENTS.md wording updated (proposals from `docs/handoff_pivot.md` §4)
+- **Applied (Riley approved all six, 2026-10-30):**
+  1. Data safety → Downloads: one CDS job queued or running per account (D39, replacing the "at most 4 in flight" of the old proposal, which D37 made obsolete); month-sized validation-box requests split to the CDS cost limit (D16, D23), limits read from config and re-checked before a campaign, because the CDS changes them with its workload (forum.ecmwf.int/t/15337); after a pause, read the CDS announcements and check that one request is accepted before queuing more (the lesson of D37); global and regional runs one day per request unless gate 1 changes it.
+  2. What gets stored: night-only validation areas allowed (D31).
+  3. Code → Environment: the CDS client (D2).
+  4. Environment and Code → Long jobs: repo at `/home/astro-seeing`, root, system-level services (D26, D32), pixi's path.
+  5. Working with Riley: planning in cloud sessions, the CT works from GitHub Issues tickets (D41).
+  6. A typo ("againast").
+- **Evidence for 1:** ECMWF's announcement of 2026-10-22 asks for sequential requests and warns that repeated invalid submissions may get an account disabled (forum.ecmwf.int/t/15481). An ECMWF staff reply of 2026-10-16 says the limits "are changed from time to time according to the current workload of the system" (forum.ecmwf.int/t/15337). Neither thread gives a number. Both were read on 2026-10-30.
+- **Who:** Riley.
+
+## 2026-11-05 — Cloud planning session: the forecast track
+
+### D43. A forecast track alongside the historical one, on one shared engine
+- **Context:** Riley's experience: Yr said clear, meteoblue's astronomy page showed 10–20% low cloud, and the sky was clear. Riley wants several forecasts side by side for tonight, with seeing computed by the methods of the papers being reproduced, and later a public site (handoff of 2026-11-05 §3). AGENTS.md's phases are historical-only, so this is a new phase [ASK].
+- **Options (gate 1 map #6):** pause it; keep it as the historical track and work both in parallel; close it and move its tickets to a forecast map.
+- **Evidence:**
+  - The physics is shared: both Cₙ² models, the integrals, cloud overlap and calibration already exist in `src/astroseeing/physics/`. The paper reproductions on #6 are what show that physics works, for either track.
+  - ERA5 is a reanalysis, so forecasts don't use the CDS and don't compete with the CT's downloads.
+  - Global-model seeing forecasts are weak for total seeing: at Paranal, O&S got r = 0.64 for the free atmosphere but 0.30 for total seeing; Ye 2011 reports errors of 0.2–0.4″ (RESEARCH §1, §3.3, §3.5).
+  - Kongsberg (59.669° N, 9.652° E; en.wikipedia.org/wiki/Kongsberg) has no astronomical darkness from 22 Apr to 19 Aug, and the Sun never gets below −12° from 13 May to 29 Jul (NOAA solar approximation, 1-minute steps, 2026; 239 nights with ≥2 dark hours, as in RESEARCH §4.1). The night mask would leave the forecast empty for 11 weeks.
+- **Choice (Riley, 2026-11-05):**
+  1. **Two tracks in parallel, one engine.** The forecast track and the historical track share the physics code; they differ in data and UI. #6 stays open as the historical track.
+  2. **Area:** the user picks a place on the map; Kongsberg is the default. Each run computes a fixed large domain (northern Europe first, global once download sizes are known), and picking a place only chooses where to look. Places covered by fewer forecast models show fewer.
+  3. **Inputs:** raw output from open forecast models only, never other services' finished forecasts. Each new source is a licence [ASK].
+  4. **v1 shows, per forecast model, side by side:** low, mid, high and total cloud each hour; model agreement on cloud class (clear ≤10%, some cloud 10–50%, cloudy >50% total cloud; placeholders, in config). No claim to beat Yr or meteoblue; a combining method comes later.
+  5. **Seeing:** both Cₙ² models (O&S K = 6 as the main figure, Tatarskii + HMNSP99 in the detail), per forecast model with enough pressure levels, plus 200 hPa wind and the height of the most turbulent layer. Labelled "uncalibrated" until the historical track's calibration (#15) exists.
+  6. **Hours:** all 24, in local time (stored in UTC), shaded for daylight, twilight and dark time. The night mask stays a historical-track rule. A night with no dark time says so and still shows cloud and seeing.
+  7. **Moon:** rise, set, phase and hourly altitude. No sky-brightness model; "not now: moonlight" still applies to the historical layers.
+  8. **Windward/lee seeing:** later, after a research ticket. v1 uses model-cell values or the height-only method (RESEARCH §5).
+  9. **Hosting:** private, on CT 350 as its own systemd service, writing to `/data/astro/forecast/` and logging downloads in the manifest. Each run's derived hourly values for the default area are kept indefinitely (the record a combining method will need); raw downloads are deleted once processed. Later public via Pangolin on Riley's domain. Free sources first; paid only if nothing free has the data, cheapest first.
+  10. **Globe display:** two throwaway prototypes (an hourly time slider, and a "tonight" summary map) before the spec. Seeing is never blended between hours.
+  11. **Seeing measurements:** research which observatory, amateur or citizen-science sources measure seeing and could validate either track.
+  12. **AGENTS.md:** the mission names both products; the forecast track gets milestones F1 (Kongsberg default, multi-model timeline, private), F2 (any place in the domain, the globe), F3 (global, public); phases 1–3 stay as the historical track. Diff to follow for Riley's approval.
+- **Who:** Riley.
+
+### D44. Forecast sources, levels, F1 area, storage, and seeing checks
+- **Evidence:** `docs/research/forecast-sources.md` and `docs/research/seeing-measurements.md` (branches `research/forecast-sources`, `research/seeing-measurements`; primary sources read 2026-11-05). The prototype is on branch `prototype/forecast-views`.
+- **Choice (Riley, 2026-11-05):**
+  1. **Sources (licence [ASK], approved):**
+     - NOAA GFS 0.25° (US open data);
+     - DWD ICON-EU (CC BY 4.0);
+     - MET Norway MEPS (CC BY 4.0 / NLOD);
+     - ECMWF IFS open data 0.25° (CC BY 4.0).
+     - Only raw output. No paid ECMWF tier (cheapest band €500/yr). IFS is 3-hourly, so its in-between hours stay blank.
+     - **Riley prefers global sources**, so the same ones apply everywhere. Where only a regional source has what's needed, blend it on the globe, and the table shows which sources cover the clicked place. Every source must carry the data the site needs.
+  2. **Seeing levels:** pressure levels for every model in v1, with each model's level count shown beside its seeing (GFS 39, ICON-EU 20, MEPS 13, IFS 13 between 1000 and 50 hPa). A model-level path (MEPS 65, ICON-EU 74) is a later ticket, tied to the historical track's pressure-vs-model-levels experiment.
+  3. **F1 area and cadence:**
+     - F1 computes the box 4.65–14.65° E × 54.67–64.67° N around Kongsberg;
+     - four runs a day per model (00/06/12/18 UTC);
+     - F2 widens the area once timings are measured.
+  4. **Storage (NAS space is shared with the historical track):**
+     - download only the fields needed;
+     - raw files go to `/staging` and are deleted as soon as the derived values are computed and verified;
+     - keep computed values only (retention: D45).
+  5. **Paranal as a seeing check in F1:** forecast it with the global models, compare each night with ESO's DIMM and MASS (already approved, D28), and archive the comparison.
+  6. **Other monitors** (Maunakea MKWC, ING R2D2, Calar Alto): **internal verification only, no permission e-mails.** Never published or redistributed. Riley expects to stop using them once the models are verified.
+  7. **Seeing at Kongsberg:** nothing local for F1. A research ticket on a DIY DIMM with Riley's own telescope and camera. A commercial monitor would be an [ASK].
+  8. **Attribution (when public):** one "Data sources" panel with each provider's exact wording, plus a short credit beside each model's row.
+  9. **Prototype verdict:** layouts and visuals approved in general; UI details and wording come later. **B (tonight summary map) is the landing view, C's table opens when a place is clicked, and A's hour slider is an optional layer.**
+- **Who:** Riley.
+
+### D45. Global model families, blending, retention, and how the two tracks share the work
+- **Evidence:** `docs/research/forecast-sources.md`. Of the D44 sources, only GFS and IFS are global. DWD's ICON global is the only other free global source with profiles: ~13 km icosahedral grid, 17 pressure levels 1000–50 hPa, total/low/mid/high cloud, hourly to 78 h, CC BY 4.0, ~9.3 GB per run as whole-globe files. AIFS is 6-hourly; the UK Met Office feed has stopped and is CC BY-SA.
+- **Choice (Riley, 2026-11-05):**
+  1. **ICON global approved** (licence [ASK]; same DWD terms as ICON-EU), from F2 on. F1's box lies inside ICON-EU.
+  2. **A forecast model is a family.** A regional version and its global parent (ICON-EU, ICON) are one forecast model; each place uses the finest version that covers it.
+  3. **Model agreement, the globe and the verdict count the global families only** (GFS, IFS, ICON: 3 everywhere), so the map has no seams and the globe and table agree. Regional-only models (MEPS) appear as extra rows in the table, marked "regional, not counted".
+  4. **Blending:** a regional version fades into its global parent across a 2°-wide band inside the regional domain's edge. Cloud fractions and J are blended on a common grid, and seeing is computed from the blended J, never blended itself. The width can be tuned in F2.
+  5. **Retention:**
+     - raw downloads are deleted once derived values are verified;
+     - for each place (Kongsberg, Paranal, and any saved later), every run's hourly values per model are kept forever: cloud layers, J and seeing, 200 hPa wind, most turbulent layer;
+     - for area grids, only the latest run of each model, plus each day's tonight summary map for 7 days. If space gets tight, the 7-day summaries go first.
+     - Sizes *[estimate, from grid sizes]*: ~46 KB per place per day (~17 MB/year); F1 grids under 1 GB; a global F3 ~1 GB per model run. Replace with measured numbers in F1.
+  6. **Who does what:** cloud sessions put F1 first (code only: no CDS, no NAS). CT sessions take historical-track tickets on data already on the NAS while the downloads run.
+- **Who:** Riley.
+
+### D46. AGENTS.md wording for the forecast track (proposal in `reports/agents_md_forecast_proposal.md`)
+- **Applied (Riley approved all seven, 2026-11-05):**
+  1. Mission: two products on one shared engine (D43).
+  2. [ASK] before adding a forecast or seeing-measurement source beyond D44/D45.
+  3. Storage: forecast downloads to `/staging`, raw deleted once derived values are verified, retention per D45; the night mask is historical-only.
+  4. Validation-only monitors (MKWC, ING, Calar Alto) for internal checks; anything published uses ESO's data or our own.
+  5. The forecast pipeline under Architecture.
+  6. "Forecast track: milestones" (F1–F3, each approved before the next), and phases 1–3 renamed "Historical track: phases and gates" with their text unchanged.
+  7. Decisions already made: forecast data sources; Moon times in the forecast.
+- **Who:** Riley.
+
+## 2026-11-05 — Cloud planning session: seeing in F1
+
+### D47. Seeing in F1: observer height, limits, ground layer, numbers and labels (map #20, ticket #21)
+- **Evidence:**
+  - Ground heights at Kongsberg (59.669° N, 9.652° E), read from the 2026-11-05 00 UTC runs: Copernicus GLO-30 **162 m** (the town is in the valley); GFS `HGT:surface` 327 m (point 59.75° N 9.75° E); IFS open-data `z`/g₀ 261 m (same point); ICON-EU `HSURF` 347 m (59.688° N 9.625° E); MEPS `surface_geopotential`/g₀ 231 m (59.660° N 9.662° E). In the 0.25° cell around the town, GLO-30 runs 61–829 m (median 322 m).
+  - GFS surface pressure there was ≈992 hPa, so 1000 hPa is below ground in every model. Lowest level above the model ground: GFS 975, ICON-EU 950, MEPS and IFS 925 hPa, roughly 0.15, 0.35 and 0.55 km above it *[estimate]*.
+  - Ground-layer inputs for W71: GFS has `SHTFL` and `FRICV`; ICON-EU has `ashfl_s` and the momentum fluxes `aumfl_s`/`avmfl_s`; IFS open data has `ewss`/`nsss` but **no heat flux** (step-0 index, 2026-11-05 00z); MEPS not checked.
+  - Free atmosphere vs total at Paranal: r = 0.64 vs 0.30 (O&S 2018; RESEARCH §3.3).
+  - Effective turbulence altitude: Kornilov et al. 2007 §2.1 (arXiv:0709.2081) give θ₀ = 0.31 r₀/H̄, with H̄ the "Cₙ²-weighted average … altitude above site (Roddier, 1981)". From RESEARCH §4.5, H̄ = [∫Cₙ² h^(5/3) dh / ∫Cₙ² dh]^(3/5) and θ₀ = 0.314 r₀/H̄ ((0.423/2.914)^(3/5) = 0.3141). ESO's MASS data carries `MASS Turb Altitude [m]` (`docs/research/seeing-measurements.md`); how ESO computes it is *[check]* in the Paranal comparison ticket.
+- **Choice (Riley, 2026-11-05):**
+  1. **Observer height:** each place's real elevation from the DEM (GLO-30), raised to the model ground where it lies below it (counted, never silent). Kongsberg town (162 m) is below all four model grounds, so its values are at each model's ground.
+  2. **Limits:** from the lowest pressure level above the model ground up to 50 hPa. Levels with p > surface pressure are masked and counted. The gap between the model ground and that level is not filled; its depth is shown per model.
+  3. **Ground layer: none in F1** ("straightforward calculations directly from the research papers"; better ground-layer methods come later). Exception: Paranal also gets a second series with O&S 2018's own relocation of the model's lowest 1 km, as the paper did.
+  4. **Numbers, for both Cₙ² models (O&S K = 6 and Tatarskii + HMNSP99):** free-atmosphere seeing (above observer + 1 km), total seeing, and the effective turbulence altitude H̄ in km above the observer, over the column from the observer up. **Headline: O&S free-atmosphere seeing.**
+     - H̄ **replaces D43 item 5's "height of the most turbulent layer"** (Riley delegated the definition to the agent's research): it is a standard published quantity, it can be checked against ESO MASS, and it doesn't jump with each model's level placement as a single "most turbulent slab" would.
+  5. **Labels:** every seeing value carries (1) "uncalibrated", (2) the Cₙ² model, (3) the forecast model's level count (GFS 39, ICON-EU 20, MEPS 13, IFS 13), (4) the observer height used, including the raise to the model ground, (5) for total seeing, "no ground layer; the column starts N km above the model ground", (6) for free-atmosphere seeing, "above observer + 1 km". Items 1–2 also sit on the headline figure. Exact wording comes with the UI (D44 item 9).
+  6. **Historical-track defaults kept:** unstable layers set to zero and counted per model (D5); WMO lapse-rate tropopause for every model (GFS's own tropopause not used); 500 nm, zenith, exact 5.307 form.
+- **Who:** Riley (items 1–3, 4's headline, 5, 6); agent (H̄ as the definition in item 4, delegated by Riley).

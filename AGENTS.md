@@ -10,7 +10,12 @@ Don't edit this file yourself: propose changes to Riley in a report.
 
 ## Mission
 
-Build a self-hostable web app: a 3D globe you can drag and zoom, with toggleable layers.
+Build a self-hostable web app: a 3D globe you can drag and zoom, with toggleable layers, serving two products on one shared physics engine (D43):
+
+- **Forecast track:** tonight's cloud and seeing, forecast model by forecast model, for any place the user picks.
+- **Historical track:** the climatology of good nights for every land location, described below.
+
+Both tracks go ahead in parallel. They share `src/astroseeing/physics/` and differ in data and UI.
 
 - **Main layer:** the average number of *good astronomical viewing nights per year*, for every land location (land plus a 1 km buffer).
 - **A good night needs:**
@@ -19,7 +24,7 @@ Build a self-hostable web app: a 3D globe you can drag and zoom, with toggleable
   3. good seeing.
 - **Component layers:** dark hours, clear nights, median seeing, best month.
 
-No free or cheap source has multi-year global historical seeing. So seeing is computed from ERA5 reanalysis profiles, and validated againast published papers and observatory measurements before scaling up.
+No free or cheap source has multi-year global historical seeing. So seeing is computed from ERA5 reanalysis profiles, and validated against published papers and observatory measurements before scaling up.
 
 **Correct results matter more than speed.** Multi-day compute is fine; unverified numbers are not.
 
@@ -31,6 +36,7 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 - deleting or overwriting anything under `/data`;
 - changing a method or constant that validated results depend on;
 - adding a data source with new licence terms;
+- adding a forecast source, or a seeing-measurement source, beyond those approved in D44 and D45;
 - anything that costs money.
 
 **Within an approved phase:** work through the tasks yourself. At each milestone, write a short report in `reports/` covering the numbers, plots, and what's uncertain.
@@ -42,9 +48,13 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 
 **Decision log:** record every non-trivial decision in `docs/decisions.md` (date, options, evidence, choice, who decided).
 
+**Planning and tickets (from 2026-10-30):** planning happens in Claude Code cloud sessions, which can read the repo but have no `/data`, `/staging`, CDS access, manifest or logs. The CT works from the tickets they write, in GitHub Issues (`docs/agents/issue-tracker.md`). Anything that needs the data, a download or Haslebacher et al.'s code is a `runs-on:ct` ticket.
+
 ## Environment (as of 2026-09-26)
 
 - **Container:** Proxmox LXC CT 350 `astro-seeing` on node `procyon` (i7-10700T, 8 cores, no hyper-threading). The CT has 6 cores, 24 GB RAM and 8 GB swap, runs Ubuntu 26.04 and is unprivileged. Use at most 5 worker processes. Everything runs in UTC.
+  - The repo is at `/home/astro-seeing` and everything runs as root (D26). pixi is in `/root/.pixi/bin`; tmux is installed with `pixi global`.
+  - Long jobs run as system-level systemd services: `astro-boxes`, `astro-notify` and `astro-manifest-export.timer` (D32). Systemd user units would need a non-root user or lingering.
 - **`/data` (the NAS):** QNAP NAS over NFSv4.1, hard-mounted on the host and bind-mounted into the CT; ~3.4 TB, ~110 MB/s.
   - It's the durable store, with no snapshots or backups, so treat it as the only copy.
   - Files show as `nobody:nogroup`. Never `chown` there or rely on ownership.
@@ -73,8 +83,13 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 
 **Data safety**
 - **Downloads:** GRIB, day-sized requests, each tracked in the SQLite manifest (request → file → checksum → verification → ingest). Downloads must be resumable and idempotent.
+  - **One CDS job at a time:** at most one request queued or running per account, across all datasets (D39; ECMWF asks for sequential requests and may disable accounts that keep sending invalid ones, forum.ecmwf.int/t/15481). Raising it needs Riley's OK. After a rejection, back off; after repeated rejections, stop and alert.
+  - **Validation boxes:** month-sized requests, split to the CDS cost limit (D16, D23). The limits (60,000 fields for pressure levels and 121,000 for single levels, measured 2026-09-27) come from `configs/era5.yaml`. The CDS changes them with its workload (forum.ecmwf.int/t/15337), so re-check before a campaign.
+  - **Restarting after a pause:** read the CDS forum announcements, then submit one request and check that it's accepted before queuing more.
+  - Global and regional runs stay one day per request unless gate 1 changes it.
 - **Verify before ingest:** check field count, grid, levels, times, and fill/NaN counts. Delete a raw GRIB only after its ingested Zarr data has been verified.
-- **What gets stored:** only land cells (with the 1 km buffer) and night hours (Sun below −12°). Validation boxes keep all hours.
+- **What gets stored:** only land cells (with the 1 km buffer) and night hours (Sun below −12°). Validation boxes keep all hours, except areas used only for night-time comparisons, which may be night-only (D31).
+- **Forecast track:** download only the fields a run needs, into `/staging`. Delete raw forecast files as soon as their derived values are computed and verified; `/data` keeps computed values only, under the retention in D45. The night mask is a historical-track rule: forecasts keep every hour for their area (D43).
 - **Writes:** atomic (write temp → verify → rename). Never delete or overwrite `/data` content without [ASK].
 - **Provenance:** every product records the git commit, config hash, input manifest IDs and software versions.
 
@@ -83,15 +98,18 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 - **Papers:** stay local in `papers/`; most aren't licensed for redistribution.
 - **Haslebacher et al.'s code is GPL-3.0:** run it from `external/` to compare results; don't copy it into `src/`.
 - **Attribution:** products carry the ERA5 (CC-BY 4.0) and Copernicus DEM attributions (text in `docs/RESEARCH.md` §7).
+- **Validation-only sources** (Maunakea MKWC, ING R2D2, Calar Alto; D44): use them for internal checks only. Anything published uses ESO's data (CC BY 4.0, D28) or our own.
 
 **Code**
-- **Environment:** Python ≥ 3.12 in a conda-forge environment managed by pixi, with `pixi.toml` and a committed `pixi.lock`. Use `ruff` for lint and format; `pytest` with `hypothesis` for tests.
+- **Environment:** Python ≥ 3.12 in a conda-forge environment managed by pixi, with `pixi.toml` and a committed `pixi.lock`. Use `ruff` for lint and format; `pytest` with `hypothesis` for tests. CDS access uses `ecmwf-datastores-client` (the library behind `cdsapi 0.7.7`) asynchronously, reading `~/.cdsapirc` (D2).
 - **Git:** small commits on branches, pushed to origin. Never force-push `main`.
-- **Long jobs:** run under systemd user services or `tmux`, log to `logs/`, and can resume after interruption.
+- **Long jobs:** run as system-level systemd services (D32) or in `tmux`, log to `logs/`, and can resume after interruption.
 
 ## Architecture
 
 Pipeline: `download → verify → ingest (land/night mask → Zarr on /data) → physics (profiles) → nightly (per cell, per height) → aggregate → tiles/web`
+
+Forecast pipeline: `fetch run (subset) → verify → physics per forecast model (pressure levels) → hourly values per cell → tonight summary → web`. It reuses the physics module, the manifest (for provenance) and the verify step; sources and their level counts are in D44 and D45.
 
 - **Weather:** ERA5 on its 0.25° grid (native resolution ~31 km). Exact CDS variable names are in `docs/RESEARCH.md` §7.
   - Pressure levels 1000–50 hPa (29 levels): geopotential, temperature, u and v wind, and cloud fraction (`cc`).
@@ -116,7 +134,15 @@ Pipeline: `download → verify → ingest (land/night mask → Zarr on /data) �
   docs/{RESEARCH.md,decisions.md}  papers/ (gitignored)  external/ (gitignored)
   ```
 
-## Phases and gates
+## Forecast track: milestones
+
+Each milestone is approved by Riley before the next starts [ASK].
+
+- **F1, private, Kongsberg.** The box around Kongsberg (D44), four runs a day from the D44 sources; the hourly multi-model table, the tonight map and the verdict (prototype verdict, D44); seeing from both Cₙ² models labelled uncalibrated; a nightly Paranal comparison against ESO. Runs unattended on the CT.
+- **F2, any place in a wider domain, on the globe.** Domain grown from measured timings; regional and global sources blended at domain edges (D45); model-level seeing where open.
+- **F3, global and public.** Attribution panel, hosting via Pangolin on Riley's domain, calibrated seeing once the historical track's calibration exists.
+
+## Historical track: phases and gates
 
 ### Phase 1: foundations and paper checks (small data, under ~100 GB)
 
@@ -180,10 +206,10 @@ Pipeline: `download → verify → ingest (land/night mask → Zarr on /data) �
 
 ## Decisions already made (2026-09-26)
 
-- **Data source:** ERA5 via CDS in GRIB. Pressure levels for the global run; model levels only for validation.
+- **Data source:** ERA5 via CDS in GRIB. Pressure levels for the global run; model levels only for validation. Forecast track: open forecast-model output per D44 and D45.
 - **Terrain:** the per-pixel terrain-aware method, using GLO-30. Riley: "minimum 100 m, ideally finer".
 - **Clouds:** cloud above a height comes from the pressure-level cloud fraction `cc`. This adds about 25% to the profile download.
-- **Layers:** good nights per year plus the component layers. Not now: moonlight, light pollution, τ₀/θ₀ layers.
+- **Layers:** good nights per year plus the component layers. Not now: moonlight, light pollution, τ₀/θ₀ layers (historical layers). The forecast shows Moon rise, set, phase and altitude (D43).
 - **Period:** 2021–2025 (5 full years) unless changed at gate 2. Keep the data source swappable: ERA6 (~14 km) starts releasing from late 2027.
 - **Seeing convention:** 500 nm at zenith. Store J and J(h) so other wavelengths and airmasses can be derived.
 - **Coverage:** land plus a 1 km buffer, Antarctica included.
