@@ -1,0 +1,9 @@
+[Unit]
+Description=Hourly check: release held TMT requests once the Chile subset is done
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target

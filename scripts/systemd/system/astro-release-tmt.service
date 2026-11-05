@@ -1,0 +1,14 @@
+# One-off: release the held TMT requests after Chile's extra single levels finish
+# (scripts/release_tmt_after_chile.sh). Not installed by install_services.sh's enable list.
+[Unit]
+Description=astro-seeing: release held TMT requests once the Chile subset is done
+RequiresMountsFor=/data/astro
+
+[Service]
+Type=oneshot
+Environment=HOME=/root
+WorkingDirectory=/home/astro-seeing
+TimeoutStartSec=15min
+ExecStart=/bin/bash /home/astro-seeing/scripts/release_tmt_after_chile.sh
+StandardOutput=append:/home/astro-seeing/logs/release_tmt.log
+StandardError=inherit
