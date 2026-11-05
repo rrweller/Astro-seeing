@@ -39,8 +39,12 @@ _Avoid_: night hours, night-only hours
 ### Forecasts
 
 **Forecast model**:
-One numerical weather-prediction system whose open output we use, such as ECMWF IFS or ICON-EU. The members of an ensemble are not separate forecast models.
+One numerical weather-prediction family whose open output we use, such as GFS, ECMWF IFS or ICON. A regional version and its global parent (ICON-EU and ICON) are one forecast model, and each place uses the finest version that covers it; the members of an ensemble are not separate forecast models either.
 _Avoid_: model (alone), source, provider
+
+**Regional-only model**:
+A forecast model with no global version, such as MEPS: shown for the places it covers, but not counted in model agreement.
+_Avoid_: local model, extra model
 
 **Run**:
 One forecast model started at one time, for example IFS from 00 UTC on 5 November.
@@ -55,7 +59,7 @@ One of clear, some cloud or cloudy, given to one forecast model's hour from its 
 _Avoid_: cloud category, sky state
 
 **Model agreement**:
-How many forecast models put an hour in the same cloud class.
+How many of the global forecast models put an hour in the same cloud class.
 _Avoid_: consensus, ensemble agreement
 
 ### Turbulence

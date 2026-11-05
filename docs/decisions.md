@@ -394,3 +394,29 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   8. **Attribution (when public):** one "Data sources" panel with each provider's exact wording, plus a short credit beside each model's row.
   9. **Prototype verdict:** layouts and visuals approved in general; UI details and wording come later. **B (tonight summary map) is the landing view, C's table opens when a place is clicked, and A's hour slider is an optional layer.**
 - **Who:** Riley.
+
+### D45. Global model families, blending, retention, and how the two tracks share the work
+- **Evidence:** `docs/research/forecast-sources.md`. Of the D44 sources, only GFS and IFS are global. DWD's ICON global is the only other free global source with profiles: ~13 km icosahedral grid, 17 pressure levels 1000–50 hPa, total/low/mid/high cloud, hourly to 78 h, CC BY 4.0, ~9.3 GB per run as whole-globe files. AIFS is 6-hourly; the UK Met Office feed has stopped and is CC BY-SA.
+- **Choice (Riley, 2026-11-05):**
+  1. **ICON global approved** (licence [ASK]; same DWD terms as ICON-EU), from F2 on. F1's box lies inside ICON-EU.
+  2. **A forecast model is a family.** A regional version and its global parent (ICON-EU, ICON) are one forecast model; each place uses the finest version that covers it.
+  3. **Model agreement, the globe and the verdict count the global families only** (GFS, IFS, ICON: 3 everywhere), so the map has no seams and the globe and table agree. Regional-only models (MEPS) appear as extra rows in the table, marked "regional, not counted".
+  4. **Blending:** a regional version fades into its global parent across a 2°-wide band inside the regional domain's edge. Cloud fractions and J are blended on a common grid, and seeing is computed from the blended J, never blended itself. The width can be tuned in F2.
+  5. **Retention:**
+     - raw downloads are deleted once derived values are verified;
+     - for each place (Kongsberg, Paranal, and any saved later), every run's hourly values per model are kept forever: cloud layers, J and seeing, 200 hPa wind, most turbulent layer;
+     - for area grids, only the latest run of each model, plus each day's tonight summary map for 7 days. If space gets tight, the 7-day summaries go first.
+     - Sizes *[estimate, from grid sizes]*: ~46 KB per place per day (~17 MB/year); F1 grids under 1 GB; a global F3 ~1 GB per model run. Replace with measured numbers in F1.
+  6. **Who does what:** cloud sessions put F1 first (code only: no CDS, no NAS). CT sessions take historical-track tickets on data already on the NAS while the downloads run.
+- **Who:** Riley.
+
+### D46. AGENTS.md wording for the forecast track (proposal in `reports/agents_md_forecast_proposal.md`)
+- **Applied (Riley approved all seven, 2026-11-05):**
+  1. Mission: two products on one shared engine (D43).
+  2. [ASK] before adding a forecast or seeing-measurement source beyond D44/D45.
+  3. Storage: forecast downloads to `/staging`, raw deleted once derived values are verified, retention per D45; the night mask is historical-only.
+  4. Validation-only monitors (MKWC, ING, Calar Alto) for internal checks; anything published uses ESO's data or our own.
+  5. The forecast pipeline under Architecture.
+  6. "Forecast track: milestones" (F1–F3, each approved before the next), and phases 1–3 renamed "Historical track: phases and gates" with their text unchanged.
+  7. Decisions already made: forecast data sources; Moon times in the forecast.
+- **Who:** Riley.

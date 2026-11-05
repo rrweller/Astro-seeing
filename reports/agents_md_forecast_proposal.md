@@ -1,6 +1,6 @@
 # Proposal: AGENTS.md changes for the forecast track (D43, D44)
 
-For Riley to approve, change or reject, item by item. Nothing here is in AGENTS.md yet. Once you approve, I apply the approved items and log them as a D-number, as with D42.
+**Status: all seven items approved by Riley on 2026-11-05 and applied (D46).** Item 2 was widened to "D44 and D45" when ICON global was approved in D45.
 
 Principle: AGENTS.md states the rule and points to the decision; the detail lives in `docs/decisions.md` (D43, D44) and later in the forecast spec, so each fact has one home.
 
@@ -23,7 +23,7 @@ The rest of the Mission section stays as it is, under the historical track.
 
 ## 2. Working with Riley → Stop and ask [ASK] (add one bullet)
 
-> - adding a forecast source, or a seeing-measurement source, beyond those approved in D44.
+> - adding a forecast source, or a seeing-measurement source, beyond those approved in D44 and D45.
 
 (D44 approved GFS, ICON-EU, MEPS and ECMWF IFS open data; ESO is D28.)
 
