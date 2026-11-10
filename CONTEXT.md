@@ -66,6 +66,10 @@ _Avoid_: cloud category, sky state
 The ground height a forecast model assumes at a place, smoothed over its grid; it can lie well above or below the real ground.
 _Avoid_: model terrain, orography (outside code), surface (alone)
 
+**Fog signal**:
+A forecast model's own output that indicates fog or very low cloud at a place, such as its fog fraction or near-surface visibility; shown for information, never counted in model agreement.
+_Avoid_: fog forecast, fog risk
+
 **Model agreement**:
 How many of the global forecast models put an hour in the same cloud class.
 _Avoid_: consensus, ensemble agreement

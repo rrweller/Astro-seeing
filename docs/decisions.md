@@ -476,3 +476,34 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   12. **Glossary:** Counted hours, Mostly clear, Incomplete hour, Stale run and Verdict added to `CONTEXT.md`.
 - **Testability:** each item is meant to be checked against a hand-made night: given Sun altitudes, per-family total cloud and J per hour, and run times, the expected counts, chips, range and texts follow uniquely.
 - **Who:** Riley (all items; agreed in a grilling session on ticket #22).
+
+## 2026-11-10 — Cloud planning session: fog, and a general tool
+
+### D49. Fog and low cloud in the forecast, and the forecast is a general tool (map #20, research ticket #31)
+- **Context:** Riley saw Yr forecast a clear night while meteoblue showed nearly 100% low cloud, and meteoblue was right. On another day, a clear Kongsberg had thick fog in the Skollenborg–Darbu valley. Riley asked whether fog can be predicted from terrain and other weather signals with established, verified science, and set the rule: nothing meteorologists can't do.
+- **Evidence:** `docs/research/valley-fog.md` (branch `research/valley-fog`; key sources re-checked by the main session).
+  - Yr's 2–3-day forecast for Norway is MEPS; meteoblue's Kongsberg model list has no MEPS.
+  - MET Norway's verification reports document MEPS under-forecasting low stratus under subsidence inversions (METinfo 20/2026), with IFS "usually" closer in those cases, and missing inland radiation fog at 1 h lead time (METinfo 14/2023).
+  - ECMWF FUG §9.4.1: 10 km models "cannot be expected to handle" patchy fog; site skill "can be very low".
+  - Established elsewhere, each with limits:
+    - the models' own fog and visibility outputs (low site skill);
+    - statistical post-processing at stations with long observation records (e.g. NOAA LAMP, "a statistical system", with ceiling and visibility guidance for "over 2000 stations", vlab.noaa.gov/web/mdl/lamp);
+    - observation-threshold nowcasts (hours, not tonight);
+    - satellite detection of existing fog.
+  - **Not established:** forecasting valley fog from terrain plus model output. DEM cold-air-pool maps are verified for minimum temperature only, not fog, and sub-km models are research-grade with valley biases.
+- **Choice (Riley, 2026-11-10):**
+  1. **A general tool, not a Kongsberg predictor.** The forecast track must work the same way for every place on the globe. Better regional models or data are used wherever they exist (D44, D45: finest version of each family, regional-only models as extra rows), accepting that coverage differs between regions. No method, threshold or feature is specific to a town or small region. Kongsberg (and its box) is the test location while building F1, and Riley's own observations there are test data.
+  2. **D45 item 3 and D48 unchanged:** the verdict counts total cloud from the global families only. The evidence doesn't favour counting MEPS for low cloud: its documented gap is exactly low stratus and fog.
+  3. **Fog signals row:** per forecast model and hour, the model's own fog, visibility and low-cloud outputs, wherever that model provides them, labelled experimental and **not counted** in the verdict or the map's clear layer. Models without a field show it as absent, never filled. For the F1 sources (fields as listed in the research, section 3):
+     - MEPS: `fog_area_fraction`, `visibility_in_air`, `low_type_cloud_area_fraction`;
+     - ICON-EU: `VIS`, `WW` codes 45/48, `CLCL`;
+     - GFS: `VIS`, `LCDC`;
+     - IFS open data: `lcc` and the 2 m dewpoint depression.
+     - No combined fog score until one has been verified.
+  4. **Terrain caveat, computed per place:** wherever a place's real elevation lies below a model's ground (D47 item 1 already finds this), the page says by how much, and that fog or cold air pooling in terrain below the model ground is not forecast by that model. The same rule applies everywhere; nothing is written for one town.
+  5. **No terrain-based fog prediction:** unresolved science, so not built.
+  6. **Fog log (test data):** Riley logs observed fog and low-cloud nights (date, time, place, what Yr and meteoblue showed, what happened) while F1 is tested. It is used to judge whether any model's fog signals are worth showing more prominently. It is not a product feature.
+  7. **Later, as research tickets (F2 or after), each general rather than local:**
+     - statistical fog and visibility post-processing wherever station records allow (the established LAMP-style route), using station observations as a new source [ASK];
+     - verification of fog signals against satellite fog and low-stratus products (e.g. EUMETSAT NWC SAF; other regions need their own satellites), also a new source [ASK].
+- **Who:** Riley (all items). The agent drafted the wording of items 3 and 4 from Riley's direction.
