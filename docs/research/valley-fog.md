@@ -65,8 +65,8 @@ Sub-questions:
 From ECMWF's Forecast User Guide (FUG), updated 2026:
 
 - "Fog can be very patchy and 10km-scale models (such as IFS) cannot be expected to handle this well." "Local skill in forecasting the occurrence of fog (e.g. for a specific site) can be very low." (§9.4.1)
-- Radiation fog tends to be "rather too dense", "rather too deep", "to form too slowly" and "to clear too quickly (by about 1-3hr)"; "hill fog is rather under-represented". (§9.4.1)
-- Fog and low cloud "are often tied to orographic features that are not resolved by the atmospheric model"; the visibility product "should be used with caution; expectations regarding the quality of this product should remain low". (§9.4)
+- Listed as "initial perceptions" of a product still under assessment, not measured results: radiation fog tends to be "rather too dense", "rather too deep", "to form too slowly" and "to clear too quickly (by about 1-3hr)"; "hill fog is rather under-represented". (§9.4.1)
+- Very low visibility depends on "the correct dynamic and thermodynamic conditions in the boundary layer", and these "are often tied to orographic features that are not resolved by the atmospheric model"; the visibility product "should be used with caution; expectations regarding the quality of this product should remain low". (§9.4)
 - "Inversions and low cloud can be poorly represented, notably in winter or high pressure areas", which "has an impact on fog extent and persistence and also 2m temperatures"; "Correct prediction of fog dispersal is notoriously difficult". (§9.10)
 
 GFS: **no peer-reviewed verification of GFS fog or low stratus over Europe found.**
@@ -102,7 +102,7 @@ Few papers give fog skill scores for operational models:
 
 ### Known failure modes, in short
 
-- **Resolution and smoothed terrain.** Valleys narrower than a few grid lengths are not in the model; ECMWF says fog is "tied to orographic features that are not resolved".
+- **Resolution and smoothed terrain.** Valleys narrower than a few grid lengths are not in the model; ECMWF says the boundary-layer conditions behind very low visibility are "often tied to orographic features that are not resolved".
 - **Boundary-layer and turbulence schemes.** Too much mixing stops fog forming or clears it early (Steeneveld 2015; Singh 2025; Westerhuis 2020).
 - **Microphysics.** Droplet settling and number concentration control fog water and dissipation (Contreras Osorio 2022; Steeneveld 2015).
 - **Vertical resolution and numerics.** Affect onset and spurious mixing near cloud top (Philip 2016; Westerhuis 2020).
@@ -220,7 +220,7 @@ Primary documentation (all loaded 2026-11-10):
 - meteoblue, weather simulation data: https://content.meteoblue.com/en/research-education/specifications/data-sources/weather-simulation-data. Supports: own NMM/NEMS models.
 - meteoblue dataset docs: https://docs.meteoblue.com/en/meteo/data-sources/datasets. Supports: list of own and third-party models.
 - meteoblue, symbols and pictograms: https://content.meteoblue.com/en/research-education/specifications/standards/symbols-and-pictograms. Supports: fog/low stratus pictograms.
-- ECMWF FUG §9.4 Visibility: https://confluence.ecmwf.int/spaces/FUG/pages/673551698/Section%2B9.4%2BVisibility. Supports: fog tied to unresolved orography; low expectations; fog via cloud water in the lowest level.
+- ECMWF FUG §9.4 Visibility: https://confluence.ecmwf.int/spaces/FUG/pages/673551698/Section%2B9.4%2BVisibility. Supports: very-low-visibility conditions tied to unresolved orography; low expectations; fog via cloud water in the lowest level.
 - ECMWF FUG §9.4.1 Reduction of visibility in fog: https://confluence.ecmwf.int/x/YJUlK. Supports: radiation fog biases; patchy fog at 10 km; low site skill.
 - ECMWF FUG §9.10 Summary of some important issues: https://confluence.ecmwf.int/x/9ZQlK. Supports: inversions and low cloud poorly represented in winter and high pressure.
 - ECMWF open data page: https://www.ecmwf.int/en/forecasts/datasets/open-data, and the live index https://data.ecmwf.int/forecasts/20261110/00z/ifs/0p25/oper/20261110000000-12h-oper-fc.index. Supports: IFS open parameter list (no vis, cbh, blh).
@@ -254,3 +254,10 @@ Peer-reviewed papers (DOI links; "abstract" means read via the OpenAlex or Seman
 - Schulz, Thies, Chang, Bendix 2016, AMT 9:1135–1152, https://doi.org/10.5194/amt-9-1135-2016 (abstract; open access). Ground fog in mountains from MODIS and terrain.
 - Egli et al. 2017, QJRMS 143:530–541, https://doi.org/10.1002/qj.2941 (abstract). European SEVIRI FLS climatology; HSS 0.45.
 - Jahani et al. 2025, AMT 18:1927–1941, https://doi.org/10.5194/amt-18-1927-2025 (abstract; open access). Day-and-night SEVIRI FLS detection; POD 0.70–0.82, FAR 0.21–0.31.
+
+## Check by the main session (2026-11-10)
+
+- Re-read and confirmed verbatim: MET Norway METinfo 20/2026 (low stratus under subsidence inversions, saturation at 975–900 hPa, IFS better, small T/Td errors and fog) and METinfo 14/2023 (inland radiation fog missed at 1 h lead time; stratus under weak subsidence inversions "one of the main weaknesses"), by extracting the PDF text locally; the Yr help article and Locationforecast data model; the MET Nordic dataset page; meteoblue's astronomy-seeing help and the Kongsberg multimodel page (no MEPS or MetCoOp named); ECMWF FUG §9.4, §9.4.1 and §9.10.
+- Two wordings corrected above: the 1–3 h early clearing is one of ECMWF's "initial perceptions", and the "orographic features" sentence is about the conditions for very low visibility, not "fog and low cloud" as worded before.
+- The Kongsberg multimodel page has `domains=HARMONIE` in an image-download link, but no model on the page is labelled MEPS. HARMN-5 is KNMI's model.
+- The peer-reviewed papers cited from abstracts were not re-checked.
