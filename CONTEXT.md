@@ -28,6 +28,10 @@ _Avoid_: next night, coming night
 The part of a night when the Sun is more than 18° below the horizon (astronomical darkness).
 _Avoid_: night hours, darkness hours
 
+**Counted hours**:
+The hours of Tonight the verdict counts: its dark time from the current hour on or, if Tonight has no dark time at all, the hours with the Sun below −12°, then below the horizon.
+_Avoid_: clear hours, night hours
+
 **Night mask**:
 The rule that decides which ERA5 hours are kept at ingest: an hour is kept if the Sun is below −12° at any minute within 30 minutes of it.
 _Avoid_: night hours, night filter
@@ -62,9 +66,29 @@ _Avoid_: cloud category, sky state
 The ground height a forecast model assumes at a place, smoothed over its grid; it can lie well above or below the real ground.
 _Avoid_: model terrain, orography (outside code), surface (alone)
 
+**Fog signal**:
+A forecast model's own output that indicates fog or very low cloud at a place, such as its fog fraction or near-surface visibility; shown for information, never counted in model agreement.
+_Avoid_: fog forecast, fog risk
+
 **Model agreement**:
 How many of the global forecast models put an hour in the same cloud class.
 _Avoid_: consensus, ensemble agreement
+
+**Mostly clear**:
+Said of an hour that more than half of the global forecast models with a value for it put in the clear class, with at least two such models.
+_Avoid_: consensus, clear (for the combined call)
+
+**Incomplete hour**:
+A counted hour that fewer than two global forecast models have a value for; it counts as neither clear nor not clear.
+_Avoid_: missing hour, gap
+
+**Stale run**:
+A forecast model's latest run whose run time is more than 24 hours old: shown, but left out of model agreement.
+_Avoid_: old forecast, expired run
+
+**Verdict**:
+The short summary of Tonight at a place: how many counted hours are mostly clear, and the range of seeing across the global forecast models.
+_Avoid_: summary, score, rating
 
 ### Turbulence
 

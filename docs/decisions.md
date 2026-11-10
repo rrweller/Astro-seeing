@@ -439,3 +439,71 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   5. **Labels:** every seeing value carries (1) "uncalibrated", (2) the Cₙ² model, (3) the forecast model's level count (GFS 39, ICON-EU 20, MEPS 13, IFS 13), (4) the observer height used, including the raise to the model ground, (5) for total seeing, "no ground layer; the column starts N km above the model ground", (6) for free-atmosphere seeing, "above observer + 1 km". Items 1–2 also sit on the headline figure. Exact wording comes with the UI (D44 item 9).
   6. **Historical-track defaults kept:** unstable layers set to zero and counted per model (D5); WMO lapse-rate tropopause for every model (GFS's own tropopause not used); 500 nm, zenith, exact 5.307 form.
 - **Who:** Riley (items 1–3, 4's headline, 5, 6); agent (H̄ as the definition in item 4, delegated by Riley).
+
+## 2026-11-06 — Cloud planning session: the F1 verdict
+
+### D48. F1 verdict and model agreement: the exact rules (map #20, ticket #22)
+- **Evidence:**
+  - Prototype rules: `tonight()` in `web/prototype-forecast-views/core.js` (branch `prototype/forecast-views`) counts dark hours, falling back to Sun below −12°, then below the horizon. An hour is "mostly clear" when `count.clear * 2 > n` over the models that cover the place. Its seeing figure is a median of per-hour cross-model medians.
+  - Value timing (`docs/research/forecast-sources.md`): GFS publishes total and low/mid/high cloud both instantaneous and as 6-hour averages. ICON-EU, MEPS and IFS values are instantaneous. IFS open data is 3-hourly (steps 0–144 h every 3 h).
+  - Latency after run time: ICON-EU +2.7–3.0 h, MEPS +2.3–4.1 h, GFS +3.6 h, IFS +7.6 h (0.25°). So just before its next run lands, an IFS run is normally up to ~14 h old.
+  - Seeing ∝ J^(3/5) is monotonic in J, so the median of an odd number of seeing values equals the seeing of the median J.
+- **Choice (Riley, 2026-11-06):**
+  1. **Hour:** a forecast model's instantaneous value at hh:00 UTC stands for hh−0:30 to hh+0:30. The hour's Sun class is the Sun's altitude at hh:00. GFS uses its instantaneous cloud fields, never the 6-hour averages.
+  2. **Counted hours:** the dark hours (Sun below −18°) of Tonight. Only when Tonight has **zero** dark hours, fall back to hours with the Sun below −12°, then below the horizon (−0.833°). The verdict names the basis. A short dark time (even 1 hour) stays the basis.
+  3. **Past hours:** the verdict counts from the current hour to the end of Tonight. The current hour is the one containing now (a step at hh:00 counts until hh:30). Past hours are greyed in the table and not counted.
+  4. **Model agreement:** per hour, over the global families (GFS, IFS, ICON; ICON-EU in the F1 box) that have a value for that hour:
+     - **mostly clear** when more than half of them put it in the clear class, with at least 2 families;
+     - fewer than 2 families: **incomplete**, counted as neither clear nor not clear;
+     - each hour also gets a majority class (clear, some cloud or cloudy), or **split** when no class has a strict majority;
+     - the table shows count and denominator ("2/2 clear", "2/3 clear");
+     - nothing is carried forward or filled: IFS's in-between hours stay blank (D44).
+  5. **Runs:** each family uses its latest complete, verified run, and the page shows each run's time and age. A run more than **24 h** past its run time is **stale**: shown, but not counted. A partial run counts only for its verified steps; its missing steps are missing hours under item 4.
+  6. **Cloud classes:** keep D43's placeholders (in config): clear T ≤ 10%, some cloud 10% < T ≤ 50%, cloudy T > 50% of total cloud, classified on the **unrounded** value. Revisit with evidence from the Paranal comparison and Kongsberg nights.
+  7. **Seeing in the verdict:** one value per counting global family, its median O&S free-atmosphere seeing (D47 headline) over the counted hours, shown as a range ("0.5–0.8″, O&S, free atmosphere, 3 models", "uncalibrated"). The median is taken on J and converted to seeing (for an even count, the mean of the two middle Js). A family with no seeing for any counted hour drops out of the range. If none has seeing: "Seeing: no model has it tonight".
+  8. **Template** (wording final with the UI, D44 item 9; the rules are fixed here):
+     - **headline:** "x of n dark hours look clear on most models". It says "left" once Tonight has started, names the fallback basis when used ("night hours (Sun below −12°)", "(Sun down)"), and adds "(k hours incomplete)" when there are any;
+     - **strip:** consecutive counted hours merged into chips (Clear, Some cloud, Cloudy, Split, Incomplete), in local time;
+     - **meta line:** the seeing range with "uncalibrated", the basis, Moon rise, set and phase, and each run with its age, stale runs marked "stale, not counted".
+  9. **MEPS:** a separate, visibly secondary line under the headline, "MEPS (regional, not counted): x of n clear", using the same counted hours and the clear rule on MEPS alone. It is not in the strip, the counts or the globe (D45 item 3).
+  10. **Nothing to count:**
+      - counted hours over before sunrise: "Dark time ended at hh:mm"; the table stays, and Tonight still changes at sunrise (glossary unchanged);
+      - every remaining counted hour incomplete: "Not enough models for a verdict: …", naming each family's state (stale, missing), with no counts.
+  11. **Landing map (B):**
+      - clear layer: the headline count (mostly clear counted hours left tonight), computed by exactly these rules; hatched where there are no counted hours, shaded differently where all are incomplete;
+      - seeing layer: a model picker (default GFS, the most levels) showing that family's median per item 7;
+      - dark-hours-left layer.
+  12. **Glossary:** Counted hours, Mostly clear, Incomplete hour, Stale run and Verdict added to `CONTEXT.md`.
+- **Testability:** each item is meant to be checked against a hand-made night: given Sun altitudes, per-family total cloud and J per hour, and run times, the expected counts, chips, range and texts follow uniquely.
+- **Who:** Riley (all items; agreed in a grilling session on ticket #22).
+
+## 2026-11-10 — Cloud planning session: fog, and a general tool
+
+### D49. Fog and low cloud in the forecast, and the forecast is a general tool (map #20, research ticket #31)
+- **Context:** Riley saw Yr forecast a clear night while meteoblue showed nearly 100% low cloud, and meteoblue was right. On another day, a clear Kongsberg had thick fog in the Skollenborg–Darbu valley. Riley asked whether fog can be predicted from terrain and other weather signals with established, verified science, and set the rule: nothing meteorologists can't do.
+- **Evidence:** `docs/research/valley-fog.md` (branch `research/valley-fog`; key sources re-checked by the main session).
+  - Yr's 2–3-day forecast for Norway is MEPS; meteoblue's Kongsberg model list has no MEPS.
+  - MET Norway's verification reports document MEPS under-forecasting low stratus under subsidence inversions (METinfo 20/2026), with IFS "usually" closer in those cases, and missing inland radiation fog at 1 h lead time (METinfo 14/2023).
+  - ECMWF FUG §9.4.1: 10 km models "cannot be expected to handle" patchy fog; site skill "can be very low".
+  - Established elsewhere, each with limits:
+    - the models' own fog and visibility outputs (low site skill);
+    - statistical post-processing at stations with long observation records (e.g. NOAA LAMP, "a statistical system", with ceiling and visibility guidance for "over 2000 stations", vlab.noaa.gov/web/mdl/lamp);
+    - observation-threshold nowcasts (hours, not tonight);
+    - satellite detection of existing fog.
+  - **Not established:** forecasting valley fog from terrain plus model output. DEM cold-air-pool maps are verified for minimum temperature only, not fog, and sub-km models are research-grade with valley biases.
+- **Choice (Riley, 2026-11-10):**
+  1. **A general tool, not a Kongsberg predictor.** The forecast track must work the same way for every place on the globe. Better regional models or data are used wherever they exist (D44, D45: finest version of each family, regional-only models as extra rows), accepting that coverage differs between regions. No method, threshold or feature is specific to a town or small region. Kongsberg (and its box) is the test location while building F1, and Riley's own observations there are test data.
+  2. **D45 item 3 and D48 unchanged:** the verdict counts total cloud from the global families only. The evidence doesn't favour counting MEPS for low cloud: its documented gap is exactly low stratus and fog.
+  3. **Fog signals row:** per forecast model and hour, the model's own fog, visibility and low-cloud outputs, wherever that model provides them, labelled experimental and **not counted** in the verdict or the map's clear layer. Models without a field show it as absent, never filled. For the F1 sources (fields as listed in the research, section 3):
+     - MEPS: `fog_area_fraction`, `visibility_in_air`, `low_type_cloud_area_fraction`;
+     - ICON-EU: `VIS`, `WW` codes 45/48, `CLCL`;
+     - GFS: `VIS`, `LCDC`;
+     - IFS open data: `lcc` and the 2 m dewpoint depression.
+     - No combined fog score until one has been verified.
+  4. **Terrain caveat, computed per place:** wherever a place's real elevation lies below a model's ground (D47 item 1 already finds this), the page says by how much, and that fog or cold air pooling in terrain below the model ground is not forecast by that model. The same rule applies everywhere; nothing is written for one town.
+  5. **No terrain-based fog prediction:** unresolved science, so not built.
+  6. **Fog log (test data):** Riley logs observed fog and low-cloud nights (date, time, place, what Yr and meteoblue showed, what happened) while F1 is tested. It is used to judge whether any model's fog signals are worth showing more prominently. It is not a product feature.
+  7. **Later, as research tickets (F2 or after), each general rather than local:**
+     - statistical fog and visibility post-processing wherever station records allow (the established LAMP-style route), using station observations as a new source [ASK];
+     - verification of fog signals against satellite fog and low-stratus products (e.g. EUMETSAT NWC SAF; other regions need their own satellites), also a new source [ASK].
+- **Who:** Riley (all items). The agent drafted the wording of items 3 and 4 from Riley's direction.
