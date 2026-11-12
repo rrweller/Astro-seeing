@@ -507,3 +507,115 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
      - statistical fog and visibility post-processing wherever station records allow (the established LAMP-style route), using station observations as a new source [ASK];
      - verification of fog signals against satellite fog and low-stratus products (e.g. EUMETSAT NWC SAF; other regions need their own satellites), also a new source [ASK].
 - **Who:** Riley (all items). The agent drafted the wording of items 3 and 4 from Riley's direction.
+
+## 2026-11-12 — Cloud session: measurement-only CDS requests
+
+### D50. Measurement-only requests: a `measured` state, and their turn by hold/release (ticket #10)
+- **Why:** ticket #11 needs the cost and transfer time of one global hour (29 levels × z, t, u, v, cc = 145 fields, ~300 MB) at one CDS job at a time. A global request can't be ingested without a land/night mask (D18), so ingest would refuse it and the watcher would raise a "refused" alert (D33).
+- **Options (marking):** a region-name convention only; a `purpose` column on the request. **(After verify):** leave it `verified`, which `run_boxes.sh` and the watcher count as pending forever; or a terminal state. **(Queue turn):** the downloader submits measurement requests first; or no code, using `astro hold` / `astro release`.
+- **Choice:**
+  - Requests carry `purpose` (`store`, the default, or `measure`). Opening a manifest made by an older version adds the column with `store` for every existing row; nothing else changes.
+  - `astro plan-measure` plans one (default the whole globe, the kind's default variables and levels, region `measure-<label>`, default `measure-global`, so keys never mix with stored requests).
+  - It downloads under the D39 gate like any request. Verify checks it fully and moves it straight from `downloaded` to the new terminal state **`measured`** in one transition, so it can never sit in `verified` for ingest. Nothing is written under `/data`, and the raw GRIB stays in `/staging` (never deleted automatically, because there is no ingest).
+  - The watcher counts `measured` as progress, never as pending work or a refusal.
+  - **Queue turn:** no code. With the download loop and the TMT release timer stopped, the CT holds the other planned requests by request id, saves those ids, and afterwards releases only them (`docs/ct_runbook.md` §7).
+  - **Identity:** a measurement's `request_hash` also covers its purpose and key, so the same CDS payload can be measured under another label, or next to a stored request, without breaking the manifest's unique hash. Stored requests hash exactly as before.
+- **Review (Copilot, PR #32, 3 findings, all real and fixed):** holding while the loop runs could leave a just-submitted job unrecorded (the loop is now stopped first); prefix release could release earlier holds (now by id); measurement hashes could collide (now include purpose and key; tested).
+- **Tests:** `tests/test_measure.py`, against the fake CDS backend: the CLI end to end (one submission, `measured`, no store, timings and verification recorded), the watcher (no alert, not pending, counts as progress), the planner (a global hour is 145 fields), and the upgrade of an old manifest.
+- **Who:** Riley (the test points and the hold/release route, 2026-11-12); agent (the design).
+
+## 2026-11-12 — Cloud planning session: running the forecast on the CT
+
+### D51. The F1 forecast service on the CT: schedule, sharing, failures, alerts, retention (map #20, ticket #23)
+- **Evidence:** `docs/research/forecast-sources.md` (branch `research/forecast-sources`; observed on one day, 2026-11-05):
+  - **Publishing delay after run time:** GFS ~3.6 h, ICON-EU ~2.7–3.0 h, MEPS ~2.3–4.1 h, IFS 0.25° ~7.6 h (06/18z at 12:27 and 00:27).
+  - **Online for:** GFS 10 days on NOMADS (AWS from 2021); ICON-EU ~1 day (latest run per cycle, observed, not documented); MEPS "a few days"; IFS ~2–3 days (AWS from 2023).
+  - **Size per 0–36 h run for the F1 box:** GFS ~30 MB (cut on the server), ICON-EU ~3.3 GB (whole-domain files), MEPS ~1 GB *[estimate]*, IFS ~0.46 GB (global fields).
+  - **NOMADS limit:** 120 requests a minute per IP (NWS SCN 21-32).
+  - **CT (`docs/handoff_pivot.md`):** `/staging` 150 GB with ~42 GB of historical raw GRIB; at most 5 worker processes (AGENTS.md); the services and alerts of D32 and D39.
+- **Choice (Riley, 2026-11-12):**
+  1. **Trigger:** one system-level `astro-forecast.timer`, every 15 min, runs `astro forecast tick`. Each tick asks every source whether a run newer than the last one we have is published (a cheap listing, index or HEAD check) and fetches it if so. It is idempotent and manifest-driven, so a missed tick or a restart costs nothing.
+  2. **Runs:** 00/06/12/18 UTC for all four D44 models, IFS 06/18 included. The 03/09/15/21 runs of ICON-EU and MEPS stay out of F1.
+  3. **Hours and areas:** steps 0–48 h for every run (IFS every 3 h).
+     - The Kongsberg box (D44) gets all four models.
+     - A Paranal box gets GFS and IFS (ICON global is F2).
+     - Each source is cut to the box at download where it allows, and by us otherwise.
+     - ICON-EU at 48 h is ~4.4 GB per run *[estimate]*, passing through `/staging`.
+  4. **CPU:** at most 2 forecast worker processes, at normal priority; historical jobs keep the other 3. The forecast waits for a free slot rather than going over 5.
+  5. **`/staging`:**
+     - Raw forecast files go to `/staging/forecast/<model>/<run>/`.
+     - A fetch is skipped, logged and alerted if less than 20 GB is free. Historical files are never deleted to make room.
+     - Raw files are deleted per run once its derived values are verified; a failed run's raw files are deleted once it is retried or abandoned.
+  6. **Records:** new `forecast_runs` and `forecast_files` tables in the same manifest (one provenance store, one nightly export). The CDS gate, `run_boxes.sh` and the download watcher never see them.
+  7. **Late, missing and partial runs** (what the page shows is D48):
+     - each file is retried up to 5 times, at least 1 min apart;
+     - a run is "late" from its expected delay + 3 h, which is logged, not alerted;
+     - a run is abandoned when the same model's next run is complete, or near the end of the source's online window (ICON-EU ~20 h after the run);
+     - a partial run counts for its verified steps, and missing steps are recorded per step.
+  8. **Format changes:** every file is checked against the model's expected variables, levels, grid and steps. A mismatch fails the run loudly, sends a high-priority alert naming the model and the difference, and shows the model as missing. Nothing is dropped, filled or regridded silently; the fix is a ticket.
+  9. **Alerts** (through `astro-notify`), all high priority:
+     - a model has no complete run newer than 24 h (stale under D48);
+     - verify failed;
+     - no tick for 1 h;
+     - `/staging` below 20 GB free.
+     - Also one line in the 06:00 daily message: runs completed per model in the last 24 h, and the newest run's age.
+     - Late runs, retries and partial runs don't alert.
+  10. **Expiring data stays off `/data`:** the latest area grids and the 7-day tonight summaries (D45) live on the local SSD, `/staging/forecast/products/`. `/data` only ever grows, so AGENTS.md's "never delete or overwrite `/data` content without [ASK]" needs no exception. #24 serves the latest grids from local disk.
+  11. **Measurement:** for each run and model, the manifest records:
+      - run time, and when we first saw it published;
+      - bytes and download seconds;
+      - steps verified;
+      - processing seconds;
+      - size of the derived values.
+      - After 7 days of running, a report in `reports/` replaces D45's size estimates and feeds the F2 domain.
+  12. **Per-place series on `/data`:** one Zarr v3 store per place per UTC day, written atomically once that day's 16 runs (4 models × 4) are final, then never touched. Provenance (commit, config hash, manifest run ids) goes inside. The current day sits on the SSD meanwhile, so nothing waits on `/data` to show it.
+  13. **Tonight summary:** recomputed on every tick from the stored hourly values (no new physics), so D48's "from the current hour" stays current. #24 may move this into the browser.
+  14. **Hosts:**
+      - GFS: NOMADS with its server-side box cut, paced at no more than 1 request a second (~196 requests per run); fallback AWS `noaa-gfs-bdp-pds`.
+      - IFS: the ECMWF open-data portal with `.index` byte ranges; fallback AWS `ecmwf-forecasts`.
+      - ICON-EU from DWD opendata and MEPS from THREDDS OPeNDAP, no fallbacks.
+      - A model switches to its fallback only after its main host has failed for 1 h, and the switch is logged. The mirrors carry the same data under the same terms, so they aren't new sources.
+  15. **User-Agent:** a generic `astro-seeing/<version>` with no contact details. If a provider asks for contact details, that is a question for Riley.
+- **Left to other tickets:** the ESO/Paranal measurement fetch and its timing (#26); how the page reads these files (#24).
+- **Who:** Riley (all items, agreed in a grilling session on ticket #23); the agent proposed each and drafted the wording.
+
+## 2026-11-12 — Cloud planning session: serving F1's page
+
+### D52. Serving F1's page in the homelab (map #20, ticket #24)
+- **Evidence:**
+  - D51: the latest area grids and tonight summaries live on CT 350's local SSD, rewritten every 15 min, and the per-place daily stores live on `/data`.
+  - The prototype (`prototype/forecast-views`) is one static page that computes everything in the browser and loads d3 and topojson from CDNs.
+  - **Riley's homelab:** Nginx Proxy Manager as the reverse proxy; a local DNS name scheme; remote access through Tailscale.
+  - nginx 1.31.8 (BSD-2-Clause) and Caddy 2.11.9 (Apache-2.0) are both on conda-forge for linux-64 (anaconda.org API, 2026-11-12), so either installs with `pixi global`, like tmux (D26).
+- **Choice (Riley, 2026-11-12):**
+  1. **Host:** CT 350 serves the page itself, straight from its local SSD; nothing is copied to another host.
+  2. **Data:** static files written atomically by the forecast tick (temporary name, then rename):
+     - one JSON file per place: verdict, hourly multi-model table, run times and ages;
+     - one compact binary array per map layer;
+     - `latest.json`, written last, naming the current set.
+     - No API. The exact formats go in the F1 spec.
+  3. **Updates:**
+     - The page re-reads `latest.json` every 5 min with an ETag check, and reloads when its ID changes.
+     - It always shows "updated hh:mm" and each run's age (D48).
+     - After 1 h without change it shows a "data not updating" banner.
+  4. **Code:** plain browser JavaScript modules in `web/`, with no bundler. Third-party libraries are pinned, vendored into the repo with checksums and licences recorded, and never loaded from a CDN at runtime. Revisited only if #25's globe library needs a bundler.
+  5. **Deploy:** `astro web deploy` copies the commit's `web/` into `/staging/forecast/site/<commit>/`, records the commit, and swaps a `current` symlink atomically. Rollback is one switch. The site is never served from the repo checkout, so checking out a branch on the CT can't change the live page.
+  6. **Provenance and credits:**
+     - every data file carries the git commit, config hash and the run IDs it came from;
+     - an "About this data" panel shows them and the viewer's commit;
+     - the per-model credit line and the Data sources panel (D44 item 8) are there already in F1. Final wording comes with the UI (D44 item 9).
+  7. **Web server:** nginx from conda-forge, installed with `pixi global`. It sends `latest.json` with `Cache-Control: no-cache` and an ETag, and the versioned files with long cache times.
+  8. **Access:**
+     - nginx listens on one LAN port of CT 350 (e.g. 8350);
+     - Riley's Nginx Proxy Manager gives it a name in his local DNS scheme, with TLS;
+     - an NPM access list allows only the LAN and the tailnet;
+     - no login in F1; the login question comes back with Pangolin at F3;
+     - setting up the NPM proxy host is Riley's step, and the spec lists the settings.
+  9. **Running as:** `astro-web.service` (system-level, D32) runs nginx under a systemd `DynamicUser`:
+     - read-only access to `/staging/forecast/site/` and `/staging/forecast/products/`;
+     - writes only to its own temp and log folders;
+     - `ProtectSystem=strict`, `ProtectHome`, `NoNewPrivileges`.
+     - The tick writes its files world-readable so that user can read them.
+  10. **Monitoring:** each tick fetches the served `latest.json` over HTTP. If that fails or differs from the file just written, a fifth high-priority alert is added to D51 item 9: "page not being served".
+- **Who:** Riley (all items, agreed in a grilling session on ticket #24); the agent proposed each and drafted the wording.
+

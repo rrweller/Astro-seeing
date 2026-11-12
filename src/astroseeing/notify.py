@@ -41,7 +41,9 @@ log = logging.getLogger(__name__)
 
 PENDING = ("planned", "submitted", "downloaded", "verified")
 #: States a request reaches only by making real progress (a finished download or later).
-PROGRESS = ("downloaded", "verified", "ingested", "raw_deleted")
+#: "measured" is a verified measurement-only request (#10): progress, never pending,
+#: never a refusal.
+PROGRESS = ("downloaded", "verified", "ingested", "raw_deleted", "measured")
 DEFAULT_ENV = Path.home() / ".config" / "astro" / "notify.env"
 
 

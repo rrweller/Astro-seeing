@@ -74,7 +74,13 @@ def verify_pending(m: Manifest) -> dict[str, int]:
             continue
         m.add_verification(f["id"], rep.ok, rep.as_dict())
         if rep.ok:
-            m.transition(req.id, ["downloaded"], "verified", detail=f"{rep.n_messages} messages")
+            detail = f"{rep.n_messages} messages"
+            if req.purpose == "measure":
+                # One transition, so a measurement can never sit in "verified" for ingest.
+                detail += "; measurement only, not ingested"
+                m.transition(req.id, ["downloaded"], "measured", detail=detail)
+            else:
+                m.transition(req.id, ["downloaded"], "verified", detail=detail)
             out["verified"] += 1
             for w in rep.warnings:
                 log.warning("%s: %s", req.key, w)
