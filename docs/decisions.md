@@ -579,3 +579,43 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Left to other tickets:** the ESO/Paranal measurement fetch and its timing (#26); how the page reads these files (#24).
 - **Who:** Riley (all items, agreed in a grilling session on ticket #23); the agent proposed each and drafted the wording.
 
+## 2026-11-12 — Cloud planning session: serving F1's page
+
+### D52. Serving F1's page in the homelab (map #20, ticket #24)
+- **Evidence:**
+  - D51: the latest area grids and tonight summaries live on CT 350's local SSD, rewritten every 15 min, and the per-place daily stores live on `/data`.
+  - The prototype (`prototype/forecast-views`) is one static page that computes everything in the browser and loads d3 and topojson from CDNs.
+  - **Riley's homelab:** Nginx Proxy Manager as the reverse proxy; a local DNS name scheme; remote access through Tailscale.
+  - nginx 1.31.8 (BSD-2-Clause) and Caddy 2.11.9 (Apache-2.0) are both on conda-forge for linux-64 (anaconda.org API, 2026-11-12), so either installs with `pixi global`, like tmux (D26).
+- **Choice (Riley, 2026-11-12):**
+  1. **Host:** CT 350 serves the page itself, straight from its local SSD; nothing is copied to another host.
+  2. **Data:** static files written atomically by the forecast tick (temporary name, then rename):
+     - one JSON file per place: verdict, hourly multi-model table, run times and ages;
+     - one compact binary array per map layer;
+     - `latest.json`, written last, naming the current set.
+     - No API. The exact formats go in the F1 spec.
+  3. **Updates:**
+     - The page re-reads `latest.json` every 5 min with an ETag check, and reloads when its ID changes.
+     - It always shows "updated hh:mm" and each run's age (D48).
+     - After 1 h without change it shows a "data not updating" banner.
+  4. **Code:** plain browser JavaScript modules in `web/`, with no bundler. Third-party libraries are pinned, vendored into the repo with checksums and licences recorded, and never loaded from a CDN at runtime. Revisited only if #25's globe library needs a bundler.
+  5. **Deploy:** `astro web deploy` copies the commit's `web/` into `/staging/forecast/site/<commit>/`, records the commit, and swaps a `current` symlink atomically. Rollback is one switch. The site is never served from the repo checkout, so checking out a branch on the CT can't change the live page.
+  6. **Provenance and credits:**
+     - every data file carries the git commit, config hash and the run IDs it came from;
+     - an "About this data" panel shows them and the viewer's commit;
+     - the per-model credit line and the Data sources panel (D44 item 8) are there already in F1. Final wording comes with the UI (D44 item 9).
+  7. **Web server:** nginx from conda-forge, installed with `pixi global`. It sends `latest.json` with `Cache-Control: no-cache` and an ETag, and the versioned files with long cache times.
+  8. **Access:**
+     - nginx listens on one LAN port of CT 350 (e.g. 8350);
+     - Riley's Nginx Proxy Manager gives it a name in his local DNS scheme, with TLS;
+     - an NPM access list allows only the LAN and the tailnet;
+     - no login in F1; the login question comes back with Pangolin at F3;
+     - setting up the NPM proxy host is Riley's step, and the spec lists the settings.
+  9. **Running as:** `astro-web.service` (system-level, D32) runs nginx under a systemd `DynamicUser`:
+     - read-only access to `/staging/forecast/site/` and `/staging/forecast/products/`;
+     - writes only to its own temp and log folders;
+     - `ProtectSystem=strict`, `ProtectHome`, `NoNewPrivileges`.
+     - The tick writes its files world-readable so that user can read them.
+  10. **Monitoring:** each tick fetches the served `latest.json` over HTTP. If that fails or differs from the file just written, a fifth high-priority alert is added to D51 item 9: "page not being served".
+- **Who:** Riley (all items, agreed in a grilling session on ticket #24); the agent proposed each and drafted the wording.
+
