@@ -524,3 +524,58 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Tests:** `tests/test_measure.py`, against the fake CDS backend: the CLI end to end (one submission, `measured`, no store, timings and verification recorded), the watcher (no alert, not pending, counts as progress), the planner (a global hour is 145 fields), and the upgrade of an old manifest.
 - **Who:** Riley (the test points and the hold/release route, 2026-11-12); agent (the design).
 
+## 2026-11-12 — Cloud planning session: running the forecast on the CT
+
+### D51. The F1 forecast service on the CT: schedule, sharing, failures, alerts, retention (map #20, ticket #23)
+- **Evidence:** `docs/research/forecast-sources.md` (branch `research/forecast-sources`; observed on one day, 2026-11-05):
+  - **Publishing delay after run time:** GFS ~3.6 h, ICON-EU ~2.7–3.0 h, MEPS ~2.3–4.1 h, IFS 0.25° ~7.6 h (06/18z at 12:27 and 00:27).
+  - **Online for:** GFS 10 days on NOMADS (AWS from 2021); ICON-EU ~1 day (latest run per cycle, observed, not documented); MEPS "a few days"; IFS ~2–3 days (AWS from 2023).
+  - **Size per 0–36 h run for the F1 box:** GFS ~30 MB (cut on the server), ICON-EU ~3.3 GB (whole-domain files), MEPS ~1 GB *[estimate]*, IFS ~0.46 GB (global fields).
+  - **NOMADS limit:** 120 requests a minute per IP (NWS SCN 21-32).
+  - **CT (`docs/handoff_pivot.md`):** `/staging` 150 GB with ~42 GB of historical raw GRIB; at most 5 worker processes (AGENTS.md); the services and alerts of D32 and D39.
+- **Choice (Riley, 2026-11-12):**
+  1. **Trigger:** one system-level `astro-forecast.timer`, every 15 min, runs `astro forecast tick`. Each tick asks every source whether a run newer than the last one we have is published (a cheap listing, index or HEAD check) and fetches it if so. It is idempotent and manifest-driven, so a missed tick or a restart costs nothing.
+  2. **Runs:** 00/06/12/18 UTC for all four D44 models, IFS 06/18 included. The 03/09/15/21 runs of ICON-EU and MEPS stay out of F1.
+  3. **Hours and areas:** steps 0–48 h for every run (IFS every 3 h).
+     - The Kongsberg box (D44) gets all four models.
+     - A Paranal box gets GFS and IFS (ICON global is F2).
+     - Each source is cut to the box at download where it allows, and by us otherwise.
+     - ICON-EU at 48 h is ~4.4 GB per run *[estimate]*, passing through `/staging`.
+  4. **CPU:** at most 2 forecast worker processes, at normal priority; historical jobs keep the other 3. The forecast waits for a free slot rather than going over 5.
+  5. **`/staging`:**
+     - Raw forecast files go to `/staging/forecast/<model>/<run>/`.
+     - A fetch is skipped, logged and alerted if less than 20 GB is free. Historical files are never deleted to make room.
+     - Raw files are deleted per run once its derived values are verified; a failed run's raw files are deleted once it is retried or abandoned.
+  6. **Records:** new `forecast_runs` and `forecast_files` tables in the same manifest (one provenance store, one nightly export). The CDS gate, `run_boxes.sh` and the download watcher never see them.
+  7. **Late, missing and partial runs** (what the page shows is D48):
+     - each file is retried up to 5 times, at least 1 min apart;
+     - a run is "late" from its expected delay + 3 h, which is logged, not alerted;
+     - a run is abandoned when the same model's next run is complete, or near the end of the source's online window (ICON-EU ~20 h after the run);
+     - a partial run counts for its verified steps, and missing steps are recorded per step.
+  8. **Format changes:** every file is checked against the model's expected variables, levels, grid and steps. A mismatch fails the run loudly, sends a high-priority alert naming the model and the difference, and shows the model as missing. Nothing is dropped, filled or regridded silently; the fix is a ticket.
+  9. **Alerts** (through `astro-notify`), all high priority:
+     - a model has no complete run newer than 24 h (stale under D48);
+     - verify failed;
+     - no tick for 1 h;
+     - `/staging` below 20 GB free.
+     - Also one line in the 06:00 daily message: runs completed per model in the last 24 h, and the newest run's age.
+     - Late runs, retries and partial runs don't alert.
+  10. **Expiring data stays off `/data`:** the latest area grids and the 7-day tonight summaries (D45) live on the local SSD, `/staging/forecast/products/`. `/data` only ever grows, so AGENTS.md's "never delete or overwrite `/data` content without [ASK]" needs no exception. #24 serves the latest grids from local disk.
+  11. **Measurement:** for each run and model, the manifest records:
+      - run time, and when we first saw it published;
+      - bytes and download seconds;
+      - steps verified;
+      - processing seconds;
+      - size of the derived values.
+      - After 7 days of running, a report in `reports/` replaces D45's size estimates and feeds the F2 domain.
+  12. **Per-place series on `/data`:** one Zarr v3 store per place per UTC day, written atomically once that day's 16 runs (4 models × 4) are final, then never touched. Provenance (commit, config hash, manifest run ids) goes inside. The current day sits on the SSD meanwhile, so nothing waits on `/data` to show it.
+  13. **Tonight summary:** recomputed on every tick from the stored hourly values (no new physics), so D48's "from the current hour" stays current. #24 may move this into the browser.
+  14. **Hosts:**
+      - GFS: NOMADS with its server-side box cut, paced at no more than 1 request a second (~196 requests per run); fallback AWS `noaa-gfs-bdp-pds`.
+      - IFS: the ECMWF open-data portal with `.index` byte ranges; fallback AWS `ecmwf-forecasts`.
+      - ICON-EU from DWD opendata and MEPS from THREDDS OPeNDAP, no fallbacks.
+      - A model switches to its fallback only after its main host has failed for 1 h, and the switch is logged. The mirrors carry the same data under the same terms, so they aren't new sources.
+  15. **User-Agent:** a generic `astro-seeing/<version>` with no contact details. If a provider asks for contact details, that is a question for Riley.
+- **Left to other tickets:** the ESO/Paranal measurement fetch and its timing (#26); how the page reads these files (#24).
+- **Who:** Riley (all items, agreed in a grilling session on ticket #23); the agent proposed each and drafted the wording.
+
