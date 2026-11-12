@@ -144,7 +144,9 @@ in `/staging/grib`; nothing deletes it automatically, because it has no ingest.
 The downloader submits planned requests in the order they were added, so a new
 measurement waits behind everything already planned. To give it its turn, hold the
 other planned requests, then release exactly those afterwards (Riley, 2026-11-12: no
-queue-order code). The job already at the CDS, if any, finishes first.
+queue-order code). Holds are taken by request id with the download loop stopped,
+and only those ids are released afterwards. The job already at the CDS, if any,
+finishes first.
 
 ```bash
 cd /home/astro-seeing && export PATH=/root/.pixi/bin:$PATH
@@ -156,28 +158,60 @@ pixi run astro plan-measure --kind pl --date 2023-06-21 --hours 0
 #    *planned*, so holding the Chile subset would trigger it. Stop it for the test.
 systemctl is-active astro-release-tmt.timer && systemctl stop astro-release-tmt.timer
 
-# 3. Save the keys of everything else that is planned, then hold them
-pixi run -q python - > logs/held_for_measure.txt <<'PY'
+# 3. Stop the download loop and wait until no `astro download` runs. The downloader
+#    submits to the CDS first and records the job after; a hold landing in between
+#    would leave that job unrecorded (Copilot review of PR #32).
+systemctl stop astro-boxes
+while pgrep -f "astro download" >/dev/null; do sleep 10; done
+
+# 4. Hold everything else that is planned, by request id, and save exactly those ids
+pixi run -q python - <<'PY'
+import json
+from pathlib import Path
+
 from astroseeing.manifest import Manifest
 from astroseeing.paths import Paths
 
+saved = Path("logs/held_for_measure.json")
+if saved.exists():
+    raise SystemExit(f"{saved} exists: release that earlier hold (step 6) first")
 m = Manifest(Paths.from_env().manifest)
-for r in m.by_state("planned"):
-    if r.purpose != "measure":
-        print(r.key)
+ids = [r.id for r in m.by_state("planned") if r.purpose != "measure"]
+for i in ids:
+    m.transition(i, ["planned"], "held", detail="held for a measurement (runbook 7)")
+saved.write_text(json.dumps(ids))
+print(f"held {len(ids)} requests; ids in {saved}")
 PY
-while read -r k; do pixi run -q astro hold "$k"; done < logs/held_for_measure.txt
 
-# 4. Let astro-boxes submit it (start it if it has exited), and wait for `measured`
-systemctl is-active --quiet astro-boxes || systemctl start astro-boxes
+# 5. Start the loop: it submits the measurement next. Wait until `astro status`
+#    shows it `measured`.
+systemctl start astro-boxes
 pixi run astro status
 
-# 5. Release exactly what step 3 held, restart the loop and the timer (if it was active)
-while read -r k; do pixi run -q astro release "$k"; done < logs/held_for_measure.txt
+# 6. Release exactly the ids step 4 held (only those still held; other holds stay),
+#    then make sure the loop runs and restart the timer if step 2 stopped it
+pixi run -q python - <<'PY'
+import datetime as dt
+import json
+from pathlib import Path
+
+from astroseeing.manifest import Manifest
+from astroseeing.paths import Paths
+
+saved = Path("logs/held_for_measure.json")
+m = Manifest(Paths.from_env().manifest)
+n = 0
+for i in json.loads(saved.read_text()):
+    if m.get(i).state == "held":
+        m.transition(i, ["held"], "planned", detail="released after a measurement (runbook 7)")
+        n += 1
+saved.rename(saved.with_name(f"held_for_measure.done-{dt.datetime.now(dt.UTC):%Y%m%dT%H%M%SZ}.json"))
+print(f"released {n} requests")
+PY
 systemctl is-active --quiet astro-boxes || systemctl start astro-boxes
 systemctl start astro-release-tmt.timer   # only if step 2 stopped it
 
-# 6. Read the timings for ticket #11
+# 7. Read the timings for ticket #11
 pixi run -q python - <<'PY'
 from astroseeing.manifest import Manifest
 from astroseeing.paths import Paths

@@ -138,9 +138,17 @@ class RequestSpec:
         return req
 
     def request_hash(self) -> str:
-        return hashlib.sha256(
-            canonical_json([self.dataset, self.cds_request()]).encode()
-        ).hexdigest()
+        """Identity of the request in the manifest (unique there).
+
+        A stored request hashes its dataset and CDS payload only, as it always has, so
+        the manifest's existing rows keep their hashes. A measurement (#10) also hashes
+        its purpose and key, so it never collides with a stored request or with another
+        measurement of the same payload under a different label.
+        """
+        ident: list[Any] = [self.dataset, self.cds_request()]
+        if self.purpose != "store":
+            ident += [self.purpose, self.key]
+        return hashlib.sha256(canonical_json(ident).encode()).hexdigest()
 
     # --- expectations ----------------------------------------------------------
     def expected(self) -> dict[str, Any]:

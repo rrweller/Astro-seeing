@@ -518,7 +518,9 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - `astro plan-measure` plans one (default the whole globe, the kind's default variables and levels, region `measure-<label>`, default `measure-global`, so keys never mix with stored requests).
   - It downloads under the D39 gate like any request. Verify checks it fully and moves it straight from `downloaded` to the new terminal state **`measured`** in one transition, so it can never sit in `verified` for ingest. Nothing is written under `/data`, and the raw GRIB stays in `/staging` (never deleted automatically, because there is no ingest).
   - The watcher counts `measured` as progress, never as pending work or a refusal.
-  - **Queue turn:** no code. The CT holds the other planned requests by key, then releases exactly those, with the TMT release timer stopped meanwhile (`docs/ct_runbook.md` §7).
+  - **Queue turn:** no code. With the download loop and the TMT release timer stopped, the CT holds the other planned requests by request id, saves those ids, and afterwards releases only them (`docs/ct_runbook.md` §7).
+  - **Identity:** a measurement's `request_hash` also covers its purpose and key, so the same CDS payload can be measured under another label, or next to a stored request, without breaking the manifest's unique hash. Stored requests hash exactly as before.
+- **Review (Copilot, PR #32, 3 findings, all real and fixed):** holding while the loop runs could leave a just-submitted job unrecorded (the loop is now stopped first); prefix release could release earlier holds (now by id); measurement hashes could collide (now include purpose and key; tested).
 - **Tests:** `tests/test_measure.py`, against the fake CDS backend: the CLI end to end (one submission, `measured`, no store, timings and verification recorded), the watcher (no alert, not pending, counts as progress), the planner (a global hour is 145 fields), and the upgrade of an old manifest.
 - **Who:** Riley (the test points and the hold/release route, 2026-11-12); agent (the design).
 

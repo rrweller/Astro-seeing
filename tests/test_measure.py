@@ -129,3 +129,31 @@ def test_an_existing_manifest_gains_the_purpose_column_and_keeps_its_rows(tmp_pa
     assert (r.key, r.state, r.attempts, r.purpose) == ("pl/chile/2021-01", "ingested", 1, "store")
     m.close()
     Manifest(path).close()  # opening again is a no-op
+
+
+def test_a_measurement_never_collides_with_another_label_or_a_stored_request(tmp_path):
+    """Copilot review of PR #32: the manifest's request_hash is unique, so the same CDS
+    payload must still plan as a separate measurement (other label) or next to a stored
+    request, while stored requests keep the hashes they already have on the CT."""
+    import datetime as dt
+
+    from astroseeing.download.requests import Area, measurement_request, plan_requests
+
+    day, area = dt.date(2023, 6, 21), Area(-24.0, -71.0, -25.0, -70.0)
+    (stored,) = plan_requests("pl", "paranal", day, day, area, hours=(0,))
+    a = measurement_request("pl", day, (0,), area=area, label="a")
+    b = measurement_request("pl", day, (0,), area=area, label="b")
+    assert a.cds_request() == b.cds_request() == stored.cds_request()
+
+    m = Manifest(tmp_path / "manifest.sqlite")
+    ids = {m.add_request(s) for s in (stored, a, b)}
+    assert len(ids) == 3
+    assert m.add_request(a) in ids  # re-planning the same measurement is still a no-op
+
+    # a stored request's hash is the one older versions computed (dataset + payload)
+    import hashlib
+
+    from astroseeing.provenance import canonical_json
+
+    old = hashlib.sha256(canonical_json([stored.dataset, stored.cds_request()]).encode())
+    assert stored.request_hash() == old.hexdigest()
