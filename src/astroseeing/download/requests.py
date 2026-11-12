@@ -75,6 +75,9 @@ class RequestSpec:
     hours: tuple[int, ...] = ALL_HOURS
     grid: float = 0.25
     extra: dict[str, Any] = field(default_factory=dict)
+    #: "store" (the default: ingested into Zarr) or "measure" (downloaded and verified
+    #: only, never ingested; one-off CDS test requests, ticket #10).
+    purpose: str = "store"
 
     # --- identity -------------------------------------------------------------
     @property
@@ -267,4 +270,43 @@ def static_request(
         area=area,
         variables=tuple(cfg["variables"].keys()),
         hours=(0,),
+    )
+
+
+#: Region prefix for measurement requests, so their keys never mix with stored ones.
+MEASURE_PREFIX = "measure-"
+
+
+def measurement_request(
+    kind: str,
+    date: dt.date,
+    hours: tuple[int, ...],
+    area: Area | None = None,
+    variables: tuple[str, ...] | None = None,
+    levels: tuple[int, ...] | None = None,
+    label: str | None = None,
+) -> RequestSpec:
+    """A one-off CDS test request (ticket #10): downloaded under the CDS gate (D39) and
+    verified like any request, but never ingested and never reported as refused.
+
+    ``area`` None means the whole globe. The default variables and levels are the
+    kind's defaults (pressure levels: z, t, u, v, cc on 29 levels). The region is
+    ``measure-<label>`` (default ``global``, or ``box`` with an area).
+    """
+    cfg = load_config("era5")["datasets"][kind]
+    variables = tuple(variables or cfg["variables"].keys())
+    if kind == "pl":
+        levels = tuple(levels or cfg["levels_hpa"])
+    elif levels is not None:
+        raise ValueError(f"{kind} has no levels")
+    label = label or ("global" if area is None else "box")
+    return RequestSpec(
+        kind=kind,
+        region=MEASURE_PREFIX + label,
+        dates=(date,),
+        area=area,
+        variables=variables,
+        levels=levels if kind == "pl" else None,
+        hours=tuple(hours),
+        purpose="measure",
     )

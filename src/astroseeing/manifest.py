@@ -8,6 +8,7 @@ States::
 
     planned → submitted → downloaded → verified → ingested → raw_deleted
          ↘        ↘            ↘            ↘ failed (with last_error; retry → planned)
+                               ↘ measured (purpose "measure": verified, never ingested; #10)
 
 Transitions are compare-and-set (``UPDATE … WHERE state IN (…)``) inside a
 transaction, and every transition is appended to the ``events`` table.
@@ -39,6 +40,7 @@ STATES = (
     "failed",
     "cancelled",  # planned or held, then dropped on purpose (astro cancel); never submitted
     "refused",  # verified but not stored: no suitable mask (D18); astro requeue-refused
+    "measured",  # a measurement-only request, downloaded and verified; never ingested (#10)
 )
 
 SCHEMA = """
@@ -60,7 +62,8 @@ CREATE TABLE IF NOT EXISTS requests (
     updated_at      TEXT NOT NULL,
     submitted_at    TEXT,
     cds_started_at  TEXT,
-    cds_finished_at TEXT
+    cds_finished_at TEXT,
+    purpose         TEXT NOT NULL DEFAULT 'store'
 );
 CREATE INDEX IF NOT EXISTS requests_state ON requests(state);
 CREATE TABLE IF NOT EXISTS files (
@@ -142,6 +145,7 @@ class Request:
     cds_request_id: str | None
     attempts: int
     last_error: str | None
+    purpose: str = "store"
 
     @classmethod
     def from_row(cls, r: sqlite3.Row) -> Request:
@@ -159,6 +163,7 @@ class Request:
             cds_request_id=r["cds_request_id"],
             attempts=r["attempts"],
             last_error=r["last_error"],
+            purpose=r["purpose"],
         )
 
 
@@ -175,6 +180,19 @@ class Manifest:
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.execute("PRAGMA busy_timeout=60000")
         self.conn.executescript(SCHEMA)
+        self._upgrade()
+
+    def _upgrade(self) -> None:
+        """Add columns that manifests created by older versions lack (rows untouched).
+
+        On the CT several services open the manifest at once, so the check and the
+        ALTER run in one exclusive transaction: a second process waits, then finds the
+        column already there.
+        """
+        with self.tx() as c:
+            cols = {r["name"] for r in c.execute("PRAGMA table_info(requests)")}
+            if "purpose" not in cols:  # measurement-only requests (#10)
+                c.execute("ALTER TABLE requests ADD COLUMN purpose TEXT NOT NULL DEFAULT 'store'")
 
     def close(self) -> None:
         self.conn.close()
@@ -210,8 +228,8 @@ class Manifest:
                 return int(row["id"])
             cur = c.execute(
                 "INSERT INTO requests (key, dataset, kind, region, period, request_json,"
-                " request_hash, expected_json, state, created_at, updated_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                " request_hash, expected_json, state, created_at, updated_at, purpose)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     spec.key,
                     spec.dataset,
@@ -224,6 +242,7 @@ class Manifest:
                     "planned",
                     now,
                     now,
+                    getattr(spec, "purpose", "store"),
                 ),
             )
             rid = int(cur.lastrowid)

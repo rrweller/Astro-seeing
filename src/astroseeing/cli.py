@@ -266,6 +266,48 @@ def cmd_plan_area(args, paths: Paths) -> int:
     return 0
 
 
+def cmd_plan_measure(args, paths: Paths) -> int:
+    """One-off CDS test request (ticket #10): downloaded and verified, never ingested."""
+    from astroseeing.download.requests import Area, measurement_request
+
+    area = None
+    if args.area:
+        n, w, s, e = (float(x) for x in args.area.split(","))
+        area = Area(n, w, s, e)
+    levels = None
+    if args.kind == "pl" and args.levels != "29":
+        cfg_pl = load_config("era5")["datasets"]["pl"]
+        levels = (
+            tuple(cfg_pl["levels_hpa_all"])
+            if args.levels == "37"
+            else tuple(int(x) for x in args.levels.split(","))
+        )
+    try:
+        spec = measurement_request(
+            args.kind,
+            _date(args.date),
+            tuple(int(h) for h in args.hours.split(",")),
+            area=area,
+            variables=_parse_variables(args.kind, args.variables),
+            levels=levels,
+            label=args.label,
+        )
+    except ValueError as e:
+        raise SystemExit(str(e)) from e
+    m = _manifest(paths)
+    rid = m.add_request(spec)
+    if (state := m.get(rid).state) != "planned":
+        log.warning("%s already exists (id %d, state %s); nothing new planned. Use another "
+                    "--label or --date to measure again", spec.key, rid, state)  # fmt: skip
+        return 0
+    log.info(
+        "planned measurement %s (id %d): %d fields, area %s; it is submitted in turn with the "
+        "other planned requests, one CDS job at a time (D39), and never ingested",
+        spec.key, rid, spec.n_fields, area.as_cds() if area else "global",
+    )  # fmt: skip
+    return 0
+
+
 def cmd_requeue_refused(args, paths: Paths) -> int:
     n = _manifest(paths).requeue_refused(args.prefix)
     log.info("requeued %d refused requests with keys starting %r", n, args.prefix)
@@ -548,6 +590,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
     p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
     p.set_defaults(fn=cmd_plan_area)
+    p = sub.add_parser(
+        "plan-measure",
+        help="plan a one-off CDS test request: downloaded and verified, never ingested (#10)",
+    )
+    p.add_argument("--kind", choices=("pl", "sl"), default="pl")
+    p.add_argument("--date", required=True)
+    p.add_argument("--hours", default="0", help="comma list of UTC hours (default 0)")
+    p.add_argument("--area", default="", help="N,W,S,E in degrees (default: the whole globe)")
+    p.add_argument("--variables", default="", help="comma list (default: the kind's defaults)")
+    p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
+    p.add_argument("--label", default=None, help="region becomes measure-LABEL (default global)")
+    p.set_defaults(fn=cmd_plan_measure)
     p = sub.add_parser("cancel", help="drop planned/held requests whose key starts with PREFIX")
     p.add_argument("prefix")
     p.add_argument("--reason", required=True)

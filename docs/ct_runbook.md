@@ -131,3 +131,67 @@ pixi run astro notify "test message"   # one-off; topic URL in ~/.config/astro/n
 The watcher sends ntfy messages on finish, on problems (failures, 3 h without
 progress, the download loop stopped, NAS not answering) and a daily summary at
 06:00 UTC. Its memory is `~/.local/state/astro/notify_state.json`.
+
+## 7. A one-off CDS measurement (global hour; ticket #10, D50)
+
+A measurement request is downloaded under the CDS gate (one job at a time, D39) and
+verified like any request, then ends in the state `measured`. It is never ingested, so
+it never raises a "refused" alert, and nothing is written under `/data`. Its timings
+are in the manifest like any request's (`submitted_at`, `cds_started_at`,
+`cds_finished_at`, and the file row's `size` and `download_seconds`). The raw GRIB stays
+in `/staging/grib`; nothing deletes it automatically, because it has no ingest.
+
+The downloader submits planned requests in the order they were added, so a new
+measurement waits behind everything already planned. To give it its turn, hold the
+other planned requests, then release exactly those afterwards (Riley, 2026-11-12: no
+queue-order code). The job already at the CDS, if any, finishes first.
+
+```bash
+cd /home/astro-seeing && export PATH=/root/.pixi/bin:$PATH
+
+# 1. Plan it: one global hour, 29 levels x z,t,u,v,cc = 145 fields (~300 MB)
+pixi run astro plan-measure --kind pl --date 2023-06-21 --hours 0
+
+# 2. The TMT release timer releases the TMT holds once no Chile subset request is
+#    *planned*, so holding the Chile subset would trigger it. Stop it for the test.
+systemctl is-active astro-release-tmt.timer && systemctl stop astro-release-tmt.timer
+
+# 3. Save the keys of everything else that is planned, then hold them
+pixi run -q python - > logs/held_for_measure.txt <<'PY'
+from astroseeing.manifest import Manifest
+from astroseeing.paths import Paths
+
+m = Manifest(Paths.from_env().manifest)
+for r in m.by_state("planned"):
+    if r.purpose != "measure":
+        print(r.key)
+PY
+while read -r k; do pixi run -q astro hold "$k"; done < logs/held_for_measure.txt
+
+# 4. Let astro-boxes submit it (start it if it has exited), and wait for `measured`
+systemctl is-active --quiet astro-boxes || systemctl start astro-boxes
+pixi run astro status
+
+# 5. Release exactly what step 3 held, restart the loop and the timer (if it was active)
+while read -r k; do pixi run -q astro release "$k"; done < logs/held_for_measure.txt
+systemctl is-active --quiet astro-boxes || systemctl start astro-boxes
+systemctl start astro-release-tmt.timer   # only if step 2 stopped it
+
+# 6. Read the timings for ticket #11
+pixi run -q python - <<'PY'
+from astroseeing.manifest import Manifest
+from astroseeing.paths import Paths
+
+m = Manifest(Paths.from_env().manifest)
+for r in m.conn.execute(
+    "SELECT r.key, r.state, r.submitted_at, r.cds_started_at, r.cds_finished_at,"
+    " f.size, f.download_seconds FROM requests r LEFT JOIN files f ON f.request_id = r.id"
+    " WHERE r.purpose = 'measure'"
+):
+    print(dict(r))
+PY
+```
+
+While only held requests remain, `run_boxes.sh` exits and the watcher may send
+"Finished (N on hold)"; that is expected. Once the timings are recorded, the raw file
+can be deleted by hand from `/staging/grib`.
