@@ -9,36 +9,31 @@
 
 ## 1. What's running and queued
 
-*Updated 2026-10-30 ~18:15 UTC, after PRs #4 (D39) and #5 (D40) were merged into `dev`.*
+*Updated 2026-11-13 ~04:00 UTC by the CT agent. The 2026-10-30 version of this section is in git history.*
 
 | What | State | Expected finish | How to check (on the CT) |
 |---|---|---|---|
-| Chile extra single levels (D40): `sl/chile@vars-lcc-mcc-hcc-zust-ishf-tcwv`, 2021–2025, night hours, 60 monthly requests, 0.14 M fields | **running**, one request at a time. 2 ingested (2021-01 by hand, 2021-02 by the loop), 2021-03 at the CDS, 57 planned | **~5–6 Nov 2026** if the queue wait stays at ~2.5 h per request. Very uncertain (see "Throughput" below) | `pixi run astro status`; `tail logs/run_boxes.log` |
-| TMT option A ERA5 (D36): `chile` 2006–2007, `tmt_spm`, `tmt_mauna_kea` | **held** (143 requests, 4.34 M fields). `astro-release-tmt.timer` checks hourly and releases them once no Chile subset request is left to submit or download, then disables itself (`scripts/release_tmt_after_chile.sh`) | released ~5–6 Nov; done **~late Nov 2026** (5–9 days of CDS run time at 5.6–10 fields/s, plus ~2.5 h of queue wait for each of the 143 requests ≈ 15 days). Very uncertain | `astro status` (`held`); `tail logs/release_tmt.log`; `systemctl list-timers astro-release-tmt.timer` |
-| `astro-boxes.service` | **running** since 2026-10-30 14:40 UTC. `scripts/run_boxes.sh`: retry-failed → download (30-min rounds) → verify → ingest. The D39 gate is inside `astro download`: one CDS job at a time per account, backoff after a rejection, pause after 3 in 24 h | exits when nothing is left (held requests don't count); the release script restarts it if it has exited | `systemctl status astro-boxes` |
-| `astro-notify.service` | `astro notify-watch`, every 10 min, posts to Riley's ntfy topic; now also alerts when the CDS gate pauses | always on | `tail logs/notify_watch.log` |
+| Chile extra single levels (D40): `sl/chile@vars-lcc-mcc-hcc-zust-ishf-tcwv`, 60 monthly requests | **done**: all ingested, the last on 2026-11-04 04:44 UTC | — | `pixi run astro status` |
+| TMT option A ERA5 (D36): `chile` 2006–2007, `tmt_spm`, `tmt_mauna_kea`; 143 requests, 4.32 M fields | **running**, one request at a time. `astro-release-tmt.timer` released all 143 on 2026-11-04 05:00 UTC, then disabled itself as designed. 48 ingested, `pl/tmt_spm/2006-04` at the CDS, 94 planned: 2.91 M fields left. Order: the rest of `pl/tmt_spm`, then `sl/tmt_spm`, then `tmt_mauna_kea` (pressure, then single levels), then the 2 static requests | **~28–29 Nov 2026** at this month's median queue waits (4.0 h per pressure-level request, 3.25 h per single-level one). Then run `scripts/survey_stores.py` on the TMT stores | `pixi run astro status`; `tail logs/run_boxes.log` |
+| `astro-boxes.service` | **running** `scripts/run_boxes.sh` from `dev` at 2c4615f (restarted 2026-11-12 22:34 UTC for the global hour, #11) | exits when nothing is left | `systemctl status astro-boxes` |
+| `astro-notify.service` | `astro notify-watch` every 10 min, from 2c4615f (restarted 2026-11-12 22:24 UTC) | always on | `tail logs/notify_watch.log` |
 | `astro-manifest-export.timer` | 03:17 UTC daily: copies the manifest to `/data/astro/manifest-exports/` | always on | `systemctl list-timers` |
+| `astro-release-tmt.timer` | disabled and inactive since it released TMT; nothing left for it to do | — | `systemctl list-timers --all` |
 | tmux | no sessions | — | `tmux ls` |
 
-**Order (my call, as asked):** Chile's extra single levels go first. They're small (0.14 M fields), and they unblock the W71 and cloud-layer experiments with the ESO data. If TMT went first, Chile would wait the ~3 weeks TMT takes. The TMT holds stay in place until then because `by_state` submits in id order and the TMT requests have lower ids.
+**The live checkout follows `dev`** (Riley, 2026-11-12). After a merge into `dev`, the CT fast-forwards `/home/astro-seeing` and restarts `astro-notify`. `astro-boxes` picks up new code at its next round, because `run_boxes.sh` calls `pixi run astro …` each time. But bash reads a script while running it, so if a merge changes `scripts/run_boxes.sh` itself, stop `astro-boxes` before the pull and start it after.
 
-**Throughput at one request at a time (measured 2026-10-30).** The CDS queue wait is now the cost, not the run time:
+**Manifest backup:** `~/.local/state/astro-backups/manifest-pre-pr32-20261112T222322Z.sqlite`, taken just before PR #32's schema change added the `purpose` column (2026-11-12). Kept until Riley says it can go.
 
-| Request | Queue wait at the CDS | Run time | Fields |
-|---|---|---|---|
-| 2021-01 (by hand, 14:36 UTC) | 0.65 min | 2.7 min | 2,418 |
-| 2021-02 (loop, submitted 14:40) | 2 h 34 min | 2.5 min | ~2,180 |
-| 2021-03 (loop, submitted 17:17) | still queued at 18:11 (> 54 min) | — | ~2,418 |
-
-That comes to about 2,300 fields per ~2.6 h, or **~0.25 fields/s** for Chile-sized requests, against 10.3 fields/s sustained with 4 parallel jobs in September. Bigger requests (TMT pressure levels, ~58,000 fields each) spread the queue wait over far more fields. Two data points are not a rate: re-measure after a day with `astro status` and the `submitted_at`/`cds_started_at`/`cds_finished_at` columns in the manifest. The downloader submits the next request as soon as the previous one finishes at the CDS. Verify and ingest run between 30-min download rounds, so ingest lags download by up to ~30 min; this doesn't slow the CDS side.
+**Throughput at one job at a time:** measured in `reports/cds_throughput_one_job.md` (#11). A request waits hours in the CDS queue and then runs for minutes; pressure levels deliver ~2.66 fields/s over a day, single levels 0.36–0.58. The same report restates the phase 2 and 3 download estimates (§7 there).
 
 **What each alert means** (`src/astroseeing/notify.py`):
 - **CDS paused (new, D39):** 3 CDS rejections in 24 h, so the downloader submits nothing until a person acts. The alert lists the steps: read forum.ecmwf.int announcements, check `logs/run_boxes.log`, then `astro cds-resume --reason "..."`. The pause never expires by itself.
-- **Finished:** nothing left to download, verify or ingest. Held requests don't count, so **expect a "Finished (143 on hold)" message if the loop drains Chile before the hourly release check runs**; the release check then restarts it.
+- **Finished:** nothing left to download, verify or ingest. Held requests don't count (none are held now).
 - **Finished with problems:** the queue drained, but some requests failed 5 times or were refused by ingest.
 - **Problem: failed N times:** a request has used up its retries. Look at `last_error` in the manifest, fix the cause, then run `astro retry-failed`.
 - **Problem: refused:** ingest refused a large request that isn't a declared validation area (D18, D33).
-- **Problem: no download progress for N h (3 h):** with queue waits of ~2.5 h, **an occasional stall alert is expected and harmless** while one request sits at the CDS as "accepted". Look only if it repeats. Jobs that come back 404 are resubmitted at most twice (D39), then fail visibly.
+- **Problem: no download progress for N h (3 h):** pressure-level requests now wait ~4 h at the CDS, so **this fires for most of them and is harmless** while one request sits there as "accepted". #34 (ready-for-agent, option B, D53 reserved) changes the rule. Jobs that come back 404 are resubmitted at most twice (D39), then fail visibly.
 - **Problem: submitted more than 12 h ago:** the backstop for other ways the CDS can lose a job. Check the job on the CDS website.
 - **Problem: download loop not running / NAS not answering:** check `systemctl status astro-boxes` and the `/data` mount. NFS I/O hangs rather than failing.
 - **Daily (06:00 UTC):** done, left and failed counts, plus an estimated finish from the last 24 h's throughput.
@@ -126,17 +121,19 @@ None of these is in AGENTS.md as of 2026-10-24.
 
 Resolved on 2026-10-30: the sequential downloader (D39, PR #4), the CDS terms change (accepted, D38) and single-level `--variables` in `plan-area` (D40, PR #5).
 
+*Annotated 2026-11-13: most of these are now GitHub Issues; the notes in italics give the state.*
+
 | Question | Blocks |
 |---|---|
-| **Queue wait of ~2.5 h per request at one at a time** (§1). Accept ~3 weeks for Chile + TMT, or ask ECMWF (support ticket) about the wait, or merge TMT requests further (they're already near the 60,000-field cost limit, so not much room). Raising `max_active` above 1 needs Riley's OK (D39) and goes against the forum's sequential policy. | how soon the TMT calibration data are complete |
+| **Queue wait of ~2.5 h per request at one at a time** (§1). Accept ~3 weeks for Chile + TMT, or ask ECMWF (support ticket) about the wait, or merge TMT requests further (they're already near the 60,000-field cost limit, so not much room). Raising `max_active` above 1 needs Riley's OK (D39) and goes against the forum's sequential policy. | how soon the TMT calibration data are complete. *Measured since (#11): ~4 h per pressure-level request. Chile is done; TMT finishes ~28–29 Nov (§1).* |
 | **Account profile (forum.ecmwf.int/t/15481):** ECMWF asks users to register with a trusted institutional or corporate email where possible and keep profile details accurate. Only Riley can check or change this. | nothing now; lowers the risk of the account being disabled |
 | **Copilot review:** review requests on PRs #4 and #5 silently did nothing (the API returns an empty reviewer list and no `review_requested` event appears, unlike PR #3). Probably quota or a repository setting. The code-review skill stood in (D39, D40). | the review step in future PRs |
-| **Phase 2 via global downloads?** The CDS works per field, not per area, so 8 separate regions take ~64–76 days, against ~8–9.5 for the whole globe (`reports/validation_downloads.md` §4). Both figures assumed parallel jobs; with sequential jobs and long queue waits, fewer, bigger requests matter even more. A gate 1 decision. | the phase 2 and phase 3 plans, and how the downloader should be built for global days |
+| **Phase 2 via global downloads?** The CDS works per field, not per area, so 8 separate regions take ~64–76 days, against ~8–9.5 for the whole globe (`reports/validation_downloads.md` §4). Both figures assumed parallel jobs; with sequential jobs and long queue waits, fewer, bigger requests matter even more. A gate 1 decision. | the phase 2 and phase 3 plans, and how the downloader should be built for global days. *Restated for one job at a time in `reports/cds_throughput_one_job.md` §7: 8 regions separately 160–252 days; the whole globe 32–61 days with weekly to half-monthly requests, ~1.5 years at one day per request. Ticket #13, with #12's mirror findings.* |
 | **`plan-box --variables`** (§2): a ticket? `plan-area` now has it; `plan-box` still requests every variable. | small box downloads with a variable subset |
-| **A measurement-only mode** for test requests (§2): a ticket? | the global-hour test, and the gate 1 projections |
+| **A measurement-only mode** for test requests (§2): a ticket? | the global-hour test, and the gate 1 projections. *Done: D50 (#10, PR #32); the global hour ran on 2026-11-13 (#11).* |
 | **Time-series fetcher, or main-slot single levels?** For sites without single levels (Timau, Tibet, Haikou, Rongcheng). The fetcher is new code; main-slot requests now cost ~2.5 h of queue wait each. | Haslebacher (b); masking underground levels by surface pressure (orography from the static stores is an alternative) |
-| **The TMT login** (in progress) | fetching the TMT DIMM/MASS data; calibration and the terrain experiment at the TMT sites |
-| **When to delete the raw GRIB** (41.6 GB on `/staging`, plus the new downloads) | nothing yet; `/staging` has ~100 GB free |
+| **The TMT login** (in progress) | fetching the TMT DIMM/MASS data; calibration and the terrain experiment at the TMT sites. *Ticket #14 (ready-for-human): Riley registers and writes `/root/.config/astro/tmt.env` (mode 600) on the CT; then the CT checks the login. The fetcher has no ticket yet.* |
+| **When to delete the raw GRIB** (41.6 GB on `/staging`, plus the new downloads) | nothing yet; `/staging` has ~100 GB free. *Now 41 GB of raw GRIB (583 files, plus the 271 MB global-hour file) and 99 GB free (2026-11-13). Free space limits the size of phase 3's global requests (`reports/cds_throughput_one_job.md` §7.3).* |
 | **Which experiments get which sites and periods** (La Palma, model levels) | sizing the next download batch |
 
 ## 6. Fragile or unfinished in the code
@@ -144,7 +141,7 @@ Resolved on 2026-10-30: the sequential downloader (D39, PR #4), the CDS terms ch
 **Fixed on 2026-10-30** (on `dev`, not yet in `main`):
 - **Rejections (D37 → D39, PR #4, merge 3ceb53f):** one CDS job at a time per account, checked against the CDS's own job list; both queue-limit wordings recognised; any unrecognised submit error counts as a rejection; 60 then 120 min backoff; pause and alert after 3 rejections in 24 h (`astro cds-resume` lifts it); lost-job resubmission bounded at 2; `--max-active` above 1 refused; `run_boxes.sh` and `retry-failed` can't bypass the gate. Tests in `tests/test_cds_gate.py`, including a hypothesis property test.
 - **CLI variable selection (D40, PR #5, merge ad64fef):** `plan-area --variables` now works for single levels; a subset gets its own region suffix (`chile@vars-…`) so it never collides with full-set requests.
-- **Stale rate:** `plan-area`'s planning rate is now `request.fields_per_s` in `configs/era5.yaml` (5.6, measured one job at a time). Given the queue waits in §1, it is still optimistic for small requests.
+- **Stale rate:** `plan-area`'s planning rate is now `request.fields_per_s` in `configs/era5.yaml` (5.6, measured one job at a time). Given the queue waits in §1, it is still optimistic for small requests. *2026-11-13: about twice the measured pressure-level rate (2.66 fields/s, #11); no ticket yet.*
 
 **Still open:**
 - **Review findings left unfixed (D39/D40):**
@@ -158,11 +155,12 @@ Resolved on 2026-10-30: the sequential downloader (D39, PR #4), the CDS terms ch
 - **Known limits accepted in D39:** a submit that times out after the CDS accepted it leaves an orphan job; the gate then sees it in the account's job list and waits for it, but the manifest never collects its result. A repeatedly bad request can pause the queue by itself.
 - **Cosmetic:** `run()`'s total `StepSummary` never adds up `pending` (always 0 in the final log line).
 - **`plan-box` has no `--variables`**, so it always requests every variable (§2).
-- **No measurement-only mode** for test requests (§2).
+- ~~**No measurement-only mode** for test requests (§2).~~ *Done: D50 (#10, PR #32).*
 - **Hard-coded test:** `tests/test_areas.py::test_configured_areas_cover_the_papers_grid_points` asserts the exact set of area names, so adding an area to `configs/validation_areas.yaml` fails it. Better to assert a subset.
 - **Misleading counter name:** the QC counter `cells_dropped_not_land` also counts cells outside the site boxes in area stores. Cosmetic.
 - **Lost-job detection:** only HTTP 404 is detected (D34). Other ways the CDS might lose a job are caught only by the 12 h "stuck" alert, which needs a person.
-- **Notifications:** the finish estimate uses the last 24 h of throughput only, which is noisy, and the 3 h stall threshold is close to the current queue wait (§1).
+- **Notifications:** the finish estimate uses the last 24 h of throughput only, which is noisy, and the 3 h stall threshold is below the current pressure-level queue wait (§1; #34).
+- **The loop for phase 3:** `run_boxes.sh` downloads, verifies and ingests in turn, so nothing polls the CDS while a request ingests. Harmless for boxes; with large global requests it would add the ingest time to every request (`reports/cds_throughput_one_job.md` §7.3).
 - **NFS hangs:** ingest probes `/data` in a child process with a timeout. A hang in the middle of a write still blocks that process, and systemd's restart plus the manifest's resumability are the only recovery.
 - **One-off unit:** `astro-release-tmt.timer` is installed by hand (not in `install_services.sh`'s enable list) and disables itself after releasing.
 - **Not built yet:** time-series single levels, ESO and TMT fetchers, reproduction notebooks (except Haslebacher's single hour), nightly aggregation, tiles and the web viewer.
@@ -191,9 +189,9 @@ Resolved on 2026-10-30: the sequential downloader (D39, PR #4), the CDS terms ch
 
 Items 1 and 2 of the 2026-10-24 list are done or running (§1). Reproduction work waits for the tickets the cloud session files as GitHub Issues.
 
-1. **Let Chile's extra single levels and then the TMT queue finish** (~5–6 Nov and ~late Nov, §1). Check the queue wait after a day; if it stays at hours, that changes the phase 2/3 projections more than anything else. Confirm the TMT stores with `scripts/survey_stores.py` when they're done.
+1. **Let Chile's extra single levels and then the TMT queue finish** (~5–6 Nov and ~late Nov, §1). *Chile finished on 4 Nov; TMT is due ~28–29 Nov.* Check the queue wait after a day; if it stays at hours, that changes the phase 2/3 projections more than anything else. Confirm the TMT stores with `scripts/survey_stores.py` when they're done.
 2. **Reproductions in this order: Haslebacher (a) monthly → Priyatikanto → Bi → O&S.** The data are already on the NAS, and they're the core of gate 1. Haslebacher first, because an independent code checks our O&S implementation. Then Priyatikanto, a single site with one clear target. Bi has several variants to try. O&S needs campaign dates from the paper.
 3. **Time-series single-level fetcher.** Needed for Haslebacher (b) and for surface masking at sites without single levels. It doesn't use the main queue, which now matters more given the queue waits.
 4. **ESO fetcher, then the TMT fetcher** once the login exists. This is the calibration data (plan task 12): fit on held-out years.
-5. **Measurement-only mode, then the global-hour test.** This settles the phase 2 and phase 3 projections, now under one job at a time.
+5. **Measurement-only mode, then the global-hour test.** This settles the phase 2 and phase 3 projections, now under one job at a time. *Done on 2026-11-13 (D50; #11, `reports/cds_throughput_one_job.md` §6–§7).*
 6. **Experiments** (pressure vs model levels, terrain-aware, cloud above height, 3-hourly, ground-layer options), then the **good-night proposal [ASK]**, then **gate 1** (`reports/phase1.md`). Size the La Palma and model-level downloads once the experiment designs are fixed.
