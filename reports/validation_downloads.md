@@ -62,6 +62,9 @@ Measured from the manifest (`events` and `files` tables):
 - **The earlier figure:** 26.4 fields/s came from the first files on 27 Sep. The rate then fell steadily, probably as the CDS got busier. We can't see its load, so 10.3 is the safer number for planning.
 
 **What this means for phases 2 and 3 [estimate]:**
+
+> **Superseded on 2026-11-13.** These estimates assumed up to 4 jobs in flight. At one job at a time (D39) they are restated in `reports/cds_throughput_one_job.md` §7: phase 3 takes about 1–2 months of CDS time with weekly to half-monthly requests, and about 1.5 years at one day per request. The test of one global hour below was run on 2026-11-13 (§6 there): a global field took the CDS no longer than a box field.
+
 - **Cost per field, not per area.** The CDS charges and works per field, not per area. So a 20°×20° region costs as much CDS time as the whole globe: 5 years of hourly pressure levels with `cc` plus the 17 single-level variables is ~7.1 M fields either way. That is 8–9.5 days: 8 at 10.3 fields/s, 9.5 if single levels run at the 3.7 fields/s of our one batch of them.
 - **Phase 2 as written.** Downloading phase 2's 8 regions separately would be ~57 M fields, **~64–76 days**. Night hours only would make it ~31 M fields, ~35–41 days. That uses about 13 of 24 UTC hours per half-month for a 20°×20° region, measured for 5 of the 8 regions.
 - **Whole globe instead.** The same 5 years for the whole globe is the same ~7.1 M fields: **~8–9.5 days** of CDS time, plus ~13 TB of transfer (3–7 days at the measured 21–47 MB/s; it overlaps with the processing).
@@ -82,7 +85,7 @@ Measured from the manifest (`events` and `files` tables):
 ## 6. What's uncertain
 
 - **The CDS rate** depends on its load, which we can't see. 10.3 fields/s is one 19-day average. The single-level rate (3.7 fields/s) rests on 21 requests on one day.
-- **Global fields:** whether one costs the CDS the same time as a small-area field is untested (§4).
+- **Global fields:** whether one costs the CDS the same time as a small-area field is untested (§4). _Tested on 2026-11-13: no slower (`reports/cds_throughput_one_job.md` §6)._
 - **Lost jobs:** the 404 behaviour is handled now, but the CDS may lose jobs in other ways. The watcher's 12 h "stuck" alert is still the backstop.
 
 ## 7. Next steps
