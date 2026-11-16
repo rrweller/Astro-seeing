@@ -619,3 +619,46 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   10. **Monitoring:** each tick fetches the served `latest.json` over HTTP. If that fails or differs from the file just written, a fifth high-priority alert is added to D51 item 9: "page not being served".
 - **Who:** Riley (all items, agreed in a grilling session on ticket #24); the agent proposed each and drafted the wording.
 
+
+## 2026-11-16 — Cloud planning session: how phases 2 and 3 download
+
+### D55. One global campaign from the CDS, big requests, a pilot year first (map #6, ticket #13)
+- **Evidence:**
+  - `reports/cds_throughput_one_job.md` §6–§8 (#11): at one job at a time a request waits ~4 h (pressure levels, median 4.04 h since 7 Nov) and runs minutes. The CDS cost is the field count, whatever the area, with limits of 60,000 (pressure levels) and 121,000 (single levels). So the request count sets the time.
+  - The same report's table, 2021–2025 hourly: global at one day per request is 559 days; pressure levels half-monthly with single levels monthly is 32 (27–36); the 8 regions downloaded separately are 160 (night hours only) to 252 days.
+  - D39: one CDS job at a time. D50: measurement-only requests.
+  - #12 (`docs/research/era5-mirrors.md` on `research/era5-mirrors`): NCAR on AWS is free, queue-less and complete for 2021–2025 (~11.9 TB), but not bit-identical to CDS GRIB, and its `zust`/`cbh` are in a forecast layout.
+  - `/staging` is 147 GB; 99 GB free on 13 Nov, with 41 GB of kept validation GRIB. One global pressure-level request at 16 days is 55,680 fields, ~104 GB (1.87 MB per field).
+- **Options:**
+  - **Regions:** download the eight regions separately; or cut them from global days that phase 3 reuses.
+  - **Timing:** all five years hourly after gate 1; a pilot year first; or 3-hourly first, filling the other hours later.
+  - **Source:** CDS only; CDS plus an NCAR equivalence test; or NCAR as the main source.
+  - **Request size (pressure levels):** weekly (≤ 45.5 GB, 61 days), half-monthly (≤ 104 GB, 32 days), or smaller.
+- **Choice (Riley, 2026-11-16):**
+  1. **One campaign, no separate regional downloads.** Phase 2's regional data is a subset of the global ingest. The eight 20° × 20° regions are cut by cells at ingest, under the same land/night mask rule as everything else (D18).
+  2. **Pilot year first.** Global, hourly (all 24 UTC hours), 2023: 29 levels of z, t, u, v, cc and the 17 single-level variables. Gate 2 then decides hourly or 3-hourly and the number of years, and the rest of 2021–2025 follows under your gate 2 [ASK]. A 3-hourly choice at gate 2 loses nothing: its hours are a subset of the pilot's.
+  3. **Source: the CDS only** for the data of record. No NCAR data is used in any product. NCAR's equivalence test (#12 steps 1–4: raw-field differences against our CDS GRIB for Chile/Paranal, then the phase 1 physics and goldens, plus bandwidth, ~15 GB) is a **phase 2 task**, started after gate 1 and not blocking anything. Adopting NCAR would be a new [ASK] and a new D-number.
+  4. **Pressure levels: half-monthly requests.** Each month is two requests, at most 16 days each (55,680 fields, under the 60,000 limit); the exact split goes in the spec. Riley chose this over the weekly size the agent recommended (weekly would be 61 days against 32).
+  5. **Single levels: up to 3 months per request (~71 GB, 37,944 fields),** once two things are done:
+     - a code change, because `RequestSpec.cds_request` allows one month;
+     - a cost check on the non-existent dates a months × days request implies (30 February, 31 April): whether the CDS counts them, tested with `estimate_costs`.
+     
+     Until both are done, single levels stay monthly. The cap of 3 comes from `/staging`: 4 months would be ~95 GB.
+  6. **`/staging` holds one big request at a time.** After download, the order is verify → ingest → verify Zarr → delete raw, then the next request downloads. Submitting the next request to the CDS still overlaps all of that (D39). The downloader keeps polling the CDS while an ingest runs; `run_boxes.sh` doesn't, so it isn't the model.
+  7. **The kept validation GRIB leaves `/staging` first.** Riley chose to copy the 41 GB to a new path on `/data` (e.g. under `/data/astro/raw-archive`; the spec fixes it), verify checksums, and only then delete the `/staging` copies. This writes new files on `/data` and removes nothing there.
+  8. **The first pilot request is the test:** 2023-06-01 to 06-16, global, hourly pressure levels (55,680 fields, ~104 GB), approved by Riley, and over the 50 GB [ASK] threshold. It can run once the staging step is done. It measures what #11 couldn't: the run time of a large global request, the download of one huge result, verify and ingest time, and how long the CDS keeps a finished result.
+     - **If it fails** (a rejection, an expired result, a failed verify, no disk), the pressure-level size drops to weekly (≤ 45.5 GB), and this entry is amended. A rejection counts under D39 like any other.
+     - The rest of the pilot year starts only after gate 1 and the phase 2 start, as AGENTS.md says. The pilot year's volume (~2.4 TB of raw GRIB over time, 24 pressure-level requests, plus single levels) is listed here for that approval.
+  9. **Estimates, with these sizes:**
+     - **Pilot year:** about 6 CDS days.
+     - **Five years, hourly:** about 27 days (23 for pressure levels, ~3–4 for single levels at 3 months). That is the report's 32 days with its 9 single-level days cut to ~3–4. This is agent arithmetic from the report's waits, not a rerun of `scripts/download_estimates.py`; the spec reruns it.
+     - **Avoided:** 160–252 days of separate regional downloads.
+- **AGENTS.md:** the wording in `reports/agents_md_global_downloads_proposal.md` (items 1–5: the "one day per request" rule, phase 2 step 1, gate 2, the phase 3 downloader and its done-when check) was applied on Riley's request, 2026-11-16.
+- **Assumptions this rests on, none measured:**
+  - the CDS will serve a 104 GB result in one piece and keep it long enough for us to download it after the previous ingest;
+  - a global ingest of one 104 GB request finishes inside the next request's ~4 h queue wait, so the CDS queue never waits on us;
+  - run time at the CDS stays at ~28 fields/s for a large global request (the report assumes the box rate);
+  - the queue wait doesn't grow with a 104 GB request (one data point: the global hour's wait didn't shrink with size, so it may not grow either).
+  
+  The test request (item 8) checks the first three; the wait is read from that same request.
+- **Who:** Riley (all choices, agreed in a grilling session on ticket #13, 2026-11-16); the agent proposed each, recommending weekly pressure-level requests and monthly single levels, which Riley overrode.
