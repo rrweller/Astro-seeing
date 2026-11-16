@@ -1,6 +1,6 @@
 # Proposal: AGENTS.md changes for phase 2 and 3 downloads (D55)
 
-**Status: proposed, not applied.** AGENTS.md is Riley's to change. Ticket #13 (map #6) agreed the design in D55; this lists the wording that follows from it. Principle as in `reports/agents_md_forecast_proposal.md`: AGENTS.md states the rule and points to the decision, and the detail stays in `docs/decisions.md`.
+**Status: items 1–5 applied to AGENTS.md on 2026-11-16, at Riley's request.** Items 6 and 7 need no edit (7 is optional and left as is). AGENTS.md is Riley's to change. Ticket #13 (map #6) agreed the design in D55; this lists the wording that follows from it. Principle as in `reports/agents_md_forecast_proposal.md`: AGENTS.md states the rule and points to the decision, and the detail stays in `docs/decisions.md`.
 
 ---
 

@@ -653,7 +653,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
      - **Pilot year:** about 6 CDS days.
      - **Five years, hourly:** about 27 days (23 for pressure levels, ~3–4 for single levels at 3 months). That is the report's 32 days with its 9 single-level days cut to ~3–4. This is agent arithmetic from the report's waits, not a rerun of `scripts/download_estimates.py`; the spec reruns it.
      - **Avoided:** 160–252 days of separate regional downloads.
-- **AGENTS.md:** the wording proposal is in `reports/agents_md_global_downloads_proposal.md` (the "one day per request" rule changes). AGENTS.md itself is not edited here.
+- **AGENTS.md:** the wording in `reports/agents_md_global_downloads_proposal.md` (items 1–5: the "one day per request" rule, phase 2 step 1, gate 2, the phase 3 downloader and its done-when check) was applied on Riley's request, 2026-11-16.
 - **Assumptions this rests on, none measured:**
   - the CDS will serve a 104 GB result in one piece and keep it long enough for us to download it after the previous ingest;
   - a global ingest of one 104 GB request finishes inside the next request's ~4 h queue wait, so the CDS queue never waits on us;
