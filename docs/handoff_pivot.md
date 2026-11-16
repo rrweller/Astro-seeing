@@ -38,7 +38,7 @@ That comes to about 2,300 fields per ~2.6 h, or **~0.25 fields/s** for Chile-siz
 - **Finished with problems:** the queue drained, but some requests failed 5 times or were refused by ingest.
 - **Problem: failed N times:** a request has used up its retries. Look at `last_error` in the manifest, fix the cause, then run `astro retry-failed`.
 - **Problem: refused:** ingest refused a large request that isn't a declared validation area (D18, D33).
-- **Problem: no download progress for N h (3 h):** with queue waits of ~2.5 h, **an occasional stall alert is expected and harmless** while one request sits at the CDS as "accepted". Look only if it repeats. Jobs that come back 404 are resubmitted at most twice (D39), then fail visibly.
+- **Problem: no download progress for N h (3 h):** sent only when work is pending **and no request is at the CDS** (D53), for example the loop is alive but not submitting, or ingest hangs. Queue waits of 3–7 h with a request at the CDS are normal under one job at a time and no longer alert; a job lost at the CDS is caught by the 12 h alert below. This alert is real: run `systemctl status astro-boxes` and `tail logs/run_boxes.log`. It can still fire during a D39 backoff after a rejection (known open issue, §6). Jobs that come back 404 are resubmitted at most twice (D39), then fail visibly.
 - **Problem: submitted more than 12 h ago:** the backstop for other ways the CDS can lose a job. Check the job on the CDS website.
 - **Problem: download loop not running / NAS not answering:** check `systemctl status astro-boxes` and the `/data` mount. NFS I/O hangs rather than failing.
 - **Daily (06:00 UTC):** done, left and failed counts, plus an estimated finish from the last 24 h's throughput.

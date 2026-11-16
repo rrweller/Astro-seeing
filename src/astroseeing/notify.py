@@ -11,8 +11,10 @@ lives outside git in ``~/.config/astro/notify.env`` (``NTFY_URL=...``, mode 600)
   paused on purpose and don't count);
 * **problems**: requests that failed ``max_attempts`` times (earlier failures are
   retried by ``scripts/run_boxes.sh``) or were refused by ingest (D18); no progress
-  for ``stall_hours``; a request sitting at the CDS for ``stuck_hours``; the download
-  loop not running while work remains; the NAS not answering; CDS submissions paused
+  for ``stall_hours`` while nothing is submitted to the CDS (D53: with one CDS job at
+  a time a queue wait of several hours is normal, so a request at the CDS is covered
+  by the next check instead); a request sitting at the CDS for ``stuck_hours``; the
+  download loop not running while work remains; the NAS not answering; CDS submissions paused
   after repeated rejections (D39), with what to do next;
 * **daily progress**: once a day after ``daily_hour_utc``: done / left / failed,
   and an estimated finish from the fields the CDS processed in the last 24 h.
@@ -96,6 +98,8 @@ class Snapshot:
     #: finished in the last 24 h (the span that work actually took).
     span_24h_s: float = 0.0
     refused: int = 0  # verified but not stored (D18): needs a person
+    #: Requests in state ``submitted``, i.e. at the CDS (queued or running there).
+    at_cds: int = 0
     #: Keys of requests submitted to the CDS more than ``stuck_hours`` ago.
     stuck: list[str] = field(default_factory=list)
     #: One entry per problem event, "state key @ time": a request failed for good or
@@ -178,6 +182,7 @@ def snapshot(
         failed_examples=failed_examples,
         span_24h_s=(max(ends) - min(starts)).total_seconds() if starts and ends else 0.0,
         refused=counts.get("refused", 0),
+        at_cds=counts.get("submitted", 0),
         stuck=stuck,
         problem_events=problem_events,
     )
@@ -290,10 +295,15 @@ def check_once(
         state.finished_reported = False
         idle = (now - s.last_change).total_seconds() / 3600 if s.last_change else 0.0
         cds_paused = bool(m.cds_control().get("paused_at"))  # has its own alert (D39)
-        if idle >= stall_hours and not cds_paused:
+        # D53: while a request is at the CDS the wait is the CDS queue, which is
+        # routinely longer than stall_hours with one job at a time (D39); the stuck
+        # alert (stuck_hours) covers that case. Stalls with nothing submitted still alert.
+        if idle >= stall_hours and not cds_paused and not s.at_cds:
             if _hours_since(state.stall_alerted_at, now) >= realert_hours:
-                emit(f"Problem: no download progress for {idle:.1f} h; {s.pending} requests "
-                     "still pending.", "astro-seeing: stalled", "high")  # fmt: skip
+                emit(f"Problem: no download progress for {idle:.1f} h, nothing is at the CDS "
+                     f"and {s.pending} requests are still pending. Next: `systemctl status "
+                     "astro-boxes` and `tail logs/run_boxes.log` on the CT; a hung ingest or "
+                     "an NFS stall shows there.", "astro-seeing: stalled", "high")  # fmt: skip
                 state.stall_alerted_at = now.isoformat()
         else:
             state.stall_alerted_at = ""
