@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Globe library prototypes (#25)</title>
+<link rel="stylesheet" href="shared/style.css">
+</head><body><div class="wrap">
+<header><div class="eyebrow">Prototype · throwaway · ticket #25</div><h1>MapLibre GL JS or CesiumJS?</h1>
+<p class="lede">The approved B layout rebuilt twice on the same synthetic data. Everything is served from <code>./vendor</code>; nothing loads from a CDN or a paid service. Serve this folder over HTTP (<code>python3 -m http.server</code>), not <code>file://</code>.</p></header>
+<div class="panel" style="display:grid;gap:10px"><b>Open each one and try:</b>
+<a class="btn primary" href="maplibre.html?v=5" style="text-decoration:none;width:fit-content">MapLibre GL JS 5.24.1 (the version the ticket names)</a>
+<a class="btn primary" href="maplibre.html?v=6" style="text-decoration:none;width:fit-content">MapLibre GL JS 6.18.0 (current major, ESM only)</a>
+<a class="btn primary" href="cesium.html" style="text-decoration:none;width:fit-content">CesiumJS 1.147.0</a>
+<ul class="note" style="margin:0;padding-left:20px;display:grid;gap:4px">
+<li>Drag to turn, scroll or pinch to zoom, click anywhere to get tonight's verdict and the table.</li>
+<li>Map → "Hour by hour" shows the optional hour slider.</li>
+<li>"F1 box at 0.25° cells" overlays the 10° box at ERA5 resolution: blocks must stay square and sharp when you zoom.</li>
+<li>"Synthetic relief" is the later-terrain test: heights generated in the browser. Tilt is off by default; use the zoom to look closely.</li>
+<li>Chip "South Pole": do the cells reach the pole?</li></ul></div>
+</div></body></html>

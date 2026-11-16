@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Globe prototype: CesiumJS</title>
+<link rel="stylesheet" href="shared/style.css">
+<link rel="stylesheet" href="vendor/cesium-1.147.0/Widgets/widgets.css">
+<script>window.CESIUM_BASE_URL = new URL('vendor/cesium-1.147.0/', location.href).href;</script>
+<script src="vendor/cesium-1.147.0/Cesium.js"></script>
+</head><body>
+<div id="app"></div>
+<script src="shared/core.js"></script>
+<script src="shared/app.js"></script>
+<script>
+// No Cesium ion anywhere: baseLayer:false (the default base layer is ion's world imagery), no geocoder,
+// no terrain from ion, no base layer picker. Everything is loaded from ./vendor (D52).
+const TILE = 256;
+
+// A custom imagery provider is "an interface, not intended to be instantiated directly" (Cesium.d.ts), so duck-type it.
+class CellImageryProvider {
+  constructor(key) {
+    this.key = key;
+    this.tilingScheme = new Cesium.GeographicTilingScheme(); // equirectangular: cells need no reprojection
+    this.rectangle = this.tilingScheme.rectangle;
+    this.tileWidth = TILE; this.tileHeight = TILE;
+    this.minimumLevel = 0; this.maximumLevel = 9;
+    this.tileDiscardPolicy = undefined; this.errorEvent = new Cesium.Event();
+    this.credit = new Cesium.Credit('Synthetic data · coastlines: Natural Earth via world-atlas');
+    this.proxy = undefined; this.hasAlphaChannel = true;
+  }
+  getTileCredits() { return []; }
+  pickFeatures() { return undefined; }
+  requestImage(x, y, level) {
+    const grids = APP.registry.get(this.key);
+    const r = this.tilingScheme.tileXYToRectangle(x, y, level), D = 180 / Math.PI;
+    const { cv, ms } = paintCanvas(grids, geographicAxes(r.west * D, r.south * D, r.east * D, r.north * D, TILE), TILE);
+    noteTile(ms, `cells ${this.key} ${level}/${x}/${y}`);
+    return Promise.resolve(cv);
+  }
+}
+
+APP.start({
+  id: 'cesium.html',
+  title: `CesiumJS ${Cesium.VERSION}`,
+  libLabel: 'CesiumJS',
+  async makeAdapter(host) {
+    const a = { version: `${Cesium.VERSION} · 3D globe · custom ImageryProvider (geographic tiling)`, onPick: null };
+    const viewer = new Cesium.Viewer(host, {
+      baseLayer: false, baseLayerPicker: false, geocoder: false, homeButton: false, sceneModePicker: false, navigationHelpButton: false,
+      animation: false, timeline: false, fullscreenButton: false, infoBox: false, selectionIndicator: false, scene3DOnly: true,
+      requestRenderMode: true, maximumRenderTimeChange: Infinity,
+    });
+    const scene = viewer.scene, globe = scene.globe;
+    globe.baseColor = Cesium.Color.fromCssColorString('#0b111b'); globe.showGroundAtmosphere = false;
+    scene.skyAtmosphere.show = false; scene.sun.show = false; scene.moon.show = false; scene.skyBox.show = false;
+    scene.backgroundColor = Cesium.Color.fromCssColorString('#070b13');
+    scene.screenSpaceCameraController.enableTilt = false;       // map-like: no tilt by drag
+    scene.screenSpaceCameraController.minimumZoomDistance = 2000;
+    scene.screenSpaceCameraController.maximumZoomDistance = 3.2e7;
+    viewer.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(10, 40, 1.0e7) });
+
+    // coast + graticule + F1 box as ground polylines from the same GeoJSON the MapLibre page uses
+    const line = (coords, color, width, dash) => viewer.entities.add({ polyline: { positions: Cesium.Cartesian3.fromDegreesArray(coords.flat()), width, clampToGround: true, material: dash ? new Cesium.PolylineDashMaterialProperty({ color, dashLength: 12 }) : color } });
+    fetch('shared/land-lines.geojson').then((r) => r.json()).then((g) => {
+      for (const coords of g.geometry.coordinates) line(coords, Cesium.Color.WHITE.withAlpha(0.7), 1);
+      scene.requestRender();
+    });
+    for (const f of graticuleGeoJSON().features) line(f.geometry.coordinates, Cesium.Color.WHITE.withAlpha(0.12), 1);
+    line(boxGeoJSON().geometry.coordinates, Cesium.Color.fromCssColorString('#e9a94b'), 1.5, true);
+    const marker = viewer.entities.add({ show: false, position: Cesium.Cartesian3.fromDegrees(0, 0), point: { pixelSize: 8, color: Cesium.Color.WHITE, outlineColor: Cesium.Color.fromCssColorString('#7cc8f2'), outlineWidth: 3, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY } });
+
+    let layer = null;
+    a.setField = (spec) => {
+      const next = new Cesium.ImageryLayer(new CellImageryProvider(spec.key), { magnificationFilter: Cesium.TextureMagnificationFilter.NEAREST, minificationFilter: Cesium.TextureMinificationFilter.NEAREST });
+      viewer.imageryLayers.add(next, 0);
+      const old = layer; layer = next;
+      if (old) setTimeout(() => { viewer.imageryLayers.remove(old, true); scene.requestRender(); }, 400); // keep the old field until the new one has tiles
+      scene.requestRender();
+    };
+    const handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+    handler.setInputAction((m) => {
+      const c = viewer.camera.pickEllipsoid(m.position, globe.ellipsoid); if (!c) return;
+      const g = Cesium.Cartographic.fromCartesian(c);
+      a.onPick && a.onPick(Cesium.Math.toDegrees(g.latitude), Cesium.Math.toDegrees(g.longitude));
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+    a.setPlace = (p, fly) => {
+      marker.position = Cesium.Cartesian3.fromDegrees(p.lon, p.lat); marker.show = true;
+      if (fly) viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(p.lon, p.lat - (Math.abs(p.lat) > 85 ? 0 : 3), Math.abs(p.lat) > 85 ? 3.0e6 : 1.4e6), duration: 1.5 });
+      scene.requestRender();
+    };
+    // terrain: heights generated in the browser, the analogue of MapLibre's addProtocol('dem')
+    const flat = new Cesium.EllipsoidTerrainProvider();
+    const W = 33, hmTerrain = new Cesium.CustomHeightmapTerrainProvider({
+      width: W, height: W, tilingScheme: new Cesium.GeographicTilingScheme(),
+      callback: (x, y, level) => {
+        const r = new Cesium.GeographicTilingScheme().tileXYToRectangle(x, y, level), D = 180 / Math.PI, h = new Float32Array(W * W);
+        for (let i = 0; i < W; i++) for (let j = 0; j < W; j++) h[i * W + j] = demHeight(r.north * D - i * (r.north - r.south) * D / (W - 1), r.west * D + j * (r.east - r.west) * D / (W - 1));
+        return h;
+      },
+    });
+    a.setTerrain = (on) => {
+      viewer.terrainProvider = on ? hmTerrain : flat; scene.verticalExaggeration = on ? 4 : 1;
+      globe.enableLighting = on; if (on) scene.light = new Cesium.DirectionalLight({ direction: Cesium.Cartesian3.negate(viewer.camera.directionWC, new Cesium.Cartesian3()) });
+      scene.requestRender();
+    };
+    scene.preRender.addEventListener(() => { if (scene.light instanceof Cesium.DirectionalLight) scene.light.direction = Cesium.Cartesian3.clone(viewer.camera.directionWC, scene.light.direction); });
+    viewer.camera.moveEnd.addEventListener(() => scene.requestRender());
+    a.viewer = viewer; a.destroy = () => viewer.destroy();
+    return a;
+  },
+});
+</script>
+</body></html>

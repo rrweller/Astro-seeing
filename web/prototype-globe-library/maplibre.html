@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Globe prototype: MapLibre GL JS</title>
+<link rel="stylesheet" href="shared/style.css">
+<link id="mlcss" rel="stylesheet">
+</head><body>
+<div id="app"></div>
+<script src="shared/core.js"></script>
+<script src="shared/app.js"></script>
+<script type="module">
+// v5 ships a UMD script (no bundler, no import needed); v6 is ESM only (also no bundler: a plain module import).
+// Everything is loaded from ./vendor, never from a CDN (D52).
+const v = new URLSearchParams(location.search).get('v') === '6' ? '6.18.0' : '5.24.1';
+document.getElementById('mlcss').href = `vendor/maplibre-gl-${v}/maplibre-gl.css`;
+let ml;
+if (v.startsWith('6')) ml = await import(`./vendor/maplibre-gl-${v}/maplibre-gl.mjs`);
+else { await new Promise((ok, no) => { const s = document.createElement('script'); s.src = `vendor/maplibre-gl-${v}/maplibre-gl.js`; s.onload = ok; s.onerror = no; document.head.append(s); }); ml = window.maplibregl; }
+const base = new URL('.', location.href).href;
+const TILE = 512;
+APP.registry.set('none', []); // placeholder field until the first real one is set
+
+ml.addProtocol('cells', async (params, abort) => {
+  const m = /^cells:\/\/([^/]+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+  const grids = APP.registry.get(m[1]);
+  if (!grids) throw new Error('unknown field ' + m[1]);
+  const z = +m[2], x = +m[3], y = +m[4];
+  const { cv, ms } = paintCanvas(grids, mercatorAxes(z, x, y, TILE), TILE);
+  noteTile(ms, `cells ${m[1]} ${z}/${x}/${y}`);
+  const blob = await cv.convertToBlob({ type: 'image/png' });
+  return { data: await blob.arrayBuffer() };
+});
+ml.addProtocol('dem', async (params) => {
+  const m = /^dem:\/\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+  const cv = terrariumTile(+m[1], +m[2], +m[3], 256);
+  const blob = await cv.convertToBlob({ type: 'image/png' });
+  return { data: await blob.arrayBuffer() };
+});
+
+APP.start({
+  id: `maplibre.html?v=${v[0]}`,
+  title: `MapLibre GL JS ${v}`,
+  libLabel: 'MapLibre GL JS',
+  async makeAdapter(host) {
+    const a = { version: `${v} · globe projection · raster tiles from addProtocol('cells')`, onPick: null };
+    const style = {
+      version: 8, projection: { type: 'globe' },
+      sources: {
+        cells: { type: 'raster', tiles: ['cells://none/{z}/{x}/{y}'], tileSize: TILE, minzoom: 0, maxzoom: 7 },
+        land: { type: 'geojson', data: base + 'shared/land-lines.geojson' },
+        grat: { type: 'geojson', data: graticuleGeoJSON() },
+        box: { type: 'geojson', data: boxGeoJSON() },
+        place: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+        dem: { type: 'raster-dem', tiles: ['dem://{z}/{x}/{y}'], tileSize: 256, encoding: 'terrarium', maxzoom: 7 },
+      },
+      layers: [
+        { id: 'ocean', type: 'background', paint: { 'background-color': '#0b111b' } },
+        { id: 'cells', type: 'raster', source: 'cells', paint: { 'raster-resampling': 'nearest', 'raster-fade-duration': 0 } },
+        { id: 'hill', type: 'hillshade', source: 'dem', layout: { visibility: 'none' }, paint: { 'hillshade-exaggeration': 0.6 } },
+        { id: 'grat', type: 'line', source: 'grat', paint: { 'line-color': 'rgba(226,235,246,0.12)', 'line-width': 1 } },
+        { id: 'land', type: 'line', source: 'land', paint: { 'line-color': 'rgba(226,235,246,0.7)', 'line-width': 0.8 } },
+        { id: 'box', type: 'line', source: 'box', paint: { 'line-color': '#e9a94b', 'line-width': 1.2, 'line-dasharray': [2, 2] } },
+        { id: 'place-halo', type: 'circle', source: 'place', paint: { 'circle-radius': 9, 'circle-color': 'rgba(124,200,242,0.25)', 'circle-stroke-color': '#7cc8f2', 'circle-stroke-width': 1.5 } },
+        { id: 'place', type: 'circle', source: 'place', paint: { 'circle-radius': 3.5, 'circle-color': '#ffffff' } },
+      ],
+    };
+    const map = new ml.Map({ container: host, style, center: [10, 50], zoom: 1.2, maxZoom: 9, attributionControl: false, pitchWithRotate: false, dragRotate: false, touchPitch: false });
+    map.addControl(new ml.AttributionControl({ compact: true, customAttribution: 'Synthetic data · coastlines: Natural Earth via world-atlas' }));
+    map.addControl(new ml.NavigationControl({ showCompass: false }), 'top-right');
+    await new Promise((ok) => map.once('load', ok));
+    map.on('click', (e) => a.onPick && a.onPick(e.lngLat.lat, e.lngLat.lng));
+    a.map = map;
+    a.setField = (spec) => map.getSource('cells').setTiles([`cells://${spec.key}/{z}/{x}/{y}`]);
+    a.setPlace = (p, fly) => {
+      map.getSource('place').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [p.lon, p.lat] } }] });
+      if (fly) map.flyTo({ center: [p.lon, p.lat], zoom: Math.abs(p.lat) > 85 ? 3 : 4.2, duration: 1500, essential: true });
+    };
+    a.setTerrain = (on) => {
+      if (on) { map.setTerrain({ source: 'dem', exaggeration: 4 }); map.setLayoutProperty('hill', 'visibility', 'visible'); }
+      else { map.setTerrain(null); map.setLayoutProperty('hill', 'visibility', 'none'); }
+    };
+    a.destroy = () => map.remove();
+    map.on('error', (e) => { console.warn('maplibre error', e.error && e.error.message); (window.__errors = window.__errors || []).push(String(e.error && e.error.message)); });
+    return a;
+  },
+});
+</script>
+</body></html>
