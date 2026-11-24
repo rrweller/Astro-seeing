@@ -40,6 +40,8 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C10` · **blocked** · cloud · Reproduction spec and CT tickets (needs your approval) · ticket: none yet
 
+- `C11` · **blocked** · cloud · Calibration spec and CT tickets (needs your approval) · ticket: none yet
+
 - `F1` · **blocked** · cloud + CT · F1 build tickets (C4 lists them here) · ticket: none yet
 
 - `K1` · **needs-you** · CT · Recover the ntfy URL; pull `dev` and restart the notify watcher · needs you: be at home
@@ -78,6 +80,7 @@ flowchart LR
     C8["C8 · ESO fetcher"]
     C9["C9 · Site time-series reader"]
     C10["C10 · Reproduction spec"]
+    C11["C11 · Calibration spec"]
     F1["F1 · F1 build tickets"]
   end
   subgraph ct["CT, at home"]
@@ -96,6 +99,10 @@ flowchart LR
   C1 --> C10
   C2 --> C10
   C9 --> C10
+  C1 --> C11
+  C2 --> C11
+  C8 --> C11
+  C9 --> C11
   C0 --> K1
   K2 --> K4 --> K7
   C5 --> K5
@@ -144,6 +151,8 @@ flowchart LR
   %% ---
   class C10 blocked
   %% ---
+  class C11 blocked
+  %% ---
   class F1 blocked
   %% ---
   class K1 needsyou
@@ -191,6 +200,7 @@ The Skills column puts the slash command the prompt starts with in **bold**; the
 | 2 | C7 | Sonnet 5.5 / high | no | **/implement** (tdd, then code-review) | `manifest.py`, `cli.py`, new module |
 | 3 | C4 | Opus 5.5 / medium | yes: approve the ticket list | **/to-tickets**, codebase-design, writing-for-agents | issues, this file |
 | 3 | C10 | Opus 5.5 / high | yes: approve | **/to-spec**, then you send **/to-tickets**; grilling, domain-modeling, writing-for-agents | issues, this file |
+| 3 | C11 | Opus 5.5 / high | yes: approve | **/to-spec**, then you send **/to-tickets**; codebase-design, domain-modeling, writing-for-agents | issues, this file |
 | 3 | F1 | per ticket ("Suggested model" line) | per ticket | per ticket (usually **/implement**) | per ticket |
 
 ### CT order
@@ -289,6 +299,7 @@ Parallel sessions would otherwise take the same number.
 | D64 | C7 |
 | D65 | C8 |
 | D66 | C9 |
+| D68 | C11 |
 
 - D67 is this roadmap process.
 - A session needing more than one number adds letters (D62a, D62b, …).
@@ -597,6 +608,29 @@ Task: write the reproduction spec as an issue under map #6, then its tickets (fo
 - Include what happens when a reproduction misses its tolerance, as an open question for Riley with a recommendation (map #6 lists it as unspecified).
 
 Show Riley the outline and ticket list for approval (C10 to needs-you while you wait). Record decisions as D61. In a PR into dev, replace roadmap item K9 with one item per ticket (K9a, K9b, …), each with a board line, diagram node, edges, a class line followed by a %% --- spacer, and a short prompt. The prompt starts with "/mattpocock-skills:implement" followed on the same line by this prompt's standard first sentence (with the new ID), then has a "Skills:" line.
+
+The Blocked by line in each ticket body is the source of truth (docs/agents/issue-tracker.md). Don't close or change map #6 except to add the spec and tickets as sub-issues.
+```
+
+### C11. Calibration spec and CT tickets
+
+Opus 5.5, high effort. Needs your approval. Like C10: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C1 (D58), C2 (D59, the ground-layer experiment is calibration's stage 2), C8 (the ESO fetcher the data comes from) and C9 (the site reader the matching code uses).
+
+```text
+/mattpocock-skills:to-spec Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C11.
+
+Skills: this message starts to-spec. Write the calibration spec in its template and check its seams with Riley. A session can't start to-tickets itself, so once Riley approves the spec, ask Riley to send "/mattpocock-skills:to-tickets #<spec issue number>" as the next message. Use mattpocock-skills:codebase-design for the fit module's interface, mattpocock-skills:domain-modeling for terms (CONTEXT.md: Fit set, Held-out set, Freeze, Matched hour, MASS seeing, Ground-layer term) and the decision entry, and mattpocock-skills:writing-for-agents for the per-ticket prompts.
+
+You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md and docs/RESEARCH.md in full; decisions D19, D54, D57, D58 and D59; src/astroseeing/physics/calibration.py; and the merged code from C8 (ESO fetcher) and C9 (site reader).
+
+Task: write the calibration spec (D58) as an issue under map #6, then its tickets (follow docs/agents/issue-tracker.md). At least:
+- a runs-on:cloud ticket for the matching code (D58 item 6: hour medians, matched hours, nightly medians, counts and reasons), against synthetic data;
+- a runs-on:cloud ticket for the committed split file and the fit (items 4–5: equal-site-weight zero-bias root find, G >= 0 logged, 7-night block bootstrap, the refusal of held-out nights with its unit test);
+- a runs-on:ct ticket for the TMT fetcher and first-data checks (cadence, time standard, normalisation, instrument heights; the 20% rule), blocked by #14;
+- runs-on:ct tickets for the stage-1 fit, the stage-2 fits per ground-layer option with cross-validation (shared with #17's ground-layer experiment; reuse its ticket if one exists), and the single held-out run after the freeze, which is blocked by the four reproduction tickets and by Riley's ground-layer [ASK];
+- reports/calibration.md's contents (item 8's gated checks and reported statistics).
+
+Show Riley the outline and ticket list for approval (C11 to needs-you while you wait). Record any decisions as D68. In a PR into dev, add one roadmap item per CT ticket (next free K numbers), each with a board line, diagram node, edges, a class line followed by a %% --- spacer, and a short prompt starting with "/mattpocock-skills:implement" followed on the same line by this prompt's standard first sentence (with the new ID), then a "Skills:" line.
 
 The Blocked by line in each ticket body is the source of truth (docs/agents/issue-tracker.md). Don't close or change map #6 except to add the spec and tickets as sub-issues.
 ```
