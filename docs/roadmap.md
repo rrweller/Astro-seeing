@@ -176,20 +176,20 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 
 **Practical limit:** you can answer only one grilling session at a time. Coding sessions run on their own, but keep to about three at once so their PRs don't conflict much. The "Touches" column shows which ones overlap.
 
-| Wave | ID | Model / effort | Needs you? | Touches |
-|---|---|---|---|---|
-| 1 | C0 | Sonnet 5.5 / low | yes: you merge each PR in the GitHub app | `docs/decisions.md`, `notify.py` |
-| 1 | C1 | Opus 5.5 / high | yes: grilling | `docs/decisions.md`, `CONTEXT.md` |
-| 1 | C5 | Sonnet 5.5 / high | no | `download/`, `cli.py` |
-| 1 | C8 | Sonnet 5.5 / high | no | new module, `cli.py` |
-| 1 | C9 | Opus 5.5 / high | no | new module |
-| 2 | C2 | Opus 5.5 / high | yes: grilling | `docs/decisions.md` |
-| 2 | C3 | Opus 5.5 / high | yes: approve the spec | issues, `docs/decisions.md` |
-| 2 | C6 | Sonnet 5.5 / high | no | `download/requests.py`, `configs/era5.yaml`, `cli.py` |
-| 2 | C7 | Sonnet 5.5 / high | no | `manifest.py`, `cli.py`, new module |
-| 3 | C4 | Opus 5.5 / medium | yes: approve the ticket list | issues, this file |
-| 3 | C10 | Opus 5.5 / high | yes: approve | issues, this file |
-| 3 | F1 | per ticket ("Suggested model" line) | per ticket | per ticket |
+| Wave | ID | Model / effort | Needs you? | Skills | Touches |
+|---|---|---|---|---|---|
+| 1 | C0 | Sonnet 5.5 / low | yes: you merge each PR in the GitHub app | code-review, resolving-merge-conflicts | `docs/decisions.md`, `notify.py` |
+| 1 | C1 | Opus 5.5 / high | yes: grilling | grilling, domain-modeling | `docs/decisions.md`, `CONTEXT.md` |
+| 1 | C5 | Sonnet 5.5 / high | no | tdd, code-review | `download/`, `cli.py` |
+| 1 | C8 | Sonnet 5.5 / high | no | tdd, code-review | new module, `cli.py` |
+| 1 | C9 | Opus 5.5 / high | no | codebase-design, tdd, code-review | new module |
+| 2 | C2 | Opus 5.5 / high | yes: grilling | grilling, domain-modeling | `docs/decisions.md` |
+| 2 | C3 | Opus 5.5 / high | yes: approve the spec | codebase-design, grilling, domain-modeling | issues, `docs/decisions.md` |
+| 2 | C6 | Sonnet 5.5 / high | no | tdd, code-review | `download/requests.py`, `configs/era5.yaml`, `cli.py` |
+| 2 | C7 | Sonnet 5.5 / high | no | tdd, code-review | `manifest.py`, `cli.py`, new module |
+| 3 | C4 | Opus 5.5 / medium | yes: approve the ticket list | codebase-design, writing-for-agents | issues, this file |
+| 3 | C10 | Opus 5.5 / high | yes: approve | grilling, domain-modeling, writing-for-agents | issues, this file |
+| 3 | F1 | per ticket ("Suggested model" line) | per ticket | per ticket | per ticket |
 
 ### CT order
 
@@ -201,17 +201,17 @@ Copernicus allows **one job at a time per account** (D39). So the items that use
 
 Items that don't use that slot can run alongside them: K5 uses its own time-series slot, and K6's cost estimates submit nothing.
 
-| ID | Depends on | Uses the CDS slot? | Model / effort |
-|---|---|---|---|
-| K1 | C0 for the restart part | no | you, or Sonnet 5.5 / low |
-| K2 | — | yes (running now) | Sonnet 5.5 / medium for the survey |
-| K3 | — | no | you |
-| K4 | K2 | **yes** | Sonnet 5.5 / high |
-| K5 | C5 | own slot | Sonnet 5.5 / medium |
-| K6 | C6, C7 | estimates only | Sonnet 5.5 / high |
-| K7 | K4, K6 | **yes** | Opus 5.5 / high (it measures several unknowns) |
-| K8 | C8 | no | Sonnet 5.5 / medium |
-| K9 | C10, C9 | no | Opus 5.5 / high; escalate a hard mismatch to Fable 5.2 / high |
+| ID | Depends on | Uses the CDS slot? | Model / effort | Skills |
+|---|---|---|---|---|
+| K1 | C0 for the restart part | no | you, or Sonnet 5.5 / low | `mattpocock-skills:wizard` if you want a step-by-step script for the restart; otherwise none |
+| K2 | — | yes (running now) | Sonnet 5.5 / medium for the survey | none (a survey and short report) |
+| K3 | — | no | you | `mattpocock-skills:wizard` to walk you through registering and saving the credentials file |
+| K4 | K2 | **yes** | Sonnet 5.5 / high | `mattpocock-skills:research` to write up what the measurement shows |
+| K5 | C5 | own slot | Sonnet 5.5 / medium | none (runs C5's command) |
+| K6 | C6, C7 | estimates only | Sonnet 5.5 / high | none (runs C6's and C7's commands, dry run first) |
+| K7 | K4, K6 | **yes** | Opus 5.5 / high (it measures several unknowns) | `mattpocock-skills:research` to write up what the test request measured |
+| K8 | C8 | no | Sonnet 5.5 / medium | none (runs C8's command) |
+| K9 | C10, C9 | no | Opus 5.5 / high; escalate a hard mismatch to Fable 5.2 / high | `mattpocock-skills:diagnosing-bugs` when a reproduction misses its tolerance |
 
 ## Model and effort guide
 
@@ -227,6 +227,26 @@ Relative API prices per million input/output tokens (cached 2026-11-03): Haiku 5
 | Haiku 5.5 | not recommended | — | Every session must follow AGENTS.md's strict data-safety and provenance rules. |
 
 These are judgment calls, not measurements. If a Sonnet session struggles, rerun the item on Opus.
+
+## Skills guide
+
+The Matt Pocock skills installed in these sessions, and what they're for here. Prompts name them as `mattpocock-skills:<name>`.
+
+| Skill | Use it for |
+|---|---|
+| `grilling` | Question-and-answer design sessions with Riley (decision tickets) |
+| `domain-modeling` | Glossary terms in `CONTEXT.md`, and decisions in `docs/decisions.md` (never `docs/adr/`) |
+| `codebase-design` | Shaping module interfaces before building, and cutting specs into tickets along module boundaries |
+| `tdd` | Building code test-first |
+| `code-review` | Reviewing a branch against `origin/dev` before opening its PR, or reviewing someone else's PR |
+| `diagnosing-bugs` | A failing test or a reproduction that misses its tolerance |
+| `research` | Writing up findings from primary sources, or from a measurement, as a Markdown note |
+| `prototype` | Throwaway prototypes that answer a design question |
+| `resolving-merge-conflicts` | Merging `dev` into a branch that conflicts |
+| `wizard` | A step-by-step script for something only Riley can do (logins, credentials) |
+| `writing-for-agents` | Writing prompts for new roadmap items, or editing `CLAUDE.md` |
+
+`to-spec`, `to-tickets`, `wayfinder` and `triage` appear in older notes but aren't installed in these sessions. Spec and ticket items write their issues directly, following `docs/agents/issue-tracker.md`.
 
 ## Reserved D-numbers
 
@@ -256,10 +276,12 @@ Every prompt starts with the same first line, which loads the session protocol. 
 
 ### C0. Land the open PRs #36–#40
 
-Sonnet 5.5, low effort. Needs you to merge.
+Sonnet 5.5, low effort. Needs you to merge. Skills: `mattpocock-skills:code-review` (PR #36's code), `mattpocock-skills:resolving-merge-conflicts` (each branch update).
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C0.
+
+Skills: use mattpocock-skills:code-review to review PR #36's code, and mattpocock-skills:resolving-merge-conflicts each time you merge dev into the next PR's branch.
 
 You are a cloud session on rrweller/Astro-seeing. Read AGENTS.md and CLAUDE.md. Never push to main.
 
@@ -275,14 +297,16 @@ Do not change any decision's content. If a conflict is more than an append, stop
 
 ### C1. Calibration design, ticket #15
 
-Opus 5.5, high effort. Needs you (grilling).
+Opus 5.5, high effort. Needs you (grilling). Skills: `mattpocock-skills:grilling`, `mattpocock-skills:domain-modeling`.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C1.
 
+Skills: run the session with mattpocock-skills:grilling, and use mattpocock-skills:domain-modeling for the glossary (CONTEXT.md) and the decision entry.
+
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md and docs/RESEARCH.md in full (§4.8 calibration, §6 targets). If D54 and D57 aren't on dev yet, read docs/decisions.md from branches planning/paranal-comparison-d54 (PR #38) and grill/7-reproductions (PR #39). Also read reports/validation_downloads.md and docs/research/seeing-measurements.md (branch research/seeing-measurements).
 
-Task: resolve ticket #15, "Calibration design: what's fitted, on which data, and what's held out", as a grilling session with Riley, using the grilling and domain-modeling skills. Claim the ticket. Work one question at a time, and recommend an answer with evidence for each. Cover at least:
+Task: resolve ticket #15, "Calibration design: what's fitted, on which data, and what's held out", as a grilling session with Riley. Claim the ticket. Work one question at a time, and recommend an answer with evidence for each. Cover at least:
 - which quantity is fitted (K in J or a seeing scale), and whether the free atmosphere and ground layer are fitted separately where MASS exists;
 - which data: ESO Paranal/La Silla DIMM+MASS 2021–2025 (stored ERA5: Chile area, night hours) and TMT 2006–2007 (5 sites; login pending, #14);
 - the hold-out: which years and/or sites, and why;
@@ -301,14 +325,16 @@ Verify any link before citing it. Say plainly when unsure.
 
 ### C2. Experiment designs, ticket #17
 
-Opus 5.5, high effort. Needs you (grilling).
+Opus 5.5, high effort. Needs you (grilling). Skills: `mattpocock-skills:grilling`, `mattpocock-skills:domain-modeling`.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C2.
 
+Skills: run the session with mattpocock-skills:grilling, and use mattpocock-skills:domain-modeling for the glossary (CONTEXT.md) and the decision entry.
+
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md (Phase 1 step 5 lists the experiments), CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md in full (§5 terrain method, §4.7 ground layer, §4.2 cloud), and docs/decisions.md entries D5, D6, D7, D19, D31, D36, D55, D57 and D58 if present (read unmerged ones from their open PR branches). Also read reports/cds_throughput_one_job.md for what downloads cost.
 
-Task: resolve ticket #17, "Experiment designs: sites, periods, metrics, and the downloads they need", as a grilling session with Riley (grilling and domain-modeling skills). Claim the ticket. The five experiments are:
+Task: resolve ticket #17, "Experiment designs: sites, periods, metrics, and the downloads they need", as a grilling session with Riley. Claim the ticket. The five experiments are:
 - pressure vs model levels;
 - terrain-aware vs cell average;
 - cloud above height vs total cloud, including the D6 overlap-rule check;
@@ -333,10 +359,12 @@ Verify links; say when unsure.
 
 ### C3. F1 spec
 
-Opus 5.5, high effort. Needs your approval.
+Opus 5.5, high effort. Needs your approval. Skills: `mattpocock-skills:codebase-design`, `mattpocock-skills:grilling` (for gaps only), `mattpocock-skills:domain-modeling`.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C3.
+
+Skills: use mattpocock-skills:codebase-design to shape the spec's modules and interfaces, mattpocock-skills:grilling only for real gaps in the decisions, and mattpocock-skills:domain-modeling for any new glossary terms. (There is no to-spec skill installed; write the spec issue yourself.)
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read:
 - AGENTS.md (forecast track milestones), CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md;
@@ -344,7 +372,7 @@ You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). W
 - map #20 and the research notes it links (branches research/forecast-sources, research/seeing-measurements, research/valley-fog);
 - the prototype on branch prototype/forecast-views.
 
-Task: write the F1 spec as a GitHub issue under map #20 (label runs-on:cloud; use the to-spec skill if available, otherwise follow docs/agents/issue-tracker.md). Put its link on your roadmap board line. The spec turns the decisions into buildable parts, each with interfaces and an acceptance test:
+Task: write the F1 spec as a GitHub issue under map #20 (label runs-on:cloud; follow docs/agents/issue-tracker.md). Put its link on your roadmap board line. The spec turns the decisions into buildable parts, each with interfaces and an acceptance test:
 - fetchers for GFS, ICON-EU, MEPS and IFS;
 - verification and the manifest tables;
 - physics reuse (both Cn² models, J above the observer, H̄);
@@ -362,18 +390,21 @@ Don't re-decide anything already decided. Where the decisions leave a real gap, 
 
 ### C4. F1 tickets
 
-Opus 5.5, medium effort. Needs your approval.
+Opus 5.5, medium effort. Needs your approval. Skills: `mattpocock-skills:codebase-design`, `mattpocock-skills:writing-for-agents` (for the new prompts).
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C4.
 
+Skills: use mattpocock-skills:codebase-design to cut tickets along module boundaries (so parallel tickets touch different files), and mattpocock-skills:writing-for-agents when writing the per-ticket prompts for docs/roadmap.md. (There is no to-tickets skill installed; create the issues yourself.)
+
 You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md, and the approved F1 spec issue under map #20 with its comments.
 
-Task: break the F1 spec into build tickets as sub-issues of map #20 (to-tickets skill if available; otherwise docs/agents/issue-tracker.md). Each ticket has:
+Task: break the F1 spec into build tickets as sub-issues of map #20 (follow docs/agents/issue-tracker.md). Each ticket has:
 - "Part of #20" and a "Blocked by:" line;
 - one runs-on label;
 - an acceptance test;
 - a "Suggested model:" line from the model guide in docs/roadmap.md (Sonnet 5.5 high for specified code; Opus 5.5 high for physics, the verdict rules and the Paranal statistics);
+- a "Suggested skills:" line from the skills guide in docs/roadmap.md (usually mattpocock-skills:tdd and mattpocock-skills:code-review for code);
 - a "Can run alongside:" line naming tickets that touch different files.
 
 Order them so a working end-to-end slice (one model, one place, page shows data) lands first. Show Riley the list for approval before creating the issues (set C4 to needs-you while you wait).
@@ -382,15 +413,17 @@ Then, in a PR into dev, replace roadmap item F1 with one item per ticket. Each i
 - an ID F1-1, F1-2, …;
 - a board line with the ticket link;
 - a diagram node, its edges and a class line followed by a %% --- spacer;
-- a section with model and effort and a short self-contained prompt that starts with this same first line and says "work ticket #N".
+- a section with model and effort, suggested skills, and a short self-contained prompt that starts with this same first line, then a "Skills:" line, and says "work ticket #N".
 ```
 
 ### C5. Surface-pressure point fetcher for Haslebacher (b)
 
-Sonnet 5.5, high effort.
+Sonnet 5.5, high effort. Skills: `mattpocock-skills:tdd`, then `mattpocock-skills:code-review` before the PR.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C5.
+
+Skills: build it test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds.
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §3.4 and §7 (the single-level time-series product), and decisions D2, D25, D29, D39 and D57 item 4 (if D57 isn't on dev, read it from branch grill/7-reproductions, PR #39).
 
@@ -410,10 +443,12 @@ Don't contact the CDS from this session. Log non-trivial choices as D62. Run the
 
 ### C6. Multi-month surface requests and per-kind planning rates
 
-Sonnet 5.5, high effort.
+Sonnet 5.5, high effort. Skills: `mattpocock-skills:tdd`, then `mattpocock-skills:code-review` before the PR.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C6.
+
+Skills: build it test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds.
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, reports/cds_throughput_one_job.md, and decisions D16, D23, D39, D40 and D55 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
 
@@ -431,10 +466,12 @@ Pressure-level requests stay unchanged. Tests: month boundaries, leap years, non
 
 ### C7. Code to move the kept raw GRIB from `/staging` to the NAS
 
-Sonnet 5.5, high effort.
+Sonnet 5.5, high effort. Skills: `mattpocock-skills:tdd`, then `mattpocock-skills:code-review` before the PR.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C7.
+
+Skills: build it test-first with mattpocock-skills:tdd (write the crash-recovery and hung-filesystem tests first), then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. This code deletes files, so take the review seriously.
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md in full (data-safety rules), CLAUDE.md, docs/agents/issue-tracker.md, and decisions D10, D11, D12, D50 and D55 items 6–7 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
 
@@ -454,10 +491,12 @@ Tests with temp directories and a fake slow or hung filesystem. Log non-trivial 
 
 ### C8. ESO seeing-monitor fetcher
 
-Sonnet 5.5, high effort.
+Sonnet 5.5, high effort. Skills: `mattpocock-skills:tdd`, then `mattpocock-skills:code-review` before the PR.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C8.
+
+Skills: build it test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds.
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §6.5, decisions D28, D44 and D54 item 8 (if D54 isn't on dev, read it from branch planning/paranal-comparison-d54, PR #38), and docs/research/seeing-measurements.md on branch research/seeing-measurements (ESO query details).
 
@@ -475,10 +514,12 @@ If this session can reach archive.eso.org, save one small real response as a tes
 
 ### C9. Site time-series reader for the reproductions
 
-Opus 5.5, high effort.
+Opus 5.5, high effort. Skills: `mattpocock-skills:codebase-design`, `mattpocock-skills:tdd`, then `mattpocock-skills:code-review` before the PR.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C9.
+
+Skills: design the reader's interface with mattpocock-skills:codebase-design first (one deep module the four notebooks call), build it with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds.
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md in full, decisions D3, D5, D8, D10, D18 and D57 (if D57 isn't on dev, read it from branch grill/7-reproductions, PR #39), and reports/validation_downloads.md §1 (store layouts: grid, and area cells).
 
@@ -503,10 +544,12 @@ Build synthetic test stores with the existing synthetic helpers. Known-answer te
 
 ### C10. Reproduction spec and CT tickets
 
-Opus 5.5, high effort. Needs your approval.
+Opus 5.5, high effort. Needs your approval. Skills: `mattpocock-skills:grilling` (for the open question), `mattpocock-skills:domain-modeling`, `mattpocock-skills:writing-for-agents` (for the new prompts).
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C10.
+
+Skills: use mattpocock-skills:grilling for the open question about missed tolerances, mattpocock-skills:domain-modeling for terms and the decision entry, and mattpocock-skills:writing-for-agents when writing the per-ticket prompts for docs/roadmap.md. (There are no to-spec or to-tickets skills installed; write the spec and the issues yourself.)
 
 You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read:
 - AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md, docs/RESEARCH.md in full;
@@ -514,18 +557,18 @@ You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read:
 - the research notes on branches research/os2018-nights and research/bi2023-altitudes;
 - the merged code from roadmap items C9 (site reader) and C5 (surface-pressure fetcher).
 
-Task: write the reproduction spec as an issue under map #6, then its tickets (to-spec and to-tickets skills if available; otherwise docs/agents/issue-tracker.md).
+Task: write the reproduction spec as an issue under map #6, then its tickets (follow docs/agents/issue-tracker.md).
 - Create one runs-on:ct ticket per paper, in D57's order: Haslebacher (a) Paranal, Priyatikanto, Bi, O&S. Add Haslebacher (b) (Table 4 levels) and Haslebacher (c) (the written account).
 - Each ticket states:
   - the variant grid fixed before running;
   - the gating variant and its tolerance (D19);
   - the input store ids;
   - the outputs: notebook, reports/repro_<paper>.md, golden JSON;
-  - "Suggested model: Opus 5.5 high".
+  - "Suggested model: Opus 5.5 high" and "Suggested skills: mattpocock-skills:diagnosing-bugs if a result misses its tolerance, mattpocock-skills:research for the written account".
 - Reuse existing tickets rather than duplicating them.
 - Include what happens when a reproduction misses its tolerance, as an open question for Riley with a recommendation (map #6 lists it as unspecified).
 
-Show Riley the outline and ticket list for approval (C10 to needs-you while you wait). Record decisions as D61. In a PR into dev, replace roadmap item K9 with one item per ticket (K9a, K9b, …), each with a board line, diagram node, edges, a class line followed by a %% --- spacer, and a short prompt that starts with this same first line.
+Show Riley the outline and ticket list for approval (C10 to needs-you while you wait). Record decisions as D61. In a PR into dev, replace roadmap item K9 with one item per ticket (K9a, K9b, …), each with a board line, diagram node, edges, a class line followed by a %% --- spacer, and a short prompt that starts with this same first line, then a "Skills:" line.
 ```
 
 ### CT prompt template (K2, K4–K9)
@@ -536,6 +579,8 @@ Model and effort are in the CT order table above. Replace `<ID>` and the task li
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is <ID>.
 
 You are a Claude Code session on CT 350 (/home/astro-seeing), with /data, /staging, the manifest and CDS access. Read AGENTS.md, CLAUDE.md, docs/ct_runbook.md and docs/handoff_pivot.md §1. Run git fetch origin and check out dev at origin/dev. Check `pixi run astro status` and `systemctl status astro-boxes`: only one CDS job may be queued or running per account (D39), and nothing may bypass that gate.
+
+Skills: <the skills listed for this item in the CT order table>.
 
 Task: <the item's line from the status board, or "work ticket #N">. Follow the ticket's acceptance test if there is one. Data-safety rules apply in full:
 - never overwrite or delete under /data without asking Riley;
