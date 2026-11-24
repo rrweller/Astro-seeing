@@ -619,6 +619,22 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   10. **Monitoring:** each tick fetches the served `latest.json` over HTTP. If that fails or differs from the file just written, a fifth high-priority alert is added to D51 item 9: "page not being served".
 - **Who:** Riley (all items, agreed in a grilling session on ticket #24); the agent proposed each and drafted the wording.
 
+## 2026-11-16 — Cloud session: stall alert (ticket #34)
+
+### D53. No stall alert while a request is at the CDS (ticket #34; amends D32, D33)
+- **Evidence (CT, 30 Oct–12 Nov 2026, from the ticket; manifest, `logs/notify_watch.log`, PR #33):**
+  - 40 "Problem" alerts since 30 Oct, all stall alerts, none a real problem.
+  - Under D39 (one CDS job at a time) the gap between downloads is one queue wait plus its run: pressure-level queue wait median 4.3 h, p90 5.5 h, max 6.75 h. Of the 108 gaps over 30 min, 41 were 3 h or longer.
+  - A fixed threshold would have needed 7 h to stay silent, and the wait follows the CDS's load (it doubled overnight on 1–2 Nov), so a tuned number may be wrong next week.
+- **Options:** A: raise `stall_hours` (e.g. 8 h); a real stall then takes up to 8 h to report, and the number needs re-tuning. B: skip the stall alert while any request is `submitted`.
+- **Choice (Riley, 2026-11-12): B.**
+  1. `check_once` sends no stall alert while any request is in state `submitted`. `stall_hours` stays 3 h and applies when work is pending and nothing is at the CDS.
+  2. The 12 h "stuck at the CDS" alert (D33) and the "loop stopped" alert are unchanged.
+  3. The stall text names the next check: `systemctl status astro-boxes` and `tail logs/run_boxes.log`.
+  - **Cost:** if the loop hangs while a job is at the CDS (say an NFS hang during the download), it is reported after 12 h instead of 3 h. A crash is still reported at once by "loop stopped".
+  - **Not changed:** the D39 backoff after a rejection has nothing at the CDS, so a stall alert can still fire there (`docs/handoff_pivot.md` §6).
+- **Who:** Riley (option B, 2026-11-12); the agent implemented it and drafted the wording.
+
 
 ## 2026-11-24 — Cloud session: a living roadmap
 
