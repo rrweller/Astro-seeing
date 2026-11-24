@@ -102,6 +102,7 @@ flowchart LR
   C1 --> C11
   C2 --> C11
   C8 --> C11
+  C9 --> C11
   C0 --> K1
   K2 --> K4 --> K7
   C5 --> K5
@@ -613,7 +614,7 @@ The Blocked by line in each ticket body is the source of truth (docs/agents/issu
 
 ### C11. Calibration spec and CT tickets
 
-Opus 5.5, high effort. Needs your approval. Like C10: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C1 (D58), C2 (D59, the ground-layer experiment is calibration's stage 2) and C8 (the ESO fetcher the data comes from).
+Opus 5.5, high effort. Needs your approval. Like C10: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C1 (D58), C2 (D59, the ground-layer experiment is calibration's stage 2), C8 (the ESO fetcher the data comes from) and C9 (the site reader the matching code uses).
 
 ```text
 /mattpocock-skills:to-spec Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C11.
