@@ -18,7 +18,7 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C0` · **in-progress** · cloud · Land the open PRs #36–#40 into `dev` (needs you to merge each) · [#36](https://github.com/rrweller/Astro-seeing/pull/36) [#37](https://github.com/rrweller/Astro-seeing/pull/37) [#38](https://github.com/rrweller/Astro-seeing/pull/38) [#39](https://github.com/rrweller/Astro-seeing/pull/39) [#40](https://github.com/rrweller/Astro-seeing/pull/40)
+- `C0` · **needs-you** · cloud · Land the open PRs #36–#40 into `dev` (needs you: merge #36) · [#36](https://github.com/rrweller/Astro-seeing/pull/36) [#37](https://github.com/rrweller/Astro-seeing/pull/37) [#38](https://github.com/rrweller/Astro-seeing/pull/38) [#39](https://github.com/rrweller/Astro-seeing/pull/39) [#40](https://github.com/rrweller/Astro-seeing/pull/40)
 
 - `C1` · **ready** · cloud · Calibration design (grilling, needs you) · [#15](https://github.com/rrweller/Astro-seeing/issues/15)
 
@@ -122,7 +122,7 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C0 in-progress
+  class C0 needs-you
   %% ---
   class C1 ready
   %% ---
