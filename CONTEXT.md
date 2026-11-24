@@ -58,6 +58,10 @@ _Avoid_: cycle, forecast (for this)
 The fraction of the sky covered by cloud at any height, as a forecast model reports it. It is not the sum of low, mid and high cloud, because layers overlap.
 _Avoid_: cloud cover (unqualified), tcc (outside code)
 
+**Overlap rule**:
+How the cloud fractions on separate levels are combined into the cloud cover above a height, for example maximum-random or exponential-random overlap.
+_Avoid_: overlap assumption, cloud scheme
+
 **Cloud class**:
 One of clear, some cloud or cloudy, given to one forecast model's hour from its total cloud.
 _Avoid_: cloud category, sky state
@@ -129,3 +133,9 @@ _Avoid_: lock, final fit
 **Matched hour**:
 An hour that has both a model value and a measured hour value with enough samples in its window; only matched hours are scored.
 _Avoid_: paired hour, valid hour
+
+### Experiments
+
+**Switch rule**:
+The result, written down before an experiment runs, that would make it recommend a change of method; the recommendation still goes to Riley.
+_Avoid_: success criterion, threshold (alone)
