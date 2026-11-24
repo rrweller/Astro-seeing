@@ -301,6 +301,8 @@ J ∝ K   ⇒   ε ∝ K^(3/5)   ⇒   K_new = K_old · (ε_observed / ε_model)
 - **How to fit:** on nightly medians, with held-out years or sites.
   - Report bias, RMSE and correlation.
   - Where MASS data exist, fit the free atmosphere and the ground layer separately.
+- **Design fixed in D58** (2026-11-24): what's fitted, the data, the fit and held-out sets, the matching rules and the acceptance checks.
+- **La Silla DIMM gap:** the ESO archive returns no La Silla DIMM rows for 2024-01-01 → 2025-04-30 (probed 2026-11-24, D58).
 
 ### 4.9 Known-answer values (λ = 500 nm, zenith unless noted)
 | Test | Expected |

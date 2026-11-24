@@ -103,3 +103,29 @@ _Avoid_: upper seeing, high-altitude seeing
 **Effective turbulence altitude**:
 The height above the observer of the turbulence, averaged with each layer weighted by its Cₙ² and by height to the 5/3 power (written H̄); the height that sets the isoplanatic angle.
 _Avoid_: most turbulent layer, turbulence height, jet-stream layer
+
+**MASS seeing**:
+The seeing a MASS instrument reports, compared with our seeing above the observer plus the split height that source states (1 km for ESO, 0.5 km for TMT). Only at a 1 km split is it free-atmosphere seeing.
+_Avoid_: free-atmosphere seeing (for a TMT value), MASS free atmosphere
+
+**Ground-layer term**:
+The part of the calibrated turbulence integral added on top of the calibrated model column, set by the chosen ground-layer option; it does not change with the observer's height within a cell.
+_Avoid_: ground-layer correction, boundary-layer term
+
+### Calibration
+
+**Fit set**:
+The site-nights whose measurements may set a calibration number or choose between options.
+_Avoid_: training set, calibration data (alone)
+
+**Held-out set**:
+The site-nights never used to fit or choose anything, scored once after the freeze.
+_Avoid_: test set, validation set (validation already names the paper checks and validation boxes)
+
+**Freeze**:
+Committing the calibration numbers and the chosen options before the held-out set is scored.
+_Avoid_: lock, final fit
+
+**Matched hour**:
+An hour that has both a model value and a measured hour value with enough samples in its window; only matched hours are scored.
+_Avoid_: paired hour, valid hour
