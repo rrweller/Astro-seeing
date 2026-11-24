@@ -42,6 +42,8 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C11` · **blocked** · cloud · Calibration spec and CT tickets (needs your approval) · ticket: none yet
 
+- `C12` · **blocked** · cloud · Experiment spec and CT tickets (needs your approval) · ticket: none yet
+
 - `F1` · **blocked** · cloud + CT · F1 build tickets (C4 lists them here) · ticket: none yet
 
 - `K1` · **needs-you** · CT · Recover the ntfy URL; pull `dev` and restart the notify watcher · needs you: be at home
@@ -62,6 +64,10 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `K9` · **blocked** · CT · Reproduction notebooks, one per paper · ticket: none yet
 
+- `K10` · **blocked** · CT · Experiment notebooks, one per experiment (C12 lists them) · ticket: none yet
+
+- `K11` · **blocked** · CT · Model-level download, Paranal 2023 (~1.70 M fields, after K4 and your [ASK]) · ticket: none yet
+
 ## Dependency diagram
 
 Colors show each item's state (legend at the bottom). The arrows show what has to finish first.
@@ -81,6 +87,7 @@ flowchart LR
     C9["C9 · Site time-series reader"]
     C10["C10 · Reproduction spec"]
     C11["C11 · Calibration spec"]
+    C12["C12 · Experiment spec"]
     F1["F1 · F1 build tickets"]
   end
   subgraph ct["CT, at home"]
@@ -93,6 +100,8 @@ flowchart LR
     K7["K7 · First 104 GB pilot request"]
     K8["K8 · ESO 2021–2025 fetch"]
     K9["K9 · Reproduction notebooks"]
+    K10["K10 · Experiment notebooks"]
+    K11["K11 · Model-level download"]
   end
   C3 --> C4 --> F1
   C8 --> F1
@@ -110,6 +119,14 @@ flowchart LR
   C7 --> K6 --> K7
   C8 --> K8
   C10 --> K9
+  C2 --> C12
+  C5 --> C12
+  C8 --> C12
+  C9 --> C12
+  C12 --> K10
+  C11 --> K10
+  K4 --> K11
+  K7 --> K11
   subgraph legend["Legend"]
     direction LR
     Ldone["done"]:::done
@@ -153,6 +170,8 @@ flowchart LR
   %% ---
   class C11 blocked
   %% ---
+  class C12 blocked
+  %% ---
   class F1 blocked
   %% ---
   class K1 needsyou
@@ -172,6 +191,10 @@ flowchart LR
   class K8 blocked
   %% ---
   class K9 blocked
+  %% ---
+  class K10 blocked
+  %% ---
+  class K11 blocked
   %% ---
 ```
 
@@ -201,6 +224,7 @@ The Skills column puts the slash command the prompt starts with in **bold**; the
 | 3 | C4 | Opus 5.5 / medium | yes: approve the ticket list | **/to-tickets**, codebase-design, writing-for-agents | issues, this file |
 | 3 | C10 | Opus 5.5 / high | yes: approve | **/to-spec**, then you send **/to-tickets**; grilling, domain-modeling, writing-for-agents | issues, this file |
 | 3 | C11 | Opus 5.5 / high | yes: approve | **/to-spec**, then you send **/to-tickets**; codebase-design, domain-modeling, writing-for-agents | issues, this file |
+| 3 | C12 | Opus 5.5 / high | yes: approve | **/to-spec**, then you send **/to-tickets**; codebase-design, domain-modeling, writing-for-agents | issues, this file |
 | 3 | F1 | per ticket ("Suggested model" line) | per ticket | per ticket (usually **/implement**) | per ticket |
 
 ### CT order
@@ -209,9 +233,10 @@ Copernicus allows **one job at a time per account** (D39). So the items that use
 
 1. K2 (the TMT queue, running now);
 2. K4;
-3. K7.
+3. K7;
+4. K11 (only after your [ASK] on K4's numbers, D59).
 
-Items that don't use that slot can run alongside them: K5 uses its own time-series slot, and K6's cost estimates submit nothing.
+Items that don't use that slot can run alongside them: K5 uses its own time-series slot, and K6's cost estimates submit nothing. K10's small fetches (the time-series product, GLO-30 tiles from AWS, ESO rows) don't use it either.
 
 | ID | Depends on | Uses the CDS slot? | Model / effort | Skills |
 |---|---|---|---|---|
@@ -224,6 +249,8 @@ Items that don't use that slot can run alongside them: K5 uses its own time-seri
 | K7 | K4, K6 | **yes** | Opus 5.5 / high (it measures several unknowns) | `mattpocock-skills:research` to write up what the test request measured |
 | K8 | C8 | no | Sonnet 5.5 / medium | none (runs C8's command) |
 | K9 | C10, C9 | no | Opus 5.5 / high; escalate a hard mismatch to Fable 5.2 / high | **`/mattpocock-skills:implement`** per ticket; `mattpocock-skills:diagnosing-bugs` when a reproduction misses its tolerance |
+| K10 | C12, C11 (stage 1, for the ground-layer part) | no (time-series slot, AWS, ESO only) | Opus 5.5 / high | **`/mattpocock-skills:implement`** per ticket; `mattpocock-skills:research` for the LHATPRO clear flag |
+| K11 | K4, K7, and your [ASK] on the size | **yes** | Sonnet 5.5 / high | `mattpocock-skills:research` to write up what the download measured |
 
 The CT items rarely need a slash command, because their work is running commands that cloud items already built. Whether the Matt Pocock plugin is installed in Claude Code on the CT hasn't been checked. Before the first CT item that uses a skill, run `/mattpocock-skills:ask-matt` there: if the CT answers "unknown command", the plugin needs installing.
 
@@ -300,6 +327,7 @@ Parallel sessions would otherwise take the same number.
 | D65 | C8 |
 | D66 | C9 |
 | D68 | C11 |
+| D69 | C12 |
 
 - D67 is this roadmap process.
 - A session needing more than one number adds letters (D62a, D62b, …).
@@ -635,9 +663,36 @@ Show Riley the outline and ticket list for approval (C11 to needs-you while you 
 The Blocked by line in each ticket body is the source of truth (docs/agents/issue-tracker.md). Don't close or change map #6 except to add the spec and tickets as sub-issues.
 ```
 
-### CT prompt template (K2, K4–K9)
+### C12. Experiment spec and CT tickets
+
+Opus 5.5, high effort. Needs your approval. Like C10 and C11: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C2 (D59), C5 and C8 (the fetchers its tickets extend) and C9 (the site reader every experiment uses).
+
+```text
+/mattpocock-skills:to-spec Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C12.
+
+Skills: this message starts to-spec. Write the experiment spec in its template and check its seams with Riley. A session can't start to-tickets itself, so once Riley approves the spec, ask Riley to send "/mattpocock-skills:to-tickets #<spec issue number>" as the next message. Use mattpocock-skills:codebase-design for the new fetchers' interfaces, mattpocock-skills:domain-modeling for terms (CONTEXT.md: Switch rule, Overlap rule) and the decision entry, and mattpocock-skills:writing-for-agents for the per-ticket prompts.
+
+You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md and docs/RESEARCH.md in full; decisions D5, D6, D7, D19, D57, D58 and D59; src/astroseeing/physics/ (cloud.py, groundlayer.py, integrate.py); and the merged code from C5 (point fetcher), C8 (ESO fetcher) and C9 (site reader).
+
+Task: write the spec for the five experiments of D59 as an issue under map #6, then its tickets (follow docs/agents/issue-tracker.md). Each experiment's ticket states D59's sites, periods, metric and switch rule, its input store ids, and its outputs (notebook, reports/exp_<name>.md). At least:
+- runs-on:cloud: extend C5's point fetcher from sp to sp, 2t and tcc (D59 item 5), against a fake backend, with tests;
+- runs-on:cloud: a GLO-30 tile fetcher for a list of sites (public AWS bucket, anonymous; checksums; missing-tile check; RESEARCH §7), with tests;
+- runs-on:cloud: the exponential-random overlap rule with a decorrelation length, added to physics/cloud.py with known-answer and property tests (D59 item 6);
+- runs-on:ct: fetch sp, 2t, tcc at the Chile sites 2021–2025 (time-series slot); fetch the GLO-30 tiles;
+- runs-on:ct: ESO LHATPRO IR rows for 2021, 2023, 2025 and the clear/cloudy flag research step (it must reproduce Kerber et al. 2014's ~60% cloud-free nights first);
+- runs-on:ct, one per experiment: D6 overlap check; hourly vs 3-hourly; terrain-aware vs cell average; ground layer (shared with C11's stage-2 ticket: reuse it if it exists, never duplicate); cloud above height vs observations; pressure vs model levels (blocked by K11).
+Put D59 item 8's order into the Blocked by lines.
+
+Show Riley the outline and ticket list for approval (C12 to needs-you while you wait). Record any decisions as D69. In a PR into dev, replace roadmap item K10 with one item per CT ticket (K10a, K10b, …), each with a board line, diagram node, edges, a class line followed by a %% --- spacer, and a short prompt starting with "/mattpocock-skills:implement" followed on the same line by this prompt's standard first sentence (with the new ID), then a "Skills:" line. Add the cloud tickets as cloud roadmap items (next free C numbers) the same way.
+
+The Blocked by line in each ticket body is the source of truth (docs/agents/issue-tracker.md). Don't close or change map #6 except to add the spec and tickets as sub-issues.
+```
+
+### CT prompt template (K2, K4–K11)
 
 Model, effort and skills are in the CT order table above. Replace `<ID>` and the task line. If the item's skills start with a **bold** slash command (K9's tickets: `/mattpocock-skills:implement`), put it before the first word, on the same line; otherwise delete `<slash command>`.
+
+K11's task line: "Roadmap item K11, D59 item 2: the model-level (ERA5 complete) download for the Paranal 5×5 box, 2023, 23–11 UTC, levels 49–137 of t, q, u, v plus lnsp and z on level 1. Before planning anything, check that Riley has approved the size in an [ASK] (asked on ticket #16 once K4 reports, with the size recomputed from K4's measurements); if not, stop and set K11 to needs-you. Plan requests at the cost limit K4 measured, queue them behind K7 under the D39 gate, verify and ingest as validation-box stores."
 
 ```text
 <slash command> Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is <ID>.
