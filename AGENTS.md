@@ -82,11 +82,12 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 - **Source of truth:** if `docs/RESEARCH.md` disagrees with a paper PDF, the PDF wins. Fix the note, log it, and tell Riley.
 
 **Data safety**
-- **Downloads:** GRIB, day-sized requests, each tracked in the SQLite manifest (request → file → checksum → verification → ingest). Downloads must be resumable and idempotent.
+- **Downloads:** GRIB, each request sized as below and tracked in the SQLite manifest (request → file → checksum → verification → ingest). Downloads must be resumable and idempotent.
   - **One CDS job at a time:** at most one request queued or running per account, across all datasets (D39; ECMWF asks for sequential requests and may disable accounts that keep sending invalid ones, forum.ecmwf.int/t/15481). Raising it needs Riley's OK. After a rejection, back off; after repeated rejections, stop and alert.
   - **Validation boxes:** month-sized requests, split to the CDS cost limit (D16, D23). The limits (60,000 fields for pressure levels and 121,000 for single levels, measured 2026-09-27) come from `configs/era5.yaml`. The CDS changes them with its workload (forum.ecmwf.int/t/15337), so re-check before a campaign.
   - **Restarting after a pause:** read the CDS forum announcements, then submit one request and check that it's accepted before queuing more.
-  - Global and regional runs stay one day per request unless gate 1 changes it.
+  - **Global runs (D55):** one campaign serves phases 2 and 3; there are no separate regional downloads. Pressure levels go in half-monthly requests (at most 16 days, ~104 GB); single levels one month per request, or up to 3 months once the cost check in D55 has passed. A smaller size is fine; a larger one needs Riley's OK. Check each size with the CDS's cost estimate before a campaign.
+  - **One large request on `/staging` at a time:** download → verify → ingest → verify the Zarr → delete the raw GRIB, then download the next. The next request is still submitted to the CDS while this happens (D39).
 - **Verify before ingest:** check field count, grid, levels, times, and fill/NaN counts. Delete a raw GRIB only after its ingested Zarr data has been verified.
 - **What gets stored:** only land cells (with the 1 km buffer) and night hours (Sun below −12°). Validation boxes keep all hours, except areas used only for night-time comparisons, which may be night-only (D31).
 - **Forecast track:** download only the fields a run needs, into `/staging`. Delete raw forecast files as soon as their derived values are computed and verified; `/data` keeps computed values only, under the retention in D45. The night mask is a historical-track rule: forecasts keep every hour for their area (D43).
@@ -180,9 +181,9 @@ Each milestone is approved by Riley before the next starts [ASK].
 
 ### Phase 2: viewer and regional runs
 
-1. **Regional data.** About 20°×20° each, 2021–2025:
-   - Regions: Tibetan Plateau/Qinghai, Atacama, SW USA/Baja, Hawaii, Canaries/Iberia, South Africa, SE Australia, Timau/Nusa Tenggara.
-   - Pressure levels (with `cc`) and single levels, hourly unless phase 1 showed 3-hourly is enough. [ASK] if over 50 GB.
+1. **Regional data: a global pilot year (D55).** Global, hourly, 2023, pressure levels (with `cc`) and single levels, from the CDS. The regions below are cut from it at ingest; they are not downloaded separately. [ASK] before the pilot year starts (~2.4 TB of raw GRIB over its run, one request on `/staging` at a time).
+   - Regions, about 20°×20° each: Tibetan Plateau/Qinghai, Atacama, SW USA/Baja, Hawaii, Canaries/Iberia, South Africa, SE Australia, Timau/Nusa Tenggara.
+   - The NCAR equivalence test (D55) runs alongside, without blocking anything.
 2. **Terrain.** GLO-30 for the regions; per-cell terrain statistics; a display terrain pyramid (measure its size at each zoom).
 3. **Products.** Nightly height tables and aggregates; component layers: dark hours, clear nights, median seeing, best month.
 4. **Viewer.**
@@ -190,16 +191,16 @@ Each milestone is approved by Riley before the next starts [ASK].
    - Static hosting, threshold toggles, click-to-inspect, attributions.
 5. **Checks.** No seams at cell or region edges; seasonal patterns physically sensible; phase 1 numbers unchanged; NAS budget worked out for phase 3.
 
-**Gate 2** (`reports/phase2.md`): a demo plus numbers, and a recommendation on cadence (hourly or 3-hourly) and number of years for phase 3. [ASK]
+**Gate 2** (`reports/phase2.md`): a demo plus numbers, and a recommendation on cadence (hourly or 3-hourly) and number of years for phase 3. [ASK] The pilot year is hourly, so a 3-hourly choice means subsetting it, not downloading again.
 
 ### Phase 3: global run
 
-- **Downloader:** a resumable service fetching one global day per request, then verify → ingest → delete raw. There's no data cap, but respect CDS etiquette and concurrency limits.
+- **Downloader:** a resumable service fetching global requests sized as in D55 (the remaining years after gate 2), then verify → ingest → delete raw. It keeps polling the CDS while an ingest runs. There's no data cap, but respect CDS etiquette and concurrency limits.
 - **Terrain:** process GLO-30 globally, streamed tile by tile, keeping only derived products.
 - **Products:** physics, nightly tables, aggregates, tiles.
 - **Done when:**
   - every day is present and verified;
-  - the phase 2 regions match the global run cell for cell;
+  - the pilot year's products are unchanged in the global run (same requests, same code), and the regions show no seams;
   - spot checks against Open-Meteo's ERA5 agree;
   - golden tests pass;
   - the site builds reproducibly from a clean checkout.

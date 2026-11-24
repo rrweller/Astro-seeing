@@ -13,3 +13,7 @@ The five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready
 ### Domain docs
 
 Single-context. The glossary is `CONTEXT.md` at the root, created when first needed. Decisions go in `docs/decisions.md` (D-numbers) only, never in `docs/adr/`. See `docs/agents/domain.md`.
+
+### Roadmap and session handoff
+
+`docs/roadmap.md` on `dev` is Riley's single source for what runs next, where, and with which prompt. Every session that works on a roadmap item, ticket or PR reads `docs/agents/session-handoff.md` first and follows it: claim the item at the start, keep its status current, and mark it done when its PR merges (D67).
