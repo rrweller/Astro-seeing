@@ -22,7 +22,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C1` · **done** · cloud · Calibration design (grilling, needs you) · [#15](https://github.com/rrweller/Astro-seeing/issues/15) [#44](https://github.com/rrweller/Astro-seeing/pull/44)
 
-- `C2` · **ready** · cloud · Experiment designs (grilling, needs you) · [#17](https://github.com/rrweller/Astro-seeing/issues/17)
+- `C2` · **in-progress** · cloud · Experiment designs (grilling, needs you) · [#17](https://github.com/rrweller/Astro-seeing/issues/17)
 
 - `C3` · **ready** · cloud · F1 spec (needs your approval) · ticket: none yet
 
@@ -133,7 +133,7 @@ flowchart LR
   %% ---
   class C1 done
   %% ---
-  class C2 ready
+  class C2 inprogress
   %% ---
   class C3 ready
   %% ---
