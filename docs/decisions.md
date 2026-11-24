@@ -634,3 +634,21 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - **Cost:** if the loop hangs while a job is at the CDS (say an NFS hang during the download), it is reported after 12 h instead of 3 h. A crash is still reported at once by "loop stopped".
   - **Not changed:** the D39 backoff after a rejection has nothing at the CDS, so a stall alert can still fire there (`docs/handoff_pivot.md` §6).
 - **Who:** Riley (option B, 2026-11-12); the agent implemented it and drafted the wording.
+
+
+## 2026-11-24 — Cloud session: a living roadmap
+
+### D67. `docs/roadmap.md` is the single source for work order, with status commits straight to `dev`
+- **Context:** Riley works through many parallel cloud sessions and CT sessions, and asked for one document showing which item runs next, where it runs, which model and effort to use, and the prompt that starts it, kept current by the sessions themselves.
+- **Options (how status is updated):**
+  - (a) in each session's PR: `dev` shows stale status until Riley merges, and two PRs editing status lines conflict;
+  - (b) in GitHub issues only: no single document, and items without tickets have no status;
+  - (c) status-only commits straight to `dev` for `docs/roadmap.md`'s status lines, with everything else through PRs.
+- **Choice: (c).**
+  - Each item's status is one board line plus one Mermaid `class` line, each with a spacer line so concurrent changes merge cleanly.
+  - States: `done`, `review`, `in-progress`, `ready`, `needs-you`, `blocked`.
+  - Every session claims its item at the start, sweeps stale statuses, sets `review` when its PR opens, and `done` when it merges.
+  - The protocol is `docs/agents/session-handoff.md`, linked from `CLAUDE.md`.
+  - Status commits touch only `docs/roadmap.md`, are never force-pushed, and decide nothing: [ASK] items still go to Riley.
+- **Reserved numbers:** D58–D66 are reserved for roadmap items C1–C10 (table in `docs/roadmap.md`) so parallel sessions don't collide.
+- **Who:** Riley asked for the living roadmap, the handoff document and the colored status diagram (2026-11-24); the agent proposed status commits to `dev` as the mechanism.
