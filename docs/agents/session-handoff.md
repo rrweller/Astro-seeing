@@ -59,7 +59,8 @@ Cloud sessions without `git push` rights to `dev` can make the same edit with th
   - a board line;
   - a diagram node and its edges;
   - a `class` line followed by a `%% ---` spacer;
-  - its section with dependencies, model and effort, suggested skills (from the roadmap's skills guide), and a self-contained prompt that starts with the same first line as the existing prompts, followed by a `Skills:` line.
+  - its section with dependencies, model and effort, suggested skills (from the roadmap's skills guide), and a self-contained prompt that starts with the same first sentence as the existing prompts, followed by a `Skills:` line.
+  - If the item's main workflow is a **slash-command skill** (`grill-with-docs`, `to-spec`, `to-tickets`, `implement`, …; see the roadmap's skills guide), the prompt starts with that command on the same line as the first sentence, for example `/mattpocock-skills:implement Read docs/agents/session-handoff.md …`. Only Riley can start these skills, by sending the command, so a prompt that doesn't start with one can't use them. Use at most one per prompt. If an item needs a second one (C10's `to-tickets`), the prompt tells the session to ask Riley to send it as a later message.
   
   New lines don't conflict with other sessions' status commits. A new item starts as `blocked` or `ready`.
 - If you find the roadmap's **order or dependencies** are wrong, fix them in your PR and say so in the PR description.
