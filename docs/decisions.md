@@ -899,3 +899,19 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - Status commits touch only `docs/roadmap.md`, are never force-pushed, and decide nothing: [ASK] items still go to Riley.
 - **Reserved numbers:** D58–D66 are reserved for roadmap items C1–C10 (table in `docs/roadmap.md`) so parallel sessions don't collide.
 - **Who:** Riley asked for the living roadmap, the handoff document and the colored status diagram (2026-11-24); the agent proposed status commits to `dev` as the mechanism.
+
+## 2026-11-24 — Cloud session: finished items leave the roadmap
+
+### D70. Finished roadmap items are deleted, not marked `done`; the model, effort and skills guides go
+- **Context:** Riley asked that tickets remove their listing from `docs/roadmap.md` when they're complete, and said the model and effort guidance and the skills guide aren't needed (2026-11-24). This amends D67.
+- **Options (when the entry is deleted):**
+  - (a) in the item's own PR: the merge deletes it, but its `review` status disappears from `dev` only at merge, and every PR then edits the board;
+  - (b) by a direct commit to `dev` right after the merge, the way D67's `review → done` worked, with the sweep catching up after sessions that end early.
+- **Choice: (b).**
+  - The `done` state is gone. On merge, the session deletes everything about the item from the roadmap: board line, diagram node, arrows and `class` line, table rows, its reserved D-number row, and its prompt section.
+  - D67's direct writes to `dev` are extended to these deletions. They're still `docs/roadmap.md` only, never force-pushed, and decide nothing.
+  - **Dependencies are the diagram's arrows.** An item becomes `ready` when no arrow points to it and nothing else on its line is pending.
+  - Removed from the roadmap: the model and effort guide, the skills guide, and the model, effort and skills columns and header lines. Each prompt keeps its slash command and `Skills:` line. The rule that the repo's docs beat a skill's defaults moved to `docs/agents/session-handoff.md`.
+  - C0, C1 and C2, already finished, are deleted in the same change.
+- **Evidence:** finished items are still on record in the merged PRs, closed tickets, git history and this log.
+- **Who:** Riley (deletion, dropping the guides); agent (mechanism (b), arrows as dependencies).

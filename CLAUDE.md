@@ -16,4 +16,4 @@ Single-context. The glossary is `CONTEXT.md` at the root, created when first nee
 
 ### Roadmap and session handoff
 
-`docs/roadmap.md` on `dev` is Riley's single source for what runs next, where, and with which prompt. Every session that works on a roadmap item, ticket or PR reads `docs/agents/session-handoff.md` first and follows it: claim the item at the start, keep its status current, and mark it done when its PR merges (D67).
+`docs/roadmap.md` on `dev` is Riley's single source for what runs next, where, and with which prompt. Every session that works on a roadmap item, ticket or PR reads `docs/agents/session-handoff.md` first and follows it: claim the item at the start, keep its status current, and delete it from the roadmap when its PR merges (D67, D70).
