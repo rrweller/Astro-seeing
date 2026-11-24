@@ -267,3 +267,14 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Not queued:** Chile's extra single levels (lcc, mcc, hcc, zust, ishf, tcwv). `astro plan-area` ignores `--variables` for single levels, and `plan-box` has no `--variables`. Selecting 6 variables needs a code change, which Riley asked not to write in this session.
   - Queuing all 17 variables instead would be 0.40 M fields (11–30 h), and 11 of them should come from the time-series product. Left for a ticket (`docs/handoff_pivot.md`).
 - **Who:** Riley (choices); agent (plan check).
+
+## 2026-11-24 — Agent skills setup
+
+### D37. Engineering-skill configuration: GitHub Issues, default triage labels, decisions stay in this log
+- **Options:** issue tracker in GitHub Issues or local markdown (`.scratch/`); default or custom triage labels; ADRs in a new `docs/adr/` or in this log; add the `## Agent skills` block to `AGENTS.md` directly or propose it.
+- **Evidence:** origin is GitHub (`rrweller/Astro-seeing`). This log is already the single place decisions are recorded. `AGENTS.md` forbids agents from editing it.
+- **Choice:**
+  - Issues in GitHub Issues, with the five default labels.
+  - Skills record decisions here as `D<n>` entries, with no `docs/adr/` (`docs/agents/domain.md`).
+  - The `AGENTS.md` block is proposed in `reports/agent_skills_setup.md` for Riley to apply.
+- **Who:** Riley.
