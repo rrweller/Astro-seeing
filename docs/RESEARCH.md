@@ -218,7 +218,7 @@ dark h   = 2 · (180° − H₁₈) / 15°                         0 h if cos H�
 ### 4.2 Clear sky
 - **Plain version:** `clear(t) = tcc(t) ≤ c₀`. ESO calls a sky "clear" below 10% cloud, and 7Timer! uses <20% (§3.4, §1).
 - **Our version:** `clear(h, t) = C(h, t) ≤ c₀`, where C is the cloud cover *above height h* (§5).
-- **Cloud layers:** ERA5 low, medium and high cloud are defined by pressure bands relative to surface pressure; read the ERA5 parameter documentation for the exact bands *[check]*. Haslebacher et al. describe high cloud as "above 6 km".
+- **Cloud layers:** ERA5 low, medium and high cloud are the bands p > 0.8 pₛ, 0.45 pₛ ≤ p ≤ 0.8 pₛ and p < 0.45 pₛ, where pₛ is surface pressure (IFS Documentation Cy41r2, Part IV, CLDPP; checked 2026-11-24, D59). Haslebacher et al. describe high cloud as "above 6 km".
 
 ### 4.3 Preparing each column
 ```
@@ -301,6 +301,8 @@ J ∝ K   ⇒   ε ∝ K^(3/5)   ⇒   K_new = K_old · (ε_observed / ε_model)
 - **How to fit:** on nightly medians, with held-out years or sites.
   - Report bias, RMSE and correlation.
   - Where MASS data exist, fit the free atmosphere and the ground layer separately.
+- **Design fixed in D58** (2026-11-24): what's fitted, the data, the fit and held-out sets, the matching rules and the acceptance checks.
+- **La Silla DIMM gap:** the ESO archive returns no La Silla DIMM rows for 2024-01-01 → 2025-04-30 (probed 2026-11-24, D58).
 
 ### 4.9 Known-answer values (λ = 500 nm, zenith unless noted)
 | Test | Expected |
@@ -336,6 +338,7 @@ For each ERA5 cell c and hour t:
 4. **Seeing:** ε(h, t) from J_FA(h, t) + J_GL(c, t).
 5. **Cloud above h:** C(h, t) combines the pressure-level cloud fractions `cc` above h under an overlap rule (random, maximum, or maximum-random).
    - Pick the rule by a consistency check: at h = the ERA5 surface, C should reproduce ERA5's own total cloud cover. Log the residuals.
+   - ERA5 itself diagnoses `tcc` on its 137 model levels with a generalised (exponential-random) overlap, the same algorithm as its McICA radiation scheme, whose cloud-cover decorrelation length is 2 km (IFS Documentation Cy41r2, Part IV, CLDPP; checked 2026-11-24). So exponential-random is tested as a fourth rule, and some residual is expected whichever rule wins (D59).
 6. **Good hour:** dark(t) ∧ C(h, t) ≤ c₀ ∧ ε(h, t) ≤ ε₀.
    - **Good night** (placeholder until phase 1): ≥2 dark hours and ≥N₀ good hours.
 

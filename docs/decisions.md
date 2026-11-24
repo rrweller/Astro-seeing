@@ -752,6 +752,137 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
 - **Unblocks:** #15 and #17 (the reproduction spec and tickets).
 - **Who:** Riley (all choices, agreed in a grilling session on ticket #7, 2026-11-16); the agent proposed each and drafted the wording.
 
+## 2026-11-24 — Cloud planning session: the calibration design
+
+### D58. Calibration design: what's fitted, on which data, and what's held out (map #6, ticket #15)
+- **Evidence:**
+  - RESEARCH §4.8 (J ∝ K ⇒ ε ∝ K^(3/5); nightly medians; held-out years or sites; FA and GL separately where MASS exists), §4.5 (parts add in J: ε_tot = (ε_GL^(5/3) + ε_FA^(5/3))^(3/5)), §3.3 (O&S: one global K = 6.0 on Cₙ², free-atmosphere r = 0.64, total r = 0.30), §6.4 (TMT medians; ground layer 7–500 m = DIMM − MASS); D27 (Haslebacher scales seeing per site); D19 (bias limits); D31 and D36 (stores); D47, D54 and D57 (observer height, matching rules, reproduction settings).
+  - **ESO coverage, probed from the cloud on 2026-11-24** (anonymous CSV queries; nights 10–12 of every month 2021–2025, then full-range queries): `dimm_paranal` and `mass_paranal` returned rows in every sampled month (thin in Jul 2023 and Jul 2024). `ambient_lasilla` returned **0 rows for 2024-01-01 → 2025-04-30**, 2,494 rows for Sep–Dec 2023, no rows in the samples of 2021-09, 2022-07, 2022-08, 2022-12 and 2023-07, and about 1.7× more rows per night from May 2025 (a cadence change, *[check]*).
+  - ESO's ASM page and Paranal query-forms page (re-read 2026-11-24): MASS free-atmosphere seeing is "above 1 km"; "The MASS is coupled to the DIMM"; neither page says whether the MASS-DIMM's DIMM channel is the 7.5 m-platform DIMM, nor gives a sampling cadence.
+  - Dark time inside the store windows (Chile 23–11, SPM 2–14, MK 4–16 UTC): every dark minute of 2021–2022 at Paranal, La Silla, Tolar, SPM and MK 13N falls in a window hour, by an approximate solar formula, not yet by our Skyfield module.
+- **Choice (Riley, 2026-11-24):**
+  1. **What's fitted.** J_cal(h) = K · J_model(h) + G, in J, never on seeing. **Stage 1:** K, a factor on the model's Cₙ², fitted only against MASS seeing. **Stage 2:** with K frozen, the single number of the chosen ground-layer option (the ground-layer term G; none, O&S relocation, W71 or a constant, #17) fitted against DIMM total. A seeing scale is used only inside the Haslebacher reproduction, because their code does it.
+  2. **How many.** One global K and one global ground-layer number per Cₙ² model (O&S; Tatarskii + HMNSP99) and per level set (the 29 pressure levels). Per-site and per-season values are reported as diagnostics, with intervals, never used. A K per region is reconsidered only if the held-out sites fail, as an [ASK]. A model-level set would get its own K under this design.
+  3. **Data.** Stage 1 (MASS seeing): ESO Paranal `mass_paranal` 2021–2025 and the five TMT sites 2006–2007. Stage 2 (DIMM): ESO Paranal `dimm_paranal` (the D54 table), La Silla `ambient_lasilla` (available months only; the gap is logged) and the five TMT sites. Paranal's "MASS-DIMM Seeing" is a reported sensitivity, not fitted. **External checks**, scored with the calibrated product and never fitted: Bi et al.'s four DIMM medians (Tibet store) and the Timau DIMM median (0.93″, Jul–Aug 2019). No new sources or downloads. **Post-gate check (phase 2):** MKWC (MASS, DIMM) at Mauna Kea and ING R2D2 at La Palma for 2023, cut from D55's pilot year, internal only (D44).
+  4. **Split, fixed before any fetch.**
+     - **Fit set:** ESO Paranal and La Silla in 2021, 2023 and 2025; TMT Armazones, Tolar and Tolonchar, 2006–2007.
+     - **Held-out set:** ESO Paranal and La Silla in 2022 and 2024 (interleaved years balance year-to-year climate; La Silla loses 2024 to its gap); TMT San Pedro Mártir and Mauna Kea 13N, both years (the only sites outside Chile, both with a strong ground layer).
+     - Every choice made from data, including #17's ground-layer option, uses leave-one-site-out and leave-one-year-out cross-validation **inside the fit set**. Held-out data never chooses anything.
+     - **Freeze:** the fit code reads a committed split file and refuses held-out nights (a unit test checks it); K, the chosen option and G are committed, with the commit hash recorded, before the held-out set is scored, **once**. A refit after that is an [ASK] with a new D-number, and the report shows both.
+     - **Fallback without the TMT login (#14):** fit set = Paranal 2021, 2023 and 2025 for both stages; held-out set = Paranal 2022 and 2024 (MASS seeing and total) and **all** of La Silla's available nights 2021–2025 (total, the site test). The gate is the three checks these allow (item 8), and the result is labelled **provisional** until the TMT sites can be scored; the report says that site transfer of MASS seeing is untested. If TMT data arrive after the freeze, its five sites are scored as extra held-out sites with the frozen numbers, never fitted.
+  5. **Criterion.** Each number is the value at which the **equal-site-weight mean of the per-site mean nightly-median biases** (model − measured) is zero, found by 1-D root finding (monotonic in the number). Stage 1 fit sites: Paranal, Armazones, Tolar, Tolonchar; stage 2: those plus La Silla. G ≥ 0; if the bound binds, the option is reported as unable to reach zero bias and logged. 90% intervals from a block bootstrap (7-night blocks within each site, 1,000 resamples). Least-squares (which reads low when r is modest and ERA5 is too narrow) and ratio-of-medians values are reported for comparison only. The `none` ground-layer option has no number (G = 0): it is not fitted, only evaluated, and its bias reported.
+  6. **Matching.** D54 item 5–6's rules, reused: hour value = median of samples in [hh−0:30, hh+0:30) with count and IQR, hours with fewer than 10 samples not scored and counted; matched hours only; at least 4 per night; nightly medians over the same matched hours. **Every median is taken in J on both sides** (measured seeing converted to J with the exact 500 nm zenith form of RESEARCH §4.5, model J as computed) and converted back to seeing for scoring, so an even number of hours can't bias one side against the other (e.g. hourly 0.2, 0.2, 1.4, 1.4″ gives 0.800″ as a median in seeing but 0.945″ in J; Copilot review of PR #44). D54's forecast-track wording leaves this open and is not changed here; nothing clipped or filled, missing or non-numeric values dropped and counted, a source's own documented quality flag honoured and counted; stage 1 and stage 2 build their matched sets separately. **Where the historical track differs:** the hours are those of each Night whose hh:00 is in dark time (Sun below −18°), not counted hours; ERA5 analyses at hh:00, so no runs, lead times, stale runs or re-fetch (K8 fetches 2021–2025 once). **Added:** TMT's cadence, time standard and 500 nm/zenith normalisation are checked on the first data before any fit; if the 10-sample rule drops more than 20% of a TMT site's hours with data, it goes to Riley. The CT confirms the store-window check above with the solar module.
+  7. **Estimator.** The product's own: J(h) at the site's GLO-30 elevation from the per-cell height tables, blended bilinearly in J over the 4 surrounding cells, with clipping to the cell surface counted. Observer height as D54 item 3 (DEM − published height logged, flagged above 50 m, no tower added to the model column). MASS seeing is matched at each source's stated split: ESO K·J(h + 1 km), TMT K·J(h + 0.5 km), each also at the other split as a sensitivity. Instrument heights (7.5 m at Paranal; TMT's per site, *[check]*) are recorded per site and passed only to height-dependent ground-layer options (#17 decides their use). The nearest-cell, cell-surface estimator is a reported sensitivity. Any change to the estimator (levels, terrain method, ground-layer form) means a refit under this design, as an [ASK].
+  8. **Acceptance.** D19's limits as |bias| on the frozen configuration, judged **separately** on seven held-out checks, all of which must pass: MASS seeing ≤ 0.10″ at Paranal (held-out years), San Pedro Mártir and Mauna Kea 13N; total ≤ 0.15″ at Paranal and La Silla (held-out years), San Pedro Mártir and Mauna Kea 13N. Under the no-TMT fallback (item 4) the gate is three checks (MASS seeing and total at Paranal's held-out years, total at La Silla over all its nights) and the result is provisional. Judged on the point estimate, with the 90% interval printed and "interval crosses the limit" said where it does. **Reported, not gated,** per Cₙ² model × ground-layer option × site on fit, cross-validation and held-out data: n nights and hours; coverage and missing-hour reasons; bias, RMSE, Pearson r and Spearman ρ (nightly and hourly); the RMSE of a constant baseline (the fit-set median); Q1, median and Q3 of nightly medians and the IQR ratio; the fraction of nights below 0.6, 0.8 and 1.0″ (candidate thresholds only); bias by season and by year. Context only: Schöck et al.'s campaign medians, O&S's Paranal statistics, the external checks. **On a fail:** no refit; the report shows which checks failed and by how much, and the options go to Riley as an [ASK] (a K per region, more sites from the pilot year, another ground-layer option, or labelling seeing "uncalibrated outside Chile").
+  9. **Order and interactions.**
+     - Reproductions first, with each paper's constants (D57), never calibrated; their goldens are untouched. Fitting code and stage-1 fits may be built in parallel, but the **freeze waits** until all four reproductions have landed, each passing or with its miss explained, because a K fitted on wrong physics would hide the error.
+     - #17's ground-layer experiment **is** stage 2 (same fit set, criterion and cross-validation). #17 sets its own sites, metrics and inputs. The chosen option goes to Riley as the ground-layer [ASK] with the cross-validation evidence, **before** the freeze.
+     - Hourly vs 3-hourly: the hourly K is applied to 3-hourly input and the change in bias and night fractions reported; a 3-hourly choice at gate 2 means a refit under this design ([ASK]).
+     - Freeze → held-out run once → `reports/calibration.md` → summarised in `reports/phase1.md` at gate 1. After Riley approves gate 1, K, G, the split file and the gated held-out statistics become gating goldens (D57 item 5's format).
+     - Then "ours": each reproduction site gets an informational calibrated variant (the external checks in item 3).
+     - **Forecast track out of scope:** this K is specific to ERA5 on 29 levels, and the forecast models have other level sets (D47). Forecast seeing stays "uncalibrated" (D43, D47); F3 decides its calibration separately, possibly with this design and D54's stored pairs.
+- **Not decided here:** the ground-layer option (the #17 [ASK] above); the good-night thresholds.
+- **New work:** roadmap item C11 (calibration spec and CT tickets).
+- **Who:** Riley (all choices, agreed in a grilling session on ticket #15, 2026-11-24); the agent proposed each and drafted the wording.
+
+## 2026-11-24 — Cloud planning session: the experiment designs
+
+### D59. The five phase 1 experiments: sites, periods, metrics, switch rules and downloads (map #6, ticket #17)
+- **Evidence:**
+  - AGENTS.md phase 1 step 5; RESEARCH §4.2, §4.7, §5; D5, D6, D7 (provisional choices these experiments settle); D19; D31 and D36 (what is stored); D44 item 2 (the forecast track's model-level path is tied to this experiment); D55; D57; D58 (fit set, held-out set, freeze; the ground-layer experiment *is* calibration's stage 2).
+  - **On the NAS** (`reports/validation_downloads.md` §1, `docs/handoff_pivot.md` §1–2, D36):
+    - Chile 2021–25, 23–11 UTC: pressure levels z t u v cc, plus single levels lcc mcc hcc zust ishf tcwv. It has no tcc, sp or 2t.
+    - Chile 2006–07: pressure levels z t u v (no cc), plus all 17 single levels.
+    - Paranal box 2016-04 to 2018-01, all hours: pressure levels with cc, plus all 17 single levels.
+    - San Pedro Mártir and Mauna Kea boxes 2006–07, night hours: pressure levels with cc, plus all 17 single levels (K2, due ~28–29 Nov).
+    - Tibet 2017-03 to 2020-12 and Timau (every 4th day), all hours: z t u v.
+  - **CDS cost** (`reports/cds_throughput_one_job.md`): ~4 h of queue wait per request at one job at a time (D39), then ~28 fields/s. ERA5 complete is on MARS tape and has never been requested here; #16 (K4) measures it.
+  - **How ERA5 computes `tcc`** (IFS Documentation Cy41r2, Part IV, routine CLDPP; https://www.ecmwf.int/sites/default/files/elibrary/2016/16648-part-iv-physical-processes.pdf, the cycle ERA5's documentation names; read 2026-11-24):
+    - "a generalised cloud overlap assumption between maximum and random … where the degree of randomness between two cloudy layers increases with increasing vertical separation distance between the layers", "the same as used in the IFS McICA radiation scheme".
+    - The same document gives McRad's generalized overlap decorrelation length for cloud cover as 2 km. That CLDPP uses exactly 2 km is implied, not stated *[check]*.
+    - Low, mid and high cloud are the bands p > 0.8 ps, 0.45–0.8 ps and < 0.45 ps.
+    - ERA5 applies this on 137 model levels. So none of D6's three rules reproduces `tcc` exactly from 29 pressure levels.
+  - **Cloud observations:**
+    - ESO's Paranal archive has `lhatpro_irt_paranal`, an IR sky-temperature camera "for cloud detection". Coverage: 2016-04-04 onwards for LHATPRO ID 1, 2020-02-13 for ID 2 (https://www.eso.org/cms/eso-data/ambient-conditions/paranal-ambient-query-forms.html, read 2026-11-24). It is ESO data, already approved (D28).
+    - Samples are not all at zenith, and the unit changes over 2021–2025 (a background agent's test query; not repeated by hand).
+    - Kerber, Querel & Hanuschik 2014 (arXiv:1408.1752) use its zenith signal to detect thin cloud, and find "60 % of nights are free of clouds on Paranal".
+    - CFHT SkyProbe at Mauna Kea has downloadable CSVs only from 2010 ("Data prior to 2010 is not available in this format", https://cfht.hawaii.edu/Instruments/Elixir/skyprobe/archive-new.html), only while CFHT observes. It would be a new source. MKWC's site was unreachable on 2026-11-24.
+- **Choice (Riley, 2026-11-24; each was the agent's recommendation):**
+  1. **What an experiment may change.**
+     - Each experiment fixes its metric and a **switch rule** in this entry before it runs.
+     - Anything that chooses uses only D58's fit set (Paranal and La Silla 2021, 2023 and 2025; Armazones, Tolar and Tolonchar 2006–07), with D58's cross-validation.
+     - San Pedro Mártir, Mauna Kea 13N, Bi's sites and Timau are scored and reported, never used to choose.
+     - The output is a recommendation in `reports/phase1.md`, never a change by itself. A result that would overturn a method AGENTS.md fixes (pressure levels for the global run, the terrain-aware method, cloud above a height from `cc`) is an [ASK].
+  2. **Pressure vs model levels.**
+     - **Data:** a Paranal 5×5 box, all of 2023 (a fit-set year, with ESO MASS and DIMM, and inside D55's pilot year), at 23–11 UTC. ERA5 complete model levels 49–137 of t, q, u, v, plus lnsp and z on level 1, for heights (RESEARCH §4.3). That's 358 fields an hour, with no `cc`.
+     - **Size estimate:** 365 × 13 × 358 ≈ **1.70 M fields, ~0.26 GB** at ~153 bytes per box field. At a 60,000-field limit that's ~29 requests and **≥ 6 days** of the one CDS slot, more if tape is slow. Over 24 h, so it's an **[ASK], put to Riley only after K4 (#16) reports**, with the size recomputed from K4's measured limits and times.
+     - **Slot order:** it runs after K7 (the first pilot request).
+     - **Also, with no download:** the stored 29 pressure levels cut to the 13 that IFS and MEPS publish (D44 item 2), giving a 13 vs 29 vs 89 level comparison for the forecast track.
+     - **Metric:** each level set gets its own K (D58 item 2), so bias doesn't decide. On the same nights for every level set: Pearson and Spearman r of nightly medians against ESO MASS seeing, and the IQR ratio. The same against DIMM total is secondary.
+     - **Switch rule:** if model levels raise the MASS r by **≥ 0.10**, with the 90% paired-bootstrap interval (by night) excluding 0, `reports/phase1.md` recommends a costed model-level option as an [ASK]. That is most likely the forecast track's model-level path; a global historical run from tape is probably impractical. Otherwise pressure levels are confirmed. The 0.10 is a judgment; O&S's 137-level free-atmosphere r was 0.64.
+  3. **Hourly vs 3-hourly.**
+     - **Data:** no download; the hourly stores are subset. Chile 2021–25 (6 sites), Tibet 2017–20, Timau (every 4th day), and San Pedro Mártir and Mauna Kea 2006–07. Together they span local offsets UTC−10 to UTC+8.
+     - **Method:** keep 00, 03, …, 21 UTC and interpolate J(h) and C(h) linearly in time to the hours between. Seeing is never interpolated.
+       - Sensitivities: nearest sample, and the other two 3-hour offsets (01, 04, … and 02, 05, …).
+       - Chile's store ends at 11 UTC, so dark hours after 09 UTC take the nearest sample, counted.
+     - **Metric:**
+       - the change in good nights per year per site, over a grid of candidate thresholds: ε₀ 0.6, 0.8, 1.0 and 1.2″; c₀ 0.1 and 0.2; N₀ 2 or 4 good hours. None of these is a chosen threshold;
+       - the change in clear-night fraction and in nightly median seeing.
+     - **Switch rule:** recommend 3-hourly to gate 2 if |Δ good nights| is **≤ 5% and ≤ 3 nights a year** at every site for every threshold set. Otherwise recommend hourly. Gate 2 re-checks on the global pilot year (D55). D58 item 9's "hourly K applied to 3-hourly input" is reported after the freeze.
+  4. **Terrain-aware vs cell average.**
+     - **Estimators:**
+       - E0: nearest cell, J from the ERA5 surface;
+       - E1: nearest cell, J from the site's GLO-30 elevation;
+       - E2: the product estimator (D58 item 7), at the GLO-30 elevation, blended bilinearly in J over 4 cells.
+     - **Fitting:** each estimator gets one global K, on MASS seeing, with leave-one-site-out cross-validation over the Chile fit sites (2290 m Tolar to 4480 m Tolonchar).
+     - **Metric:** the across-site SD of per-site bias, for MASS seeing and for DIMM total; r; and, for cloud, C at the site elevation vs at the ERA5 surface.
+     - **Reported only:** San Pedro Mártir and Mauna Kea 13N; Bi's four DIMM sites, including Lenghu (published medians); Timau.
+     - **La Palma** is deferred to the post-gate check on the 2023 pilot year (as D58 item 3), with no separate download.
+     - **Download:** GLO-30 tiles at about 15 sites, ~20 one-degree tiles, < 1 GB, from the public AWS bucket (RESEARCH §7). It doesn't use the CDS slot.
+     - **Switch rule:** if E2 doesn't reduce the site-to-site spread compared with E0, report it, and [ASK] before anything changes. E1 vs E2 shows whether blending helps.
+  5. **Ground layer: none, O&S relocation, W71, calibrated constant.** This is D58's stage 2 (DIMM total, K frozen, the same fit set, criterion and cross-validation).
+     - **The one number per option:**
+       - none: G = 0, not fitted;
+       - constant: G;
+       - O&S relocation (D7): a multiplier on the relocated 1 km slab of J;
+       - W71: a multiplier on its J, integrated from the instrument height (7.5 m at Paranal; TMT's per site, *[check]*) up to min(boundary-layer height, 1 km).
+     - **Also compared:** D5's `zero` vs `abs` for unstable layers.
+     - **Inputs:**
+       - sp, 2t and tcc come from C5's point fetcher extended to those three variables (time-series product, its own slot; D29). The CT fetches them at the Chile sites for 2021–25.
+       - The Bowen-ratio term (1 + 0.03/β)² is set to 1, because no store has a moisture flux; logged and stated (a few percent at these dry sites).
+     - **Choice rule:**
+       - take the lowest mean cross-validated |bias| on DIMM total (leave-one-site-out and leave-one-year-out);
+       - but prefer the simpler option unless the more complex one beats it by **≥ 0.03″**, in the order none, constant, relocation, W71.
+       - The result goes to Riley as the ground-layer [ASK] before the freeze (D58 item 9).
+  6. **Cloud overlap (the D6 check).**
+     - **Rules:** D6's three, plus **exponential-random overlap**, which is ERA5's own kind. Decorrelation length 2 km, with 1 and 4 km as sensitivities.
+     - **Data:** C at the ERA5 surface vs ERA5 `tcc`, from the stores with both:
+       - the Paranal box 2016-04 to 2018-01, all hours, 25 cells (marine cloud below the summit);
+       - San Pedro Mártir and Mauna Kea 2006–07, once K2 is done.
+     - **Metric:** agreement on clear vs not clear at c₀ = 0.1 and 0.2; mean bias and RMSE of C − tcc, by tcc bin, site and season.
+     - **Rule:** the best clear/not-clear agreement wins. If two rules are within 1 percentage point, keep max-random. The residual is reported as a known limit of pressure levels, not as a failure of the rule. The final rule stays an [ASK] (D6).
+  7. **Cloud above a height vs total cloud, against observations.**
+     - **Data:** Paranal, ESO LHATPRO IR (`lhatpro_irt_paranal`) in 2021, 2023 and 2025.
+     - **First, a research step:** an hourly clear/cloudy flag from zenith-only samples, following Kerber et al. 2014. It must reproduce their ~60% cloud-free nights before it is used.
+     - **Then, on dark hours:** score C(at Paranal's GLO-30 elevation) and `tcc` against the flag at c₀ = 0.1 and 0.2: hit rate, false-clear rate and Heidke skill score. Report the number of cloudy hours the score rests on.
+     - **Switch rule:** if C(h) doesn't beat `tcc` on the Heidke score, that's an [ASK] before the global run.
+     - **Mauna Kea:** deferred to the post-gate check on the 2023 pilot year with CFHT SkyProbe, which is a new source, so an [ASK] then. A Mauna Kea 2023 download now (~0.41 M fields, ~1.5 days) is not made.
+     - Haslebacher's Mauna Kea skills (total cloud 0.13, high cloud 0.21) are quoted as context only.
+  8. **Order.**
+     1. The D6 check and hourly vs 3-hourly: no calibration needed; they start once C9's site reader exists, alongside the reproductions.
+     2. Terrain: after the GLO-30 tiles arrive, inside stage 1, before the freeze.
+     3. Ground layer: stage 2, after K; its [ASK] goes to Riley before the freeze.
+     4. Pressure vs model levels: after K4 and its [ASK]'d download, with its own K. It doesn't block the freeze.
+     5. Cloud vs observations: after the LHATPRO flag.
+     
+     All of them land before `reports/phase1.md`. The reproductions keep their own constants and are never calibrated (D57, D58).
+- **Downloads, all told:**
+  - one [ASK] after K4: model levels, ~1.70 M fields, ≥ 6 days;
+  - no other CDS main-slot downloads;
+  - small, outside the main slot: the time-series fetch of sp, 2t and tcc; GLO-30 tiles (< 1 GB); ESO LHATPRO rows.
+- **New work:** roadmap items C12 (experiment spec and tickets), K10 (experiment notebooks) and K11 (the model-level download).
+- **Who:** Riley (all choices, agreed in a grilling session on ticket #17, 2026-11-24); the agent proposed each and drafted the wording.
+
 ## 2026-11-24 — Cloud session: a living roadmap
 
 ### D67. `docs/roadmap.md` is the single source for work order, with status commits straight to `dev`
