@@ -127,6 +127,52 @@ def test_held_and_cancelled_requests_do_not_reset_the_stall_clock(m):
     assert [t for t, _, _ in run(m, st)] == ["astro-seeing: stalled"]
 
 
+def age_all(m, hours):
+    """Make every request (and so the last progress) `hours` old."""
+    old = (NOW - dt.timedelta(hours=hours)).isoformat(timespec="seconds")
+    m.conn.execute("UPDATE requests SET updated_at=?, created_at=?", (old, old))
+    m.conn.commit()
+    return old
+
+
+def test_no_stall_alert_while_a_request_is_at_the_cds(m):
+    """D53: under one job at a time a 5 h queue wait is normal; the 12 h stuck alert covers it."""
+    old = age_all(m, 5)
+    set_state(m, 1, "submitted", updated=old, submitted_at=old)
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert run(m, st) == []  # more work planned, loop running, nothing wrong
+    # the loop dying is still reported, and only that
+    titles = [t for t, _, _ in run(m, st, loop_running=lambda: False)]
+    assert titles == ["astro-seeing: loop stopped"]
+
+
+def test_a_request_submitted_13_h_ago_gives_only_the_stuck_alert(m):
+    old = age_all(m, 13)
+    set_state(m, 1, "submitted", updated=old, submitted_at=old)
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert [t for t, _, _ in run(m, st)] == ["astro-seeing: stuck at the CDS"]
+
+
+def test_stall_alert_when_work_is_pending_but_nothing_is_at_the_cds(m):
+    """D53: the 3 h stall alert stays for a loop that is alive but not submitting."""
+    age_all(m, 3.5)
+    st = WatchState(last_daily=NOW.date().isoformat())
+    sent = run(m, st)
+    assert [t for t, _, _ in sent] == ["astro-seeing: stalled"]
+    assert "systemctl status astro-boxes" in sent[0][2]
+    assert "logs/run_boxes.log" in sent[0][2]
+
+
+def test_stall_alert_returns_once_the_request_leaves_the_cds(m):
+    old = age_all(m, 5)
+    set_state(m, 1, "submitted", updated=old, submitted_at=old)
+    st = WatchState(last_daily=NOW.date().isoformat())
+    assert run(m, st) == []
+    m.conn.execute("UPDATE requests SET state='planned' WHERE id=1")  # lost, requeued
+    m.conn.commit()
+    assert [t for t, _, _ in run(m, st)] == ["astro-seeing: stalled"]
+
+
 def test_refused_requests_are_reported_once(m):
     set_state(m, 1, "refused")
     st = WatchState(last_daily=NOW.date().isoformat())

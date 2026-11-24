@@ -619,6 +619,97 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   10. **Monitoring:** each tick fetches the served `latest.json` over HTTP. If that fails or differs from the file just written, a fifth high-priority alert is added to D51 item 9: "page not being served".
 - **Who:** Riley (all items, agreed in a grilling session on ticket #24); the agent proposed each and drafted the wording.
 
+## 2026-11-16 — Cloud session: stall alert (ticket #34)
+
+### D53. No stall alert while a request is at the CDS (ticket #34; amends D32, D33)
+- **Evidence (CT, 30 Oct–12 Nov 2026, from the ticket; manifest, `logs/notify_watch.log`, PR #33):**
+  - 40 "Problem" alerts since 30 Oct, all stall alerts, none a real problem.
+  - Under D39 (one CDS job at a time) the gap between downloads is one queue wait plus its run: pressure-level queue wait median 4.3 h, p90 5.5 h, max 6.75 h. Of the 108 gaps over 30 min, 41 were 3 h or longer.
+  - A fixed threshold would have needed 7 h to stay silent, and the wait follows the CDS's load (it doubled overnight on 1–2 Nov), so a tuned number may be wrong next week.
+- **Options:** A: raise `stall_hours` (e.g. 8 h); a real stall then takes up to 8 h to report, and the number needs re-tuning. B: skip the stall alert while any request is `submitted`.
+- **Choice (Riley, 2026-11-12): B.**
+  1. `check_once` sends no stall alert while any request is in state `submitted`. `stall_hours` stays 3 h and applies when work is pending and nothing is at the CDS.
+  2. The 12 h "stuck at the CDS" alert (D33) and the "loop stopped" alert are unchanged.
+  3. The stall text names the next check: `systemctl status astro-boxes` and `tail logs/run_boxes.log`.
+  - **Cost:** if the loop hangs while a job is at the CDS (say an NFS hang during the download), it is reported after 12 h instead of 3 h. A crash is still reported at once by "loop stopped".
+  - **Not changed:** the D39 backoff after a rejection has nothing at the CDS, so a stall alert can still fire there (`docs/handoff_pivot.md` §6).
+- **Who:** Riley (option B, 2026-11-12); the agent implemented it and drafted the wording.
+
+## 2026-11-16 — Cloud planning session: the Paranal comparison
+
+### D54. The Paranal comparison with ESO: what is compared, how, and how often (map #20, ticket #26)
+- **Evidence:**
+  - `docs/research/seeing-measurements.md` (branch `research/seeing-measurements`): ESO's DIMM is on a 7.5 m platform, normalised to 500 nm and unit airmass; MASS "also provides a seeing estimate in a free atmosphere (above 1 km)" (https://www.eso.org/sci/facilities/paranal/astroclimate/asm-instruments.html, re-read 2026-11-16); the ESO archive is CC BY 4.0 (D28).
+  - Re-tested 2026-11-16: the anonymous CSV queries for `dimm_paranal` and `mass_paranal` returned 2026-11-14 rows. Rows are about 79 s apart (00:00:13, 00:01:32), so about 45 an hour, and MASS free-atmosphere seeing read 0.80, 0.67, 0.51″ in the first 2.5 min. The MASS table has `Free Atmosphere Seeing ["]`, `MASS Turb Altitude [m]` and `MASS-DIMM Cn2 fraction at ground`; ESO's pages do not say how `MASS Turb Altitude` is defined or what it is measured from. ESO's ambient database also has LHATPRO IR sky temperature, PWV and METEO tables (query-forms page, same day); their data were not examined.
+  - Engine: `ProfileResult.j_above(h)` cuts J at a height, and `relocated_integral_above` (`physics/groundlayer.py`) applies O&S's relocation to any Cₙ² profile (generalised to any observer height, an earlier choice of ours).
+  - O&S 2018 at Paranal (RESEARCH §3.3): free-atmosphere r = 0.64, bias +0.08″, RMSE 0.16″ (137 model levels); total r = 0.30.
+  - D44 item 5 (compare each night with ESO's DIMM and MASS, archive it), D47 (observer height, no ground layer, labels), D48 items 1 and 7 (hour = hh−0:30 to hh+0:30; median on J), D51 items 3, 7, 10 and 12 (Paranal box with GFS and IFS, retries, SSD vs `/data`, per-place stores), D52 (page).
+- **Choice (Riley, 2026-11-16):**
+  1. **Pairs scored.** For each forecast family (GFS, IFS) and each Cₙ² model (O&S, Tatarskii + HMNSP99):
+     - **headline:** free-atmosphere seeing (above observer + 1 km) against MASS free-atmosphere seeing;
+     - **total seeing against DIMM, in two series:** D47's no-ground-layer series (a lower bound, expected to read low) and the O&S-relocation series;
+     - **stored and plotted, not scored:** H̄ against MASS Turb Altitude, and the ground fraction against MASS-DIMM, until ESO's definitions are checked (a CT task on the first data; what it is measured from, and whether it is H̄ as in D47);
+     - **cloud is not compared in #26.**
+  2. **Relocation series for both Cₙ² models.** Relocation is geometry on J(h); applied to Tatarskii + HMNSP99 it is our extension of O&S's paper and is labelled so.
+  3. **Observer height.** D47 as written: the DEM (GLO-30) height at the place, raised to the model ground only where it lies below it (at Paranal it does not). No +7.5 m for the DIMM platform: the levels are hundreds of metres apart and no ground layer is computed. J starts at the observer using `j_above`, with the straddling slab cut in J, never in seeing. Levels wholly below the observer are masked and counted, and the gap to the first level is shown per model. The DEM height minus the published 2635 m is logged, and flagged above 50 m (GLO-30 is a surface model).
+  4. **Runs.** Primary score: the latest verified run of each family at that night's local sunset at Paranal (D48's rule: latest verified, stale after 24 h). Secondary: every run, scored by lead time in 6 h bins up to 48 h, as a table of bias, RMSE and r. No run is pooled into the primary statistics.
+  5. **Hour match.** One ESO value per hour: the **median** of all samples in [hh−0:30, hh+0:30), kept with the sample count and interquartile range. Hours with fewer than 10 samples are not scored, and are counted and logged. The median needs no conversion (seeing is monotonic in J, so it matches D48 item 7). Nothing is clipped; only missing or non-numeric values are dropped, and they are counted.
+  6. **Pairing.** Only **matched hours** are scored: the family has a value and ESO has an hour value. A night's forecast and ESO medians are taken over the same matched hours, and a night needs at least 4 of them. Per night the record lists counted hours, hours with ESO data, matched hours, and the reason for each missing hour (monitor off, <10 samples, IFS off-step, no run, stale run). Nothing is filled or carried forward. The report states that ESO measures only while the monitor is open, so scores are conditional on that.
+  7. **Statistics,** per family × Cₙ² model × series, hourly and nightly-median: n, bias (forecast − ESO, ″), RMSE, Pearson r, Spearman ρ, and the RMSE of a persistence baseline (previous night's ESO median, same series). Below 20 scored nights they are printed with "n too small for intervals"; from 20 on, with a bootstrap-by-night 90% interval. The comparison never fits or changes a constant (calibration stays with the historical track; changing one is [ASK]).
+  8. **ESO fetch** (left to this ticket by D51). Once a day at about 17:00 UTC (just after local mean solar noon at Paranal, which ends the Night), a step of the existing 15-min tick, not a new timer, fetches the finished night's DIMM and MASS rows, one query each. The same night is fetched again 3 days later, as a second, separate file. Raw CSVs go to `/data/astro/validation/eso-asm/` with fetch time and checksum, written once and never overwritten. Retries as D51 item 7, generic User-Agent, about 4 requests a day. ESO is already approved (D28, D44), so this adds no source.
+  9. **Archive.** The morning after, a night is scored from the first fetch and kept on the SSD marked provisional (the page says so). After the re-fetch, the final matched table is written once to `/data` (hourly pairs for every family, Cₙ² model and series; run IDs; ESO file checksums; commit and config hash) and replaces the provisional one. A night never changes after that; a later change of method is a new, separately named version. Pairs are stored, so any later rule can be recomputed.
+  10. **Where it shows.** A "Paranal check" panel on the Paranal place: last night's hourly pairs (ours next to MASS and DIMM, with ESO's IQR), and the statistics over the last 30 scored nights with n, coverage, the D47 labels ("uncalibrated", Cₙ² model, level count, observer height) and ESO's credit line. Plus a generated weekly Markdown report (all-time and last-4-week tables, the lead-time table, missing-hour reasons) written to `/data` and linked from the panel.
+  11. **What F1's approval needs from this.**
+      - 28 consecutive nights of unattended running: no manual step, the page fresh, every failure alerted (D51, D52);
+      - at least 20 scored nights for each of GFS and IFS;
+      - the 7-day measured-size report (D51 item 11);
+      - a hand-made `reports/f1.md` with the statistics above, coverage and missing-hour reasons, alerts raised, and O&S's numbers as context only.
+      - **No pass mark on r or RMSE:** F1 seeing is uncalibrated and there is no evidence to set one. A statistic that looks wrong (a negative free-atmosphere correlation, a bias of several tenths of an arcsecond, hours lost systematically) must be explained before approval. These numbers become the baseline a calibrated forecast must beat in F3.
+- **Not decided:** how ESO defines `MASS Turb Altitude` (item 1); whether LHATPRO IR sky temperature can serve as a cloud proxy (a later research ticket, which D48 item 6's revisit of the cloud classes can use).
+- **Who:** Riley (all items, agreed in a grilling session on ticket #26); the agent proposed each and drafted the wording.
+
+## 2026-11-16 — Cloud planning session: how phases 2 and 3 download
+
+### D55. One global campaign from the CDS, big requests, a pilot year first (map #6, ticket #13)
+- **Evidence:**
+  - `reports/cds_throughput_one_job.md` §6–§8 (#11): at one job at a time a request waits ~4 h (pressure levels, median 4.04 h since 7 Nov) and runs minutes. The CDS cost is the field count, whatever the area, with limits of 60,000 (pressure levels) and 121,000 (single levels). So the request count sets the time.
+  - The same report's table, 2021–2025 hourly: global at one day per request is 559 days; pressure levels half-monthly with single levels monthly is 32 (27–36); the 8 regions downloaded separately are 160 (night hours only) to 252 days.
+  - D39: one CDS job at a time. D50: measurement-only requests.
+  - #12 (`docs/research/era5-mirrors.md` on `research/era5-mirrors`): NCAR on AWS is free, queue-less and complete for 2021–2025 (~11.9 TB), but not bit-identical to CDS GRIB, and its `zust`/`cbh` are in a forecast layout.
+  - `/staging` is 147 GB; 99 GB free on 13 Nov, with 41 GB of kept validation GRIB. One global pressure-level request at 16 days is 55,680 fields, ~104 GB (1.87 MB per field).
+- **Options:**
+  - **Regions:** download the eight regions separately; or cut them from global days that phase 3 reuses.
+  - **Timing:** all five years hourly after gate 1; a pilot year first; or 3-hourly first, filling the other hours later.
+  - **Source:** CDS only; CDS plus an NCAR equivalence test; or NCAR as the main source.
+  - **Request size (pressure levels):** weekly (≤ 45.5 GB, 61 days), half-monthly (≤ 104 GB, 32 days), or smaller.
+- **Choice (Riley, 2026-11-16):**
+  1. **One campaign, no separate regional downloads.** Phase 2's regional data is a subset of the global ingest. The eight 20° × 20° regions are cut by cells at ingest, under the same land/night mask rule as everything else (D18).
+  2. **Pilot year first.** Global, hourly (all 24 UTC hours), 2023: 29 levels of z, t, u, v, cc and the 17 single-level variables. Gate 2 then decides hourly or 3-hourly and the number of years, and the rest of 2021–2025 follows under your gate 2 [ASK]. A 3-hourly choice at gate 2 loses nothing: its hours are a subset of the pilot's.
+  3. **Source: the CDS only** for the data of record. No NCAR data is used in any product. NCAR's equivalence test (#12 steps 1–4: raw-field differences against our CDS GRIB for Chile/Paranal, then the phase 1 physics and goldens, plus bandwidth, ~15 GB) is a **phase 2 task**, started after gate 1 and not blocking anything. Adopting NCAR would be a new [ASK] and a new D-number.
+  4. **Pressure levels: half-monthly requests.** Each month is two requests, at most 16 days each (55,680 fields, under the 60,000 limit); the exact split goes in the spec. Riley chose this over the weekly size the agent recommended (weekly would be 61 days against 32).
+  5. **Single levels: up to 3 months per request (~71 GB, 37,944 fields),** once two things are done:
+     - a code change, because `RequestSpec.cds_request` allows one month;
+     - a cost check on the non-existent dates a months × days request implies (30 February, 31 April): whether the CDS counts them, tested with `estimate_costs`.
+     
+     Until both are done, single levels stay monthly. The cap of 3 comes from `/staging`: 4 months would be ~95 GB.
+  6. **`/staging` holds one big request at a time.** After download, the order is verify → ingest → verify Zarr → delete raw, then the next request downloads. Submitting the next request to the CDS still overlaps all of that (D39). The downloader keeps polling the CDS while an ingest runs; `run_boxes.sh` doesn't, so it isn't the model.
+  7. **The kept validation GRIB leaves `/staging` first.** Riley chose to copy the 41 GB to a new path on `/data` (e.g. under `/data/astro/raw-archive`; the spec fixes it), verify checksums, and only then delete the `/staging` copies. This writes new files on `/data` and removes nothing there.
+  8. **The first pilot request is the test:** 2023-06-01 to 06-16, global, hourly pressure levels (55,680 fields, ~104 GB), approved by Riley, and over the 50 GB [ASK] threshold. It can run once the staging step is done. It measures what #11 couldn't: the run time of a large global request, the download of one huge result, verify and ingest time, and how long the CDS keeps a finished result.
+     - **If it fails** (a rejection, an expired result, a failed verify, no disk), the pressure-level size drops to weekly (≤ 45.5 GB), and this entry is amended. A rejection counts under D39 like any other.
+     - The rest of the pilot year starts only after gate 1 and the phase 2 start, as AGENTS.md says. The pilot year's volume (~2.4 TB of raw GRIB over time, 24 pressure-level requests, plus single levels) is listed here for that approval.
+  9. **Estimates, with these sizes:**
+     - **Pilot year:** about 6 CDS days.
+     - **Five years, hourly:** about 27 days (23 for pressure levels, ~3–4 for single levels at 3 months). That is the report's 32 days with its 9 single-level days cut to ~3–4. This is agent arithmetic from the report's waits, not a rerun of `scripts/download_estimates.py`; the spec reruns it.
+     - **Avoided:** 160–252 days of separate regional downloads.
+- **AGENTS.md:** the wording in `reports/agents_md_global_downloads_proposal.md` (items 1–5: the "one day per request" rule, phase 2 step 1, gate 2, the phase 3 downloader and its done-when check) was applied on Riley's request, 2026-11-16.
+- **Assumptions this rests on, none measured:**
+  - the CDS will serve a 104 GB result in one piece and keep it long enough for us to download it after the previous ingest;
+  - a global ingest of one 104 GB request finishes inside the next request's ~4 h queue wait, so the CDS queue never waits on us;
+  - run time at the CDS stays at ~28 fields/s for a large global request (the report assumes the box rate);
+  - the queue wait doesn't grow with a 104 GB request (one data point: the global hour's wait didn't shrink with size, so it may not grow either).
+  
+  The test request (item 8) checks the first three; the wait is read from that same request.
+- **Who:** Riley (all choices, agreed in a grilling session on ticket #13, 2026-11-16); the agent proposed each, recommending weekly pressure-level requests and monthly single levels, which Riley overrode.
 
 ## 2026-11-16 — Cloud session: the globe library
 
@@ -636,3 +727,20 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   3. **Known limitation, not fixed:** poleward of 85.05° MapLibre cannot show true cells, and Antarctica is in scope (that cap holds the South Pole plateau). Before the historical viewer ships, test a workaround (for example a separate polar overlay); if none works, show the cap as "no data" or reopen this choice. F1 (Kongsberg) is unaffected.
   4. **Checks owed:** a real-phone test of the F1 map; the MapLibre 6 terrain hang; the whole-globe 0.25° test in phase 2.
 - **Who:** agent (delegated by AGENTS.md); Riley leaned MapLibre after seeing screenshots of both, and was unsure.
+
+## 2026-11-24 — Cloud session: a living roadmap
+
+### D67. `docs/roadmap.md` is the single source for work order, with status commits straight to `dev`
+- **Context:** Riley works through many parallel cloud sessions and CT sessions, and asked for one document showing which item runs next, where it runs, which model and effort to use, and the prompt that starts it, kept current by the sessions themselves.
+- **Options (how status is updated):**
+  - (a) in each session's PR: `dev` shows stale status until Riley merges, and two PRs editing status lines conflict;
+  - (b) in GitHub issues only: no single document, and items without tickets have no status;
+  - (c) status-only commits straight to `dev` for `docs/roadmap.md`'s status lines, with everything else through PRs.
+- **Choice: (c).**
+  - Each item's status is one board line plus one Mermaid `class` line, each with a spacer line so concurrent changes merge cleanly.
+  - States: `done`, `review`, `in-progress`, `ready`, `needs-you`, `blocked`.
+  - Every session claims its item at the start, sweeps stale statuses, sets `review` when its PR opens, and `done` when it merges.
+  - The protocol is `docs/agents/session-handoff.md`, linked from `CLAUDE.md`.
+  - Status commits touch only `docs/roadmap.md`, are never force-pushed, and decide nothing: [ASK] items still go to Riley.
+- **Reserved numbers:** D58–D66 are reserved for roadmap items C1–C10 (table in `docs/roadmap.md`) so parallel sessions don't collide.
+- **Who:** Riley asked for the living roadmap, the handoff document and the colored status diagram (2026-11-24); the agent proposed status commits to `dev` as the mechanism.
