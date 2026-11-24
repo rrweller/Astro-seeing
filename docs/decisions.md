@@ -619,3 +619,20 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   10. **Monitoring:** each tick fetches the served `latest.json` over HTTP. If that fails or differs from the file just written, a fifth high-priority alert is added to D51 item 9: "page not being served".
 - **Who:** Riley (all items, agreed in a grilling session on ticket #24); the agent proposed each and drafted the wording.
 
+
+## 2026-11-24 — Cloud session: a living roadmap
+
+### D67. `docs/roadmap.md` is the single source for work order, with status commits straight to `dev`
+- **Context:** Riley works through many parallel cloud sessions and CT sessions, and asked for one document showing which item runs next, where it runs, which model and effort to use, and the prompt that starts it, kept current by the sessions themselves.
+- **Options (how status is updated):**
+  - (a) in each session's PR: `dev` shows stale status until Riley merges, and two PRs editing status lines conflict;
+  - (b) in GitHub issues only: no single document, and items without tickets have no status;
+  - (c) status-only commits straight to `dev` for `docs/roadmap.md`'s status lines, with everything else through PRs.
+- **Choice: (c).**
+  - Each item's status is one board line plus one Mermaid `class` line, each with a spacer line so concurrent changes merge cleanly.
+  - States: `done`, `review`, `in-progress`, `ready`, `needs-you`, `blocked`.
+  - Every session claims its item at the start, sweeps stale statuses, sets `review` when its PR opens, and `done` when it merges.
+  - The protocol is `docs/agents/session-handoff.md`, linked from `CLAUDE.md`.
+  - Status commits touch only `docs/roadmap.md`, are never force-pushed, and decide nothing: [ASK] items still go to Riley.
+- **Reserved numbers:** D58–D66 are reserved for roadmap items C1–C10 (table in `docs/roadmap.md`) so parallel sessions don't collide.
+- **Who:** Riley asked for the living roadmap, the handoff document and the colored status diagram (2026-11-24); the agent proposed status commits to `dev` as the mechanism.
