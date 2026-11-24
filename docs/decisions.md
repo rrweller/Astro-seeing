@@ -711,6 +711,23 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   The test request (item 8) checks the first three; the wait is read from that same request.
 - **Who:** Riley (all choices, agreed in a grilling session on ticket #13, 2026-11-16); the agent proposed each, recommending weekly pressure-level requests and monthly single levels, which Riley overrode.
 
+## 2026-11-16 — Cloud session: the globe library
+
+### D56. Globe library for the viewer: MapLibre GL JS (map #20, ticket #25)
+- **Evidence:** both prototypes are on the throwaway branch `prototype/globe-library` (`web/prototype-globe-library/`, with `COMPARISON.md`). The B layout was rebuilt on the synthetic data of `prototype/forecast-views` in MapLibre 5.24.1, MapLibre 6.18.0 and CesiumJS 1.147.0, tested in headless Chromium with software GL. Versions and licences read from each package's own files; tarball sha512 matched the npm registry.
+  - Both libraries drew per-cell blocks with no interpolation, sharp from globe to deep zoom (MapLibre: `raster-resampling: nearest` on tiles from `addProtocol`; Cesium: a custom `ImageryProvider` with nearest magnification). Hour slider, a 0.25° box over a 3° world grid, click-to-pick and a 390 px phone width all worked in both. No request left the host in either.
+  - Licences: MapLibre BSD-3-Clause; Cesium Apache-2.0, and its `LICENSE.md` also lists patents. Cesium's default base layer is Cesium ion imagery, so it needs `baseLayer: false`; it also shows a "Cesium ion" logo credit by default.
+  - Weight (this page, nothing cached): MapLibre 5 0.36 MB gzip, MapLibre 6 0.52 MB, Cesium 1.92 MB. Vendored in the repo: 1.1, 1.7 and 11 MB.
+  - **Poles:** with a checkerboard test layer, MapLibre's globe has no true cells beyond ±85.05° (Web Mercator tiles; the view centre clamps to ±85.051°; the cap shows the edge row smeared to the pole). Cesium showed true cells to the pole.
+  - MapLibre 6.18.0 is ESM-only and needs WebGL2 (its migration guide); neither version needs a bundler. Terrain from a DEM generated in the browser (`raster-dem` + `addProtocol`) matched within 2.6% on 5.24.1; the v6 terrain test hung under software GL and is untested.
+  - Not established: phone/GPU performance (software-GL frame rates were too erratic to rank), the whole globe at 0.25°, self-hosted terrain at 30 m for either library, Cesium's terrain elevation check.
+- **Choice (Riley's lean for MapLibre, 2026-11-16; agent decided, as delegated):**
+  1. **MapLibre GL JS, pinned to 5.24.1 for now**, vendored in `web/` with checksums and licence recorded (D52 item 4). No bundler. It is the version the ticket and AGENTS.md name and the only one whose terrain path was tested. Moving to 6.x is a later, separate step once its terrain behaviour is checked.
+  2. **Reasons:** a 5x lighter page and repo footprint, which matters on phones and for the homelab; BSD-3 with no ion-style credit or default paid service to switch off; `addProtocol` fits "generate pixels in the browser from per-cell height tables" (AGENTS.md rendering note); terrain via `raster-dem` worked.
+  3. **Known limitation, not fixed:** poleward of 85.05° MapLibre cannot show true cells, and Antarctica is in scope (that cap holds the South Pole plateau). Before the historical viewer ships, test a workaround (for example a separate polar overlay); if none works, show the cap as "no data" or reopen this choice. F1 (Kongsberg) is unaffected.
+  4. **Checks owed:** a real-phone test of the F1 map; the MapLibre 6 terrain hang; the whole-globe 0.25° test in phase 2.
+- **Who:** agent (delegated by AGENTS.md); Riley leaned MapLibre after seeing screenshots of both, and was unsure.
+
 ## 2026-11-24 — Cloud session: a living roadmap
 
 ### D67. `docs/roadmap.md` is the single source for work order, with status commits straight to `dev`
