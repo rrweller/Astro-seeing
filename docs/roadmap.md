@@ -1,95 +1,101 @@
-# Roadmap: work order, parallel lanes and session prompts
+# Roadmap: status, work order and session prompts
 
-Written 2026-11-24. This file says **what to run next, what can run at the same time, and how to start each session**: a ready-to-paste prompt plus a suggested model and effort for each item. It doesn't hold decisions or status. Decisions live in `docs/decisions.md`, and status lives in the GitHub tickets and the two maps:
+**This is the single source for what runs next, where it runs, and the prompt that starts it.** It is a living document: every session updates it as it starts and finishes, following [`docs/agents/session-handoff.md`](agents/session-handoff.md). Status changes are committed straight to `dev` (D67); everything else changes through pull requests.
 
-- [Map #6: the way to Gate 1](https://github.com/rrweller/Astro-seeing/issues/6) (historical track)
-- [Map #20: the way to F1](https://github.com/rrweller/Astro-seeing/issues/20) (forecast track)
-
-When an item here is done, its ticket closes. Update this file only when the order or the item list changes.
+- Decisions live in `docs/decisions.md`.
+- Ticket discussions live in GitHub issues under the two maps:
+  - [Map #6: the way to Gate 1](https://github.com/rrweller/Astro-seeing/issues/6) (historical track)
+  - [Map #20: the way to F1](https://github.com/rrweller/Astro-seeing/issues/20) (forecast track)
 
 ## How to use it
 
-1. Pick the next item(s) whose dependencies are done (see the diagram and the tables).
-2. Start a **new cloud session** on `rrweller/Astro-seeing` (for `cloud` items) or a Claude Code session on CT 350 (for `CT` items).
-3. Choose the suggested model and effort, then paste the prompt.
-4. Items marked **needs you** are question-and-answer sessions (grilling) or need your approval at the end. All other items run on their own and finish with a pull request into `dev` for you to review and merge.
+1. Look at the **status board** below (or the colored diagram). Anything `ready` can start now. Items in the same wave can run at the same time.
+2. Open the item's section under **Prompts**. Start a new cloud session on `rrweller/Astro-seeing` (`cloud` items) or a Claude Code session on CT 350 (`CT` items). Choose the model and effort shown, and paste the prompt.
+3. The session marks the item `in-progress`, then `review` when its PR is open. After you merge the PR, it marks the item `done` and moves the items that were waiting on it to `ready`. If a session ends early, the next session's sweep catches up.
+4. `needs-you` means the item is waiting on you: a merge, a login, an approval, or being at home.
 
-## Model and effort guide
+## Status board
 
-Relative API prices per million input/output tokens (cached 2026-11-03): Haiku 5.5 $0.10/$0.50, Sonnet 5.5 $2/$10, Opus 5.5 $4/$20, Fable 5.2 $8/$40. Usage credits should scale in roughly the same proportion, but I haven't checked how your plan counts them.
+Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-| Kind of work | Model | Effort | Why |
-|---|---|---|---|
-| Design decisions with physics or validation consequences (grilling), specs | **Opus 5.5** | high | Wrong choices here propagate into every result. These sessions are short and mostly conversation, so the cost per session stays modest. |
-| Well-specified code with tests, where the decision is already written down | **Sonnet 5.5** | high | The design is fixed by a D-number, so the work is careful implementation. Data-safety code (deleting files, manifest states) stays at high. |
-| Small mechanical work (merging branches, resolving append-only conflicts, config tweaks) | **Sonnet 5.5** | low–medium | Cheap, but still follows AGENTS.md's rules reliably. |
-| Code that implements physics or interpolation used for Gate 1 numbers | **Opus 5.5** | high | Subtle mistakes there would silently shift the reproductions. |
-| Diagnosing a reproduction that misses its tolerance for no obvious reason | **Fable 5.2** | high | The only place where the 2× price over Opus is likely worth it. Use it only after an Opus session has tried. |
-| Haiku 5.5 | not recommended | — | Every session has to follow AGENTS.md's strict data-safety and provenance rules; the savings aren't worth a broken rule. |
+- `C0` · **ready** · cloud · Land the open PRs #36–#40 into `dev` (needs you to merge each) · [#36](https://github.com/rrweller/Astro-seeing/pull/36) [#37](https://github.com/rrweller/Astro-seeing/pull/37) [#38](https://github.com/rrweller/Astro-seeing/pull/38) [#39](https://github.com/rrweller/Astro-seeing/pull/39) [#40](https://github.com/rrweller/Astro-seeing/pull/40)
 
-These are judgment calls, not measurements. If a Sonnet session struggles (repeated test failures, misreading a decision), rerun that item on Opus.
+- `C1` · **ready** · cloud · Calibration design (grilling, needs you) · [#15](https://github.com/rrweller/Astro-seeing/issues/15)
 
-## Rules that apply to every session
+- `C2` · **ready** · cloud · Experiment designs (grilling, needs you) · [#17](https://github.com/rrweller/Astro-seeing/issues/17)
 
-These rules are repeated, in short form, at the top of every prompt below so that each prompt works on its own.
+- `C3` · **ready** · cloud · F1 spec (needs your approval) · ticket: none yet
 
-- **Base on `dev`, never `main`.** Run `git fetch origin`, base the work on `origin/dev`, and open the pull request into `dev`.
-- **Decisions that aren't merged yet:** D53–D57 are in open PRs #36–#40. Until those are merged, sessions read them from those branches.
-- **Reserved D-numbers, so parallel sessions don't collide:**
+- `C4` · **blocked** · cloud · F1 build tickets from the spec · ticket: none yet
 
-  | D-number | Item |
-  |---|---|
-  | D58 | #15 |
-  | D59 | #17 |
-  | D60 | F1 spec |
-  | D61 | Reproduction spec |
-  | D62 | C5 |
-  | D63 | C6 |
-  | D64 | C7 |
-  | D65 | C8 |
-  | D66 | C9 |
+- `C5` · **ready** · cloud · Surface-pressure point fetcher for Haslebacher (b) · ticket: none yet
 
-  A session that needs more than one D-number adds letters (D62a, D62b, …).
-- **`docs/decisions.md` conflicts:** every PR appends to this file, so expect a merge conflict there. Keep both entries, in D-number order.
-- **Cloud sessions can't reach the CT's resources:** no `/data`, `/staging`, CDS, manifest or `papers/`. Cloud sessions write code and tests against fakes and synthetic data. Anything that needs real data is a CT item.
-- **Riley's standing rules:**
-  - verify every link before citing it;
-  - prefer primary sources, and never use AI-generated sites;
-  - say plainly when unsure;
-  - never commit secrets, `papers/` or `external/`.
+- `C6` · **ready** · cloud · Multi-month surface requests and per-kind planning rates · ticket: none yet
+
+- `C7` · **ready** · cloud · Code to move the kept raw GRIB to the NAS · ticket: none yet
+
+- `C8` · **ready** · cloud · ESO seeing-monitor fetcher · ticket: none yet
+
+- `C9` · **ready** · cloud · Site time-series reader for the reproductions · ticket: none yet
+
+- `C10` · **blocked** · cloud · Reproduction spec and CT tickets (needs your approval) · ticket: none yet
+
+- `F1` · **blocked** · cloud + CT · F1 build tickets (C4 lists them here) · ticket: none yet
+
+- `K1` · **needs-you** · CT · Recover the ntfy URL; pull `dev` and restart the notify watcher · needs you: be at home
+
+- `K2` · **in-progress** · CT · TMT ERA5 download finishing (~28–29 Nov), then survey the stores · download running
+
+- `K3` · **needs-you** · CT · TMT login · [#14](https://github.com/rrweller/Astro-seeing/issues/14)
+
+- `K4` · **blocked** · CT · One model-level (ERA5 complete) test request · [#16](https://github.com/rrweller/Astro-seeing/issues/16)
+
+- `K5` · **blocked** · CT · Fetch surface pressure at the 8 Haslebacher sites · ticket: none yet
+
+- `K6` · **blocked** · CT · Surface-request cost check, then the raw GRIB archive move · ticket: none yet
+
+- `K7` · **blocked** · CT · First pilot request: 1–16 June 2023, global, ~104 GB · ticket: none yet
+
+- `K8` · **blocked** · CT · ESO DIMM/MASS fetch for 2021–2025 · ticket: none yet
+
+- `K9` · **blocked** · CT · Reproduction notebooks, one per paper · ticket: none yet
 
 ## Dependency diagram
 
+Colors show each item's state (legend at the bottom). The arrows show what has to finish first.
+
 ```mermaid
-flowchart TD
-  subgraph now["Cloud, startable now"]
-    C0["C0 Land open PRs #36–#40<br/>(needs you: merges)"]
-    C1["C1 #15 Calibration design<br/>(needs you)"]
-    C2["C2 #17 Experiment designs<br/>(needs you)"]
-    C3["C3 F1 spec<br/>(needs you: approve)"]
-    C5["C5 Surface-pressure point fetcher"]
-    C6["C6 Multi-month surface requests + planning rates"]
-    C7["C7 Move kept raw GRIB to the NAS (code)"]
-    C8["C8 ESO seeing-monitor fetcher"]
-    C9["C9 Site time-series reader for reproductions"]
+flowchart LR
+  subgraph cloud["Cloud"]
+    C0["C0 · Land PRs #36–#40"]
+    C1["C1 · Calibration design #15"]
+    C2["C2 · Experiment designs #17"]
+    C3["C3 · F1 spec"]
+    C4["C4 · F1 tickets"]
+    C5["C5 · Surface-pressure fetcher"]
+    C6["C6 · Multi-month surface requests"]
+    C7["C7 · Raw GRIB archive code"]
+    C8["C8 · ESO fetcher"]
+    C9["C9 · Site time-series reader"]
+    C10["C10 · Reproduction spec"]
+    F1["F1 · F1 build tickets"]
   end
-  C3 --> C4["C4 F1 tickets"]
-  C4 --> F1["F1 build tickets (cloud + CT)"]
+  subgraph ct["CT, at home"]
+    K1["K1 · ntfy URL, restart watcher"]
+    K2["K2 · TMT download, survey"]
+    K3["K3 · TMT login #14"]
+    K4["K4 · Model-level test #16"]
+    K5["K5 · Fetch surface pressure"]
+    K6["K6 · Cost check, archive move"]
+    K7["K7 · First 104 GB pilot request"]
+    K8["K8 · ESO 2021–2025 fetch"]
+    K9["K9 · Reproduction notebooks"]
+  end
+  C3 --> C4 --> F1
   C8 --> F1
-  C1 --> C10["C10 Reproduction spec + CT tickets<br/>(needs you: approve)"]
+  C1 --> C10
   C2 --> C10
   C9 --> C10
-  subgraph home["CT, when you're home"]
-    K1["K1 ntfy URL, pull dev, restart watcher"]
-    K2["K2 TMT finishes → survey stores"]
-    K3["K3 #14 TMT login"]
-    K4["K4 #16 model-level test request"]
-    K5["K5 Haslebacher (b): fetch surface pressure"]
-    K6["K6 Surface cost check, then archive raw GRIB"]
-    K7["K7 First 104 GB pilot request"]
-    K8["K8 ESO 2021–2025 fetch"]
-    K9["K9 Reproduction notebooks"]
-  end
   C0 --> K1
   K2 --> K4 --> K7
   C5 --> K5
@@ -97,102 +103,249 @@ flowchart TD
   C7 --> K6 --> K7
   C8 --> K8
   C10 --> K9
-  C9 --> K9
+  subgraph legend["Legend"]
+    direction LR
+    Ldone["done"]:::done
+    Lreview["review"]:::review
+    Lprog["in-progress"]:::inprogress
+    Lready["ready"]:::ready
+    Lyou["needs-you"]:::needsyou
+    Lblock["blocked"]:::blocked
+  end
+  style cloud fill:#f6f8fa,stroke:#d0d7de,color:#1f2328
+  style ct fill:#f6f8fa,stroke:#d0d7de,color:#1f2328
+  style legend fill:#ffffff,stroke:#d0d7de,color:#1f2328
+  classDef done fill:#2da44e,stroke:#1a7f37,color:#ffffff
+  classDef review fill:#8250df,stroke:#6639ba,color:#ffffff
+  classDef inprogress fill:#0969da,stroke:#0550ae,color:#ffffff
+  classDef ready fill:#fff8c5,stroke:#9a6700,color:#1f2328
+  classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
+  classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
+  %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
+  class C0 ready
+  %% ---
+  class C1 ready
+  %% ---
+  class C2 ready
+  %% ---
+  class C3 ready
+  %% ---
+  class C4 blocked
+  %% ---
+  class C5 ready
+  %% ---
+  class C6 ready
+  %% ---
+  class C7 ready
+  %% ---
+  class C8 ready
+  %% ---
+  class C9 ready
+  %% ---
+  class C10 blocked
+  %% ---
+  class F1 blocked
+  %% ---
+  class K1 needsyou
+  %% ---
+  class K2 inprogress
+  %% ---
+  class K3 needsyou
+  %% ---
+  class K4 blocked
+  %% ---
+  class K5 blocked
+  %% ---
+  class K6 blocked
+  %% ---
+  class K7 blocked
+  %% ---
+  class K8 blocked
+  %% ---
+  class K9 blocked
+  %% ---
 ```
 
-## Cloud items: startable now
+In the diagram, the class names are `done`, `review`, `inprogress`, `ready`, `needsyou` and `blocked`. Mermaid class names can't contain hyphens, so `in-progress` is written `inprogress` and `needs-you` is written `needsyou`.
 
-The waves below are in order. Items in the same wave can run at the same time.
+## Work order
 
-**Practical limit:** you can only answer one grilling session at a time. Coding sessions run on their own, but keep to about three at once so their pull requests don't conflict much. The "touches" column shows which ones overlap.
+### Cloud waves
 
-### Wave 1
+Items in a wave can run at the same time. A later wave usually depends on an earlier one, or is simply lower priority.
 
-| ID | Item | Ticket | Model / effort | Needs you? | Touches |
-|---|---|---|---|---|---|
-| C0 | Land the open PRs #36–#40 | PRs #36–#40 | Sonnet 5.5 / low | yes: you merge each one in the GitHub app | `docs/decisions.md`, `notify.py` |
-| C1 | Calibration design | #15 | Opus 5.5 / high | yes: grilling | `docs/decisions.md` |
-| C5 | Surface-pressure point fetcher (Haslebacher b) | new, under #6 | Sonnet 5.5 / high | no | `download/`, `cli.py` |
-| C8 | ESO seeing-monitor fetcher | new, under #20 | Sonnet 5.5 / high | no | new module, `cli.py` |
-| C9 | Site time-series reader for the reproductions | new, under #6 | Opus 5.5 / high | no | new module under `src/astroseeing/` |
+**Practical limit:** you can answer only one grilling session at a time. Coding sessions run on their own, but keep to about three at once so their PRs don't conflict much. The "Touches" column shows which ones overlap.
 
-### Wave 2 (after C1, or in parallel if you can handle two conversations)
-
-| ID | Item | Ticket | Model / effort | Needs you? | Touches |
-|---|---|---|---|---|---|
-| C2 | Experiment designs | #17 | Opus 5.5 / high | yes: grilling | `docs/decisions.md` |
-| C3 | F1 spec | new spec issue under #20 | Opus 5.5 / high | yes: approve the spec | issues only, `docs/decisions.md` |
-| C6 | Multi-month surface requests and per-kind planning rates | new, under #6 | Sonnet 5.5 / high | no | `download/requests.py`, `configs/era5.yaml`, `cli.py` |
-| C7 | Move the kept raw GRIB to the NAS (code only) | new, under #6 | Sonnet 5.5 / high | no | `manifest.py`, `cli.py`, new module |
-
-C6 and C7 both touch `cli.py`. Start the second after the first's PR is merged, or accept a small conflict.
-
-### Wave 3
-
-| ID | Item | Depends on | Model / effort | Needs you? |
+| Wave | ID | Model / effort | Needs you? | Touches |
 |---|---|---|---|---|
-| C4 | F1 tickets from the spec | C3 approved | Opus 5.5 / medium | yes: approve the ticket list |
-| C10 | Reproduction spec and CT tickets | C1, C2, C9 | Opus 5.5 / high | yes: approve |
-| F1-x | Each F1 build ticket marked `runs-on:cloud` | C4 | from the ticket's "Suggested model" line (C4 adds one) | per ticket |
+| 1 | C0 | Sonnet 5.5 / low | yes: you merge each PR in the GitHub app | `docs/decisions.md`, `notify.py` |
+| 1 | C1 | Opus 5.5 / high | yes: grilling | `docs/decisions.md`, `CONTEXT.md` |
+| 1 | C5 | Sonnet 5.5 / high | no | `download/`, `cli.py` |
+| 1 | C8 | Sonnet 5.5 / high | no | new module, `cli.py` |
+| 1 | C9 | Opus 5.5 / high | no | new module |
+| 2 | C2 | Opus 5.5 / high | yes: grilling | `docs/decisions.md` |
+| 2 | C3 | Opus 5.5 / high | yes: approve the spec | issues, `docs/decisions.md` |
+| 2 | C6 | Sonnet 5.5 / high | no | `download/requests.py`, `configs/era5.yaml`, `cli.py` |
+| 2 | C7 | Sonnet 5.5 / high | no | `manifest.py`, `cli.py`, new module |
+| 3 | C4 | Opus 5.5 / medium | yes: approve the ticket list | issues, this file |
+| 3 | C10 | Opus 5.5 / high | yes: approve | issues, this file |
+| 3 | F1 | per ticket ("Suggested model" line) | per ticket | per ticket |
+
+### CT order
+
+Copernicus allows **one job at a time per account** (D39). So the items that use it run strictly one after another:
+
+1. K2 (the TMT queue, running now);
+2. K4;
+3. K7.
+
+Items that don't use that slot can run alongside them: K5 uses its own time-series slot, and K6's cost estimates submit nothing.
+
+| ID | Depends on | Uses the CDS slot? | Model / effort |
+|---|---|---|---|
+| K1 | C0 for the restart part | no | you, or Sonnet 5.5 / low |
+| K2 | — | yes (running now) | Sonnet 5.5 / medium for the survey |
+| K3 | — | no | you |
+| K4 | K2 | **yes** | Sonnet 5.5 / high |
+| K5 | C5 | own slot | Sonnet 5.5 / medium |
+| K6 | C6, C7 | estimates only | Sonnet 5.5 / high |
+| K7 | K4, K6 | **yes** | Opus 5.5 / high (it measures several unknowns) |
+| K8 | C8 | no | Sonnet 5.5 / medium |
+| K9 | C10, C9 | no | Opus 5.5 / high; escalate a hard mismatch to Fable 5.2 / high |
+
+## Model and effort guide
+
+Relative API prices per million input/output tokens (cached 2026-11-03): Haiku 5.5 $0.10/$0.50, Sonnet 5.5 $2/$10, Opus 5.5 $4/$20, Fable 5.2 $8/$40. Usage credits should scale in roughly the same proportion, but how Riley's plan counts them hasn't been checked.
+
+| Kind of work | Model | Effort | Why |
+|---|---|---|---|
+| Design decisions with physics or validation consequences (grilling), specs | **Opus 5.5** | high | Wrong choices here propagate into every result. These sessions are short and mostly conversation. |
+| Well-specified code with tests, where the decision is already written down | **Sonnet 5.5** | high | The design is fixed by a D-number, so the work is careful implementation. Data-safety code stays at high. |
+| Small mechanical work (merging branches, append-only conflicts, config) | **Sonnet 5.5** | low–medium | Cheap, but still follows AGENTS.md's rules reliably. |
+| Code implementing physics or interpolation used for Gate 1 numbers | **Opus 5.5** | high | Subtle mistakes there would silently shift the reproductions. |
+| Diagnosing a reproduction that misses its tolerance for no obvious reason | **Fable 5.2** | high | The one place where the 2× price over Opus is likely worth it, and only after an Opus session has tried. |
+| Haiku 5.5 | not recommended | — | Every session must follow AGENTS.md's strict data-safety and provenance rules. |
+
+These are judgment calls, not measurements. If a Sonnet session struggles, rerun the item on Opus.
+
+## Reserved D-numbers
+
+Parallel sessions would otherwise take the same number.
+
+| D-number | Item |
+|---|---|
+| D58 | C1 |
+| D59 | C2 |
+| D60 | C3 |
+| D61 | C10 |
+| D62 | C5 |
+| D63 | C6 |
+| D64 | C7 |
+| D65 | C8 |
+| D66 | C9 |
+
+- D67 is this roadmap process.
+- A session needing more than one number adds letters (D62a, D62b, …).
+- New items take the next free number after the highest on `dev`, in open PRs, and in this table, and add it to this table in their PR.
 
 ---
 
 ## Prompts
 
-Each prompt is self-contained. Copy everything inside the box.
+Every prompt starts with the same first line, which loads the session protocol. Copy everything inside the box.
 
-### C0. Land the open PRs #36–#40 (Sonnet 5.5, low)
+### C0. Land the open PRs #36–#40
+
+Sonnet 5.5, low effort. Needs you to merge.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing. Read AGENTS.md and CLAUDE.md first. Never push to main.
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C0.
 
-Task: help Riley land the five open PRs into dev, in D-number order: #36 (D53, stall alert), #38 (D54, Paranal comparison), #37 (D55, global downloads), #40 (D56, globe library), #39 (D57, reproduction settings). Each one appends to docs/decisions.md, so after one merges the next conflicts there.
+You are a cloud session on rrweller/Astro-seeing. Read AGENTS.md and CLAUDE.md. Never push to main.
 
-1. Review #36's code change (src/astroseeing/notify.py, tests/test_notify.py) for correctness against D53, and run its tests (pixi run pytest tests/test_notify.py, or python -m pytest if pixi isn't available). Report findings briefly. The other four PRs are documentation of decisions Riley already agreed; check only that each merges cleanly.
-2. Tell Riley which PR to merge first, then subscribe to PR activity so you wake when he merges it.
-3. After each merge: fetch origin/dev, merge it into the next PR's branch, resolve the docs/decisions.md conflict by keeping both entries in D-number order (and any other trivial conflicts in reports), push to that PR's branch (never force-push), and tell Riley it's ready.
-4. Stop when all five are merged. Then post a one-line comment on map #6 and map #20 saying D53–D57 are on dev.
+Task: help Riley land the five open PRs into dev, in D-number order: #36 (D53, stall alert), #38 (D54, Paranal comparison), #37 (D55, global downloads), #40 (D56, globe library), #39 (D57, reproduction settings). Each appends to docs/decisions.md, so after one merges the next conflicts there.
 
-Do not change the content of any decision. If a conflict is more than an append, stop and ask Riley.
+1. Review #36's code change (src/astroseeing/notify.py, tests/test_notify.py) against D53, and run its tests (pixi run pytest tests/test_notify.py, or python -m pytest if pixi is missing). Report findings briefly. The other four are documentation of decisions Riley already agreed; check only that each merges cleanly.
+2. Set C0 to needs-you ("needs you: merge #36"), tell Riley which PR to merge, and subscribe to that PR's activity.
+3. After each merge: fetch origin/dev, merge it into the next PR's branch, and resolve docs/decisions.md by keeping both entries in D-number order (D67 may already be on dev; keep it last). Push to that PR's branch (never force-push), update the needs-you note, and tell Riley it's ready.
+4. When all five are merged: set C0 to done, sweep, and comment one line on map #6 and map #20 saying D53–D57 are on dev.
+
+Do not change any decision's content. If a conflict is more than an append, stop and ask Riley.
 ```
 
-### C1. Calibration design, ticket #15 (Opus 5.5, high; needs you)
+### C1. Calibration design, ticket #15
+
+Opus 5.5, high effort. Needs you (grilling).
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md and docs/RESEARCH.md in full (§4.8 calibration, §6 targets). If PRs #38 (D54) and #39 (D57) aren't merged into dev yet, read docs/decisions.md from their branches (planning/paranal-comparison-d54, grill/7-reproductions). Also read reports/validation_downloads.md and docs/research/seeing-measurements.md (branch research/seeing-measurements).
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C1.
 
-Task: resolve ticket #15, "Calibration design: what's fitted, on which data, and what's held out", as a grilling session with Riley, using the grilling and domain-modeling skills. Claim it first (assign rrweller, comment "claimed by cloud session"). Work one question at a time, and recommend an answer with evidence for each. Cover at least:
-- which quantity is fitted (K in J or a seeing scale) and whether the free atmosphere and ground layer are fitted separately where MASS exists;
-- which data: ESO Paranal/La Silla DIMM+MASS 2021–2025 (stored ERA5: Chile area, night hours), TMT 2006–2007 (5 sites, login pending, #14);
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md and docs/RESEARCH.md in full (§4.8 calibration, §6 targets). If D54 and D57 aren't on dev yet, read docs/decisions.md from branches planning/paranal-comparison-d54 (PR #38) and grill/7-reproductions (PR #39). Also read reports/validation_downloads.md and docs/research/seeing-measurements.md (branch research/seeing-measurements).
+
+Task: resolve ticket #15, "Calibration design: what's fitted, on which data, and what's held out", as a grilling session with Riley, using the grilling and domain-modeling skills. Claim the ticket. Work one question at a time, and recommend an answer with evidence for each. Cover at least:
+- which quantity is fitted (K in J or a seeing scale), and whether the free atmosphere and ground layer are fitted separately where MASS exists;
+- which data: ESO Paranal/La Silla DIMM+MASS 2021–2025 (stored ERA5: Chile area, night hours) and TMT 2006–2007 (5 sites; login pending, #14);
 - the hold-out: which years and/or sites, and why;
-- the matching rules (hour windows, nightly medians, minimum samples); reuse D54's rules where they fit, and say where the historical track differs;
-- the acceptance numbers: D19's bias limits (≤0.10″ free atmosphere, ≤0.15″ total) plus which other statistics are reported;
-- how calibration interacts with the ground-layer experiment (#17) and the reproductions (each paper's own constants first).
+- the matching rules (hour windows, nightly medians, minimum samples); reuse D54's where they fit and say where the historical track differs;
+- the acceptance numbers: D19's bias limits (≤0.10″ free atmosphere, ≤0.15″ total), plus which other statistics are reported;
+- how calibration interacts with the ground-layer experiment (#17) and with the reproductions (each paper's own constants first).
 
-When agreed: write decision D58 in docs/decisions.md (options, evidence, choice, who), add any new terms to CONTEXT.md, comment the answer on #15, close it, add a one-line gist with a link under "Decisions so far" in map #6's body, and open a PR into dev. Verify any link before citing it. Say plainly when unsure.
+When agreed:
+- write D58 in docs/decisions.md and add new terms to CONTEXT.md;
+- comment the answer on #15 and close it;
+- add a one-line gist with a link under "Decisions so far" in map #6;
+- open a PR into dev.
+
+Verify any link before citing it. Say plainly when unsure.
 ```
 
-### C2. Experiment designs, ticket #17 (Opus 5.5, high; needs you)
+### C2. Experiment designs, ticket #17
+
+Opus 5.5, high effort. Needs you (grilling).
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md (Phase 1 step 5 lists the experiments), CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md in full (§5 terrain method, §4.7 ground layer, §4.2 cloud), and docs/decisions.md (D5, D6, D7, D19, D31, D36, and D55, D57 and D58 if present; read unmerged ones from open PR branches). Also read reports/cds_throughput_one_job.md for what downloads cost.
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C2.
 
-Task: resolve ticket #17, "Experiment designs: sites, periods, metrics, and the downloads they need", as a grilling session with Riley (grilling and domain-modeling skills). Claim it first. For each of the five experiments (pressure vs model levels; terrain-aware vs cell average; cloud above height vs total cloud, including the D6 overlap-rule check; hourly vs 3-hourly; ground-layer options: none, O&S relocation, W71, calibrated constant), agree on:
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md (Phase 1 step 5 lists the experiments), CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md in full (§5 terrain method, §4.7 ground layer, §4.2 cloud), and docs/decisions.md entries D5, D6, D7, D19, D31, D36, D55, D57 and D58 if present (read unmerged ones from their open PR branches). Also read reports/cds_throughput_one_job.md for what downloads cost.
+
+Task: resolve ticket #17, "Experiment designs: sites, periods, metrics, and the downloads they need", as a grilling session with Riley (grilling and domain-modeling skills). Claim the ticket. The five experiments are:
+- pressure vs model levels;
+- terrain-aware vs cell average;
+- cloud above height vs total cloud, including the D6 overlap-rule check;
+- hourly vs 3-hourly;
+- ground-layer options: none, O&S relocation, W71, calibrated constant.
+
+For each one, agree on:
 - sites and periods, using data already on the NAS wherever possible;
-- the metric and what result would change the method;
+- the metric, and what result would change the method;
 - any new download, sized in fields and in days at one CDS job at a time (~4 h queue wait per request);
-- the order relative to the reproductions and calibration.
+- its order relative to the reproductions and calibration.
 
-Any download over 50 GB or 24 h is an [ASK] and must be listed with its size. When agreed: write D59, comment and close #17, update map #6's "Decisions so far", and open a PR into dev. Verify links before citing them; say when unsure.
+Any download over 50 GB or 24 h is an [ASK]: list it with its size. When agreed:
+- write D59;
+- comment on #17 and close it;
+- update map #6's "Decisions so far";
+- add any new CT work as new roadmap items (with prompts) in your PR;
+- open a PR into dev.
+
+Verify links; say when unsure.
 ```
 
-### C3. F1 spec (Opus 5.5, high; needs you to approve)
+### C3. F1 spec
+
+Opus 5.5, high effort. Needs your approval.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md (forecast track milestones), CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md, and every forecast decision D43–D56 in docs/decisions.md. If D53–D56 aren't on dev yet, read them from the branches of PRs #36, #37, #38 and #40. Read map #20 and the research notes it links (branches research/forecast-sources, research/seeing-measurements, research/valley-fog) and the prototype on branch prototype/forecast-views.
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C3.
 
-Task: write the F1 spec, the single build specification for milestone F1, as a GitHub issue under map #20 (label runs-on:cloud; use the to-spec skill if it's available, otherwise follow docs/agents/issue-tracker.md). It must turn the decisions into buildable parts, each with clear interfaces and an acceptance test:
-- the fetchers for GFS, ICON-EU, MEPS and IFS;
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read:
+- AGENTS.md (forecast track milestones), CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md;
+- every forecast decision D43–D56 in docs/decisions.md (if D53–D56 aren't on dev yet, read them from the branches of PRs #36, #37, #38 and #40);
+- map #20 and the research notes it links (branches research/forecast-sources, research/seeing-measurements, research/valley-fog);
+- the prototype on branch prototype/forecast-views.
+
+Task: write the F1 spec as a GitHub issue under map #20 (label runs-on:cloud; use the to-spec skill if available, otherwise follow docs/agents/issue-tracker.md). Put its link on your roadmap board line. The spec turns the decisions into buildable parts, each with interfaces and an acceptance test:
+- fetchers for GFS, ICON-EU, MEPS and IFS;
 - verification and the manifest tables;
 - physics reuse (both Cn² models, J above the observer, H̄);
 - per-place stores and expiring SSD products;
@@ -200,170 +353,194 @@ Task: write the F1 spec, the single build specification for milestone F1, as a G
 - the data files and page (D52), the MapLibre map (D56), the alerts (D51), and the Paranal comparison (D54).
 
 The spec must also:
-- reuse the ESO fetcher being built separately (C8, under map #20) rather than specifying a second one;
-- list what runs in the cloud versus on the CT;
-- list the exact formats left open by D52 (per-place JSON, map layer binaries, latest.json).
+- reuse the ESO fetcher from roadmap item C8, not specify a second one;
+- say which parts run in the cloud and which on the CT;
+- fix the formats D52 left open (per-place JSON, map-layer binaries, latest.json).
 
-Don't re-decide anything already decided. Where the decisions leave a real gap, ask Riley one question at a time with a recommendation, and record any answers as D60. Finish by showing Riley the spec's outline for approval, then open a PR into dev for any doc changes.
+Don't re-decide anything already decided. Where the decisions leave a real gap, ask Riley one question at a time with a recommendation, and record the answers as D60. Show Riley the spec outline for approval (set C3 to needs-you while you wait). Then open a PR into dev for any doc changes.
 ```
 
-### C4. F1 tickets (Opus 5.5, medium; needs you to approve)
+### C4. F1 tickets
+
+Opus 5.5, medium effort. Needs your approval.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing. Run git fetch origin and work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md, and the approved F1 spec issue under map #20 with its comments.
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C4.
 
-Task: break the F1 spec into build tickets as sub-issues of map #20, using the to-tickets skill if available, otherwise following docs/agents/issue-tracker.md. Each ticket must have:
+You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md, and the approved F1 spec issue under map #20 with its comments.
+
+Task: break the F1 spec into build tickets as sub-issues of map #20 (to-tickets skill if available; otherwise docs/agents/issue-tracker.md). Each ticket has:
 - "Part of #20" and a "Blocked by:" line;
 - one runs-on label;
 - an acceptance test;
-- a "Suggested model:" line following the model guide in docs/roadmap.md (Sonnet 5.5 high for specified code; Opus 5.5 high for physics, the verdict rules and the Paranal statistics);
+- a "Suggested model:" line from the model guide in docs/roadmap.md (Sonnet 5.5 high for specified code; Opus 5.5 high for physics, the verdict rules and the Paranal statistics);
 - a "Can run alongside:" line naming tickets that touch different files.
 
-Order them so a working end-to-end slice (one model, one place, page shows data) lands first. Show Riley the list for approval before creating the issues. Then add a short "F1 build" section to docs/roadmap.md listing the tickets in order with their parallel groups, and open a PR into dev.
+Order them so a working end-to-end slice (one model, one place, page shows data) lands first. Show Riley the list for approval before creating the issues (set C4 to needs-you while you wait).
+
+Then, in a PR into dev, replace roadmap item F1 with one item per ticket. Each item gets:
+- an ID F1-1, F1-2, …;
+- a board line with the ticket link;
+- a diagram node, its edges and a class line followed by a %% --- spacer;
+- a section with model and effort and a short self-contained prompt that starts with this same first line and says "work ticket #N".
 ```
 
-### C5. Surface-pressure point fetcher for Haslebacher (b) (Sonnet 5.5, high)
+### C5. Surface-pressure point fetcher for Haslebacher (b)
+
+Sonnet 5.5, high effort.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §3.4 and §7 (the single-level time-series product), and decisions D2, D25, D29, D39 and D57 item 4. If D57 isn't on dev, read it from branch grill/7-reproductions (PR #39).
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C5.
 
-Task: build a minimal point fetcher for the CDS product reanalysis-era5-single-levels-timeseries that gets surface pressure (sp) at given points for 1979–2020, as D57 item 4 describes. First create a ticket for it under map #6 (labels runs-on:cloud, wayfinder:task), unless one already exists, and claim it.
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §3.4 and §7 (the single-level time-series product), and decisions D2, D25, D29, D39 and D57 item 4 (if D57 isn't on dev, read it from branch grill/7-reproductions, PR #39).
+
+Task: build a minimal point fetcher for the CDS product reanalysis-era5-single-levels-timeseries that gets surface pressure (sp) at given points for 1979–2020 (D57 item 4). First create a ticket under map #6 (labels runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
 
 Requirements:
 - Use the existing ecmwf-datastores client pattern (D2) and the manifest, so requests are tracked and resumable.
-- This product has its own CDS slot (D29). Its jobs must still be recorded, and must never be counted by or block the pressure-level gate (D39).
-- Chunk by year if a request limit is hit; the 42-year single request is untested, so make the chunk size configurable.
+- The product has its own CDS slot (D29). Its jobs are recorded, but never counted by or blocking the pressure-level gate (D39).
+- Chunk by year if a request limit bites; the chunk size is configurable, because the 42-year single request is untested.
 - Verify the returned NetCDF: variable, point, time coverage, no gaps or NaN (count and log any).
-- Write the result atomically as a small per-site store or NetCDF under a path from config.
+- Write atomically as a small per-site store under a path from config.
 - Add a CLI command and tests against tests/fakes.py, covering a resubmitted lost job, a partial year, and a verification failure.
-- Add the 8 Haslebacher sites' nearest grid points from configs/sites.yaml.
+- Use the 8 Haslebacher sites' nearest grid points from configs/sites.yaml.
 
-Don't contact the CDS from this session. Log any non-trivial choice as D62. Run the full test suite and ruff, then open a PR into dev. In the PR body, write the exact commands Riley runs on the CT.
+Don't contact the CDS from this session. Log non-trivial choices as D62. Run the full test suite and ruff, then open a PR into dev with the exact CT commands for Riley.
 ```
 
-### C6. Multi-month surface requests and per-kind planning rates (Sonnet 5.5, high)
+### C6. Multi-month surface requests and per-kind planning rates
+
+Sonnet 5.5, high effort.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, reports/cds_throughput_one_job.md, and decisions D16, D23, D39, D40 and D55 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C6.
 
-Task (D55 item 5, plus the small config fix in cds_throughput_one_job.md §5). First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, and claim it.
-1. Let single-level requests span up to N consecutive months (N configurable, default 3, from D55) in src/astroseeing/download/requests.py. RequestSpec.cds_request currently allows one month. A months × days request implies non-existent dates (30 Feb, 31 Apr): verification must expect exactly the real dates. Planning must refuse anything over the configured cost limit before anything is queued. Labels and store paths must stay unique.
-2. Add a command (or flag) that asks the CDS cost estimator for a given plan without submitting it, so Riley can run the "does the CDS count 30 February?" check on the CT. Make it print the estimate next to our own field count.
-3. Replace the single request.fields_per_s in configs/era5.yaml with per-kind planning rates from the report (pressure levels ~2.66 fields/s over a day; single levels 0.36–0.58), or better, a per-request wait-plus-run model (W + F/R, §5). Update the estimate that plan-area prints.
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, reports/cds_throughput_one_job.md, and decisions D16, D23, D39, D40 and D55 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
 
-Keep pressure-level requests unchanged. Add tests: month boundaries, leap years, non-existent dates, the cost limit, unique keys, estimates. Log non-trivial choices as D63. Run the full test suite and ruff, then open a PR into dev with the CT commands for the cost check.
+Task (D55 item 5, plus the config fix in cds_throughput_one_job.md §5). First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
+
+1. Let single-level requests span up to N consecutive months (configurable, default 3, per D55) in src/astroseeing/download/requests.py; RequestSpec.cds_request allows one month today.
+   - A months × days request implies dates that don't exist (30 Feb, 31 Apr), and verification must expect exactly the real dates.
+   - Planning refuses anything over the configured cost limit before queuing.
+   - Labels and store paths stay unique.
+2. Add a command (or flag) that prices a plan with the CDS cost estimator without submitting it, printing the estimate next to our own field count, so Riley can run the "does the CDS count 30 February?" check on the CT.
+3. Replace the single request.fields_per_s in configs/era5.yaml with per-kind planning rates from the report, or better, the per-request wait-plus-run model (W + F/R, §5). Update the estimate plan-area prints.
+
+Pressure-level requests stay unchanged. Tests: month boundaries, leap years, non-existent dates, cost limit, unique keys, estimates. Log non-trivial choices as D63. Run the full test suite and ruff, then open a PR into dev with the CT commands for the cost check.
 ```
 
-### C7. Move the kept raw GRIB from `/staging` to the NAS (code only) (Sonnet 5.5, high)
+### C7. Code to move the kept raw GRIB from `/staging` to the NAS
+
+Sonnet 5.5, high effort.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md in full (data-safety rules), CLAUDE.md, docs/agents/issue-tracker.md, and decisions D10, D11, D12, D50 and D55 items 6–7 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C7.
 
-Task: build the command that copies the raw validation GRIB kept on /staging (~41 GB, 472 files, plus the 271 MB measurement file) to a write-once archive on the NAS, then removes the /staging copies. First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, and claim it.
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md in full (data-safety rules), CLAUDE.md, docs/agents/issue-tracker.md, and decisions D10, D11, D12, D50 and D55 items 6–7 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
+
+Task: build the command that copies the raw validation GRIB kept on /staging (~41 GB, 472 files, plus the 271 MB measurement file) to a write-once archive on the NAS, then removes the /staging copies. First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
 
 Rules:
 - The archive path comes from config (D55 suggests /data/astro/raw-archive; propose the exact layout).
-- Copy, then fsync, then verify the SHA-256 against the manifest's recorded checksum. Only then record the archive location in the manifest, and only then delete the /staging copy (mirror D12's ordering and crash-recovery logic).
-- Never overwrite or delete anything under /data. Refuse if a destination file exists with different content; an identical one is a no-op.
+- Order of operations: copy, fsync, verify the SHA-256 against the manifest's recorded checksum, record the archive location in the manifest, and only then delete the /staging copy. Mirror D12's ordering and crash recovery.
+- Never overwrite or delete anything under /data. A destination with different content is refused; an identical one is a no-op.
 - Add a dry-run mode that prints sizes and the plan.
-- NFS can hang instead of failing, so use per-file timeouts and a watchdog (AGENTS.md).
+- NFS hangs rather than failing (AGENTS.md), so use per-file timeouts and a watchdog.
 - Make it resumable after interruption.
-- Measurement-only files (state "measured") are included but listed separately, because deleting them is Riley's call.
+- Measurement-only files (state "measured") are listed separately, because deleting them is Riley's call.
 
-Tests with temp directories and a fake slow/hung filesystem. Log non-trivial choices as D64. Run the full test suite and ruff, then open a PR into dev with the exact CT commands (dry run first).
+Tests with temp directories and a fake slow or hung filesystem. Log non-trivial choices as D64. Run the full test suite and ruff, then open a PR into dev with the exact CT commands (dry run first).
 ```
 
-### C8. ESO seeing-monitor fetcher (Sonnet 5.5, high)
+### C8. ESO seeing-monitor fetcher
+
+Sonnet 5.5, high effort.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §6.5, decisions D28 and D44, and D54 item 8 (if D54 isn't on dev, read it from branch planning/paranal-comparison-d54, PR #38). Also read docs/research/seeing-measurements.md on branch research/seeing-measurements (the ESO query details).
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C8.
 
-Task: one fetcher for ESO's ambient-conditions archive, shared by the forecast track (nightly, D54 item 8) and historical calibration (2021–2025 bulk). First create a ticket under map #20 (runs-on:cloud, wayfinder:task), unless one exists, and claim it.
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §6.5, decisions D28, D44 and D54 item 8 (if D54 isn't on dev, read it from branch planning/paranal-comparison-d54, PR #38), and docs/research/seeing-measurements.md on branch research/seeing-measurements (ESO query details).
+
+Task: one fetcher for ESO's ambient-conditions archive, shared by the forecast track (nightly, D54 item 8) and the historical calibration (2021–2025 bulk). First create a ticket under map #20 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
 
 Requirements:
-- Paranal DIMM and MASS (including free-atmosphere seeing, turbulence altitude, ground fraction), and La Silla DIMM.
-- Query by UTC time range. Use a generic User-Agent with no contact details.
-- Make at most about one request per few seconds in bulk mode, and chunk by month for the bulk fetch.
-- Write raw CSV write-once under a configured path (D54: /data/astro/validation/eso-asm/) with fetch time and SHA-256, recorded in the manifest. A re-fetch of the same night is a separate, named file (D54's 3-day re-fetch). Never overwrite.
+- Data: Paranal DIMM and MASS (including free-atmosphere seeing, turbulence altitude and ground fraction), and La Silla DIMM.
+- Query by UTC time range. Use a generic User-Agent with no contact details. In bulk mode, send at most one request every few seconds, chunked by month.
+- Write raw CSV write-once under a configured path (D54: /data/astro/validation/eso-asm/), with fetch time and SHA-256, recorded in the manifest.
+- A re-fetch of the same night is a separate, named file (D54's 3-day re-fetch). Never overwrite.
 - Parse into a typed table. Count and log rows dropped as missing or non-numeric; never clip.
 
-If this session can reach archive.eso.org, save one small real response as a test fixture (CC BY 4.0, note the ESO acknowledgement) and check the column names against it; otherwise build from the documented columns and say so in the PR. Tests for parsing, write-once, re-fetch naming and retries. Log choices as D65. Run the full test suite and ruff, then open a PR into dev with the CT commands for the 2021–2025 bulk fetch.
+If this session can reach archive.eso.org, save one small real response as a test fixture (CC BY 4.0; note the ESO acknowledgement) and check the column names against it. Otherwise build from the documented columns and say so in the PR. Tests: parsing, write-once, re-fetch naming, retries. Log choices as D65. Run the full test suite and ruff, then open a PR into dev with the CT commands for the 2021–2025 bulk fetch.
 ```
 
-### C9. Site time-series reader for the reproductions (Opus 5.5, high)
+### C9. Site time-series reader for the reproductions
+
+Opus 5.5, high effort.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Run git fetch origin and work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md in full, decisions D3, D5, D8, D10, D18 and D57 (if D57 isn't on dev, read it from branch grill/7-reproductions, PR #39), and reports/validation_downloads.md §1 (store layouts: grid, and area cells).
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C9.
 
-Task: the shared, tested code the four paper reproductions will call on the CT (map #6 notes: "the cloud writes shared, testable code, e.g. the site time-series reader, against synthetic stores"). First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, and claim it.
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md in full, decisions D3, D5, D8, D10, D18 and D57 (if D57 isn't on dev, read it from branch grill/7-reproductions, PR #39), and reports/validation_downloads.md §1 (store layouts: grid, and area cells).
 
-1. Read a site's hourly columns (z, t, u, v, and cc when present) from one or many Zarr stores in either layout, over a time range, concatenated in time order, with a check for duplicate or missing hours.
-2. Site-value rules from D57 item 2:
+Task: the shared, tested code the four paper reproductions will call on the CT. Map #6 says the cloud writes this against synthetic stores. First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
+
+1. Read a site's hourly columns (z, t, u, v, and cc when present) from one or many Zarr stores in either layout, over a time range, in time order, with checks for duplicate or missing hours.
+2. Site-value rules (D57 item 2):
    - nearest grid point;
    - four-point bilinear (O&S);
    - Priyatikanto's cubic interpolation in lon, lat and pressure, then linear to 5 hPa steps.
    Interpolating T, u, v and z is allowed inside reproductions; interpolating seeing or J is not.
-3. Underground-level masking by the cell's static orography (D57 item 1), plus the unmasked variant, with masked counts returned, not just logged.
-4. Hour-set selectors (D57 item 3):
+3. Underground-level masking by the cell's static orography (D57 item 1), plus the unmasked variant. Masked counts are returned, not just logged.
+4. Hour-set selectors (D57 item 3), using the existing solar module:
    - all hours;
    - night mask (Sun < −12°);
    - dark time (Sun < −18°) over a given list of nights;
    - local-solar-time windows (04–07 h, 19–23 h).
-   Use the existing solar module.
-5. The golden-result JSON helpers from D57 item 5 (settings, store ids and content hashes, statistics, target, tolerance, gating vs informational), and a pytest marker `data` that skips when /data is absent.
+5. Golden-result JSON helpers (D57 item 5: settings, store ids and content hashes, statistics, target, tolerance, gating vs informational), and a pytest marker `data` that skips when /data is absent.
 
-Build synthetic stores with the existing synthetic helpers for the tests, including property tests where they fit. Known-answer tests for each interpolation. Log choices as D66. Run the full test suite and ruff, then open a PR into dev.
+Build synthetic test stores with the existing synthetic helpers. Known-answer tests for each interpolation; property tests where they fit. Log choices as D66. Run the full test suite and ruff, then open a PR into dev.
 ```
 
-### C10. Reproduction spec and CT tickets (Opus 5.5, high; needs you to approve)
+### C10. Reproduction spec and CT tickets
+
+Opus 5.5, high effort. Needs your approval.
 
 ```text
-You are a cloud session on rrweller/Astro-seeing. Run git fetch origin and work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md, docs/RESEARCH.md in full, decisions D19, D27, D28, D35, D57, D58 and D59, the research notes on branches research/os2018-nights and research/bi2023-altitudes, and the merged code from C9 (site reader) and C5 (surface-pressure fetcher).
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C10.
 
-Task: write the reproduction spec as an issue under map #6, then its tickets (to-spec and to-tickets skills if available; otherwise follow docs/agents/issue-tracker.md).
-- One runs-on:ct ticket per paper, in D57's order: Haslebacher (a) Paranal, Priyatikanto, Bi, O&S. Plus Haslebacher (b) Table 4 levels and Haslebacher (c) the written account.
+You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read:
+- AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md, docs/RESEARCH.md in full;
+- decisions D19, D27, D28, D35, D57, D58 and D59;
+- the research notes on branches research/os2018-nights and research/bi2023-altitudes;
+- the merged code from roadmap items C9 (site reader) and C5 (surface-pressure fetcher).
+
+Task: write the reproduction spec as an issue under map #6, then its tickets (to-spec and to-tickets skills if available; otherwise docs/agents/issue-tracker.md).
+- Create one runs-on:ct ticket per paper, in D57's order: Haslebacher (a) Paranal, Priyatikanto, Bi, O&S. Add Haslebacher (b) (Table 4 levels) and Haslebacher (c) (the written account).
 - Each ticket states:
   - the variant grid fixed before running;
-  - the gating variant and tolerance (D19);
-  - the inputs (store ids);
+  - the gating variant and its tolerance (D19);
+  - the input store ids;
   - the outputs: notebook, reports/repro_<paper>.md, golden JSON;
-  - a "Suggested model:" line (Opus 5.5 high for running and judging a reproduction).
-- Reuse existing tickets, don't duplicate them.
-- Include what happens when a reproduction misses its tolerance, as an open question for Riley with a recommendation. Map #6 lists it as unspecified.
+  - "Suggested model: Opus 5.5 high".
+- Reuse existing tickets rather than duplicating them.
+- Include what happens when a reproduction misses its tolerance, as an open question for Riley with a recommendation (map #6 lists it as unspecified).
 
-Show Riley the outline and ticket list for approval before creating issues. Record any decisions as D61, update docs/roadmap.md's CT section with the ticket numbers, and open a PR into dev.
+Show Riley the outline and ticket list for approval (C10 to needs-you while you wait). Record decisions as D61. In a PR into dev, replace roadmap item K9 with one item per ticket (K9a, K9b, …), each with a board line, diagram node, edges, a class line followed by a %% --- spacer, and a short prompt that starts with this same first line.
 ```
-
----
-
-## CT items: when you're home
-
-These need the home server (`/data`, `/staging`, CDS, manifest). Start a Claude Code session on CT 350 in `/home/astro-seeing`.
-
-**The CDS allows one job at a time per account** (D39), so the items that use it run strictly in this order:
-
-1. the TMT queue (running now);
-2. K4;
-3. K7.
-
-Items that don't use the CDS slot can run at any time alongside them: K5 uses a separate time-series slot, and K6's cost estimates submit nothing.
-
-| ID | Item | Depends on | CDS slot? | Model / effort |
-|---|---|---|---|---|
-| K1 | Recover the ntfy URL (`cat /root/.config/astro/notify.env`); after C0, `git pull` dev and restart `astro-notify` so the stall-alert fix (D53) is live | C0 | no | none (you), or Sonnet 5.5 low |
-| K2 | When TMT finishes (~28–29 Nov): run `scripts/survey_stores.py` on the TMT stores and write a short note in reports/ | — | — | Sonnet 5.5 medium |
-| K3 | Ticket #14: register on sitedata.tmt.org, save `/root/.config/astro/tmt.env` (mode 600) | — | no | you |
-| K4 | Ticket #16: one small model-level (ERA5 complete) request; measure tape wait and run time | K2 | **yes** | Sonnet 5.5 high |
-| K5 | Haslebacher (b): fetch surface pressure at the 8 sites with C5's command | C5 | own slot | Sonnet 5.5 medium |
-| K6 | Run C6's cost check (does the CDS count 30 February?); then C7's archive move, dry run first | C6, C7 | estimates only | Sonnet 5.5 high |
-| K7 | D55 item 8: the first pilot request, 2023-06-01 to 06-16, global hourly pressure levels (~104 GB) | K4, K6 | **yes** | Opus 5.5 high (it measures several unknowns) |
-| K8 | ESO DIMM/MASS bulk fetch 2021–2025 with C8's command | C8 | no | Sonnet 5.5 medium |
-| K9 | Reproduction notebooks, one ticket each from C10, in order | C10, C9 | no | Opus 5.5 high; escalate a hard mismatch to Fable 5.2 high |
 
 ### CT prompt template (K2, K4–K9)
 
-```text
-You are a Claude Code session on CT 350 (/home/astro-seeing), with /data, /staging, the manifest and CDS access. Read AGENTS.md, CLAUDE.md, docs/ct_runbook.md and docs/handoff_pivot.md §1 first. Run git fetch origin and check out dev at origin/dev. Check `pixi run astro status` and `systemctl status astro-boxes`, so you know whether a CDS job is in flight: only one CDS job may be queued or running per account (D39), and nothing may bypass that gate.
+Model and effort are in the CT order table above. Replace `<ID>` and the task line.
 
-Task: <paste the item's row from docs/roadmap.md, or "work ticket #N" with its number>. Follow the ticket's acceptance test. Data-safety rules apply in full: never overwrite or delete under /data without asking Riley; verify before deleting raw files; write a short report in reports/ with the numbers and what is uncertain; log non-trivial decisions as the next free D-number (check dev and open PRs first). Open a PR into dev when done.
+```text
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is <ID>.
+
+You are a Claude Code session on CT 350 (/home/astro-seeing), with /data, /staging, the manifest and CDS access. Read AGENTS.md, CLAUDE.md, docs/ct_runbook.md and docs/handoff_pivot.md §1. Run git fetch origin and check out dev at origin/dev. Check `pixi run astro status` and `systemctl status astro-boxes`: only one CDS job may be queued or running per account (D39), and nothing may bypass that gate.
+
+Task: <the item's line from the status board, or "work ticket #N">. Follow the ticket's acceptance test if there is one. Data-safety rules apply in full:
+- never overwrite or delete under /data without asking Riley;
+- verify before deleting raw files;
+- write a short report in reports/ with the numbers and what is uncertain;
+- log non-trivial decisions as the next free D-number.
+Open a PR into dev when done.
 ```
