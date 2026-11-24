@@ -59,7 +59,7 @@ Cloud sessions without `git push` rights to `dev` can make the same edit with th
   - a board line;
   - a diagram node and its edges;
   - a `class` line followed by a `%% ---` spacer;
-  - its section with dependencies, model and effort, and a self-contained prompt that starts with the same first line as the existing prompts.
+  - its section with dependencies, model and effort, suggested skills (from the roadmap's skills guide), and a self-contained prompt that starts with the same first line as the existing prompts, followed by a `Skills:` line.
   
   New lines don't conflict with other sessions' status commits. A new item starts as `blocked` or `ready`.
 - If you find the roadmap's **order or dependencies** are wrong, fix them in your PR and say so in the PR description.
