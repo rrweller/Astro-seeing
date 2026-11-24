@@ -20,7 +20,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C0` · **done** · cloud · Land the open PRs #36–#40 into `dev` · [#36](https://github.com/rrweller/Astro-seeing/pull/36) [#37](https://github.com/rrweller/Astro-seeing/pull/37) [#38](https://github.com/rrweller/Astro-seeing/pull/38) [#39](https://github.com/rrweller/Astro-seeing/pull/39) [#40](https://github.com/rrweller/Astro-seeing/pull/40)
 
-- `C1` · **review** · cloud · Calibration design (grilling, needs you) · [#15](https://github.com/rrweller/Astro-seeing/issues/15) [#44](https://github.com/rrweller/Astro-seeing/pull/44)
+- `C1` · **done** · cloud · Calibration design (grilling, needs you) · [#15](https://github.com/rrweller/Astro-seeing/issues/15) [#44](https://github.com/rrweller/Astro-seeing/pull/44)
 
 - `C2` · **ready** · cloud · Experiment designs (grilling, needs you) · [#17](https://github.com/rrweller/Astro-seeing/issues/17)
 
@@ -131,7 +131,7 @@ flowchart LR
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
   class C0 done
   %% ---
-  class C1 review
+  class C1 done
   %% ---
   class C2 ready
   %% ---
