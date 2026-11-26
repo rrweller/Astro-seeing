@@ -11,7 +11,7 @@
   "incomplete_hours": 0,
   "chips": [{"class": "clear", "start": "2026-11-26T18:00:00Z", "end": "2026-11-26T23:00:00Z"}, {"class": "some_cloud", "start": "2026-11-26T23:00:00Z", "end": "2026-11-27T01:00:00Z"}, {"class": "cloudy", "start": "2026-11-27T01:00:00Z", "end": "2026-11-27T06:00:00Z"}],
   "seeing": {"min_arcsec": 0.58, "max_arcsec": 0.66, "per_family": {"gfs": 0.62, "icon": 0.58, "ifs": 0.66}},
-  "meps": {"clear_hours": 6, "counted_hours": 12},
+  "meps": {"clear_hours": 6, "counted_hours": 12, "missing_hours": 0, "stale": false},
   "nothing_to_count": null,
   "runs": {"gfs": {"run_id": 101, "run_time": "2026-11-26T12:00:00Z", "age_h": 6.33, "stale": false}, "icon_eu": {"run_id": 102, "run_time": "2026-11-26T12:00:00Z", "age_h": 6.33, "stale": false}, "meps": {"run_id": 103, "run_time": "2026-11-26T12:00:00Z", "age_h": 6.33, "stale": false}, "ifs": {"run_id": 104, "run_time": "2026-11-26T12:00:00Z", "age_h": 6.33, "stale": false}}
  },
