@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "f1-place/1",
+  "title": "F1 per-place file (place-<id>.json)",
+  "description": "One saved place's Tonight: the verdict, the 24 hourly rows with every forecast model's values, the models' columns, the Moon and provenance (F1 spec Module 7). Structured values only; the page writes the wording and derives no rule. Times are UTC; the page shows them in the place's time zone.",
+  "type": "object",
+  "required": ["schema", "place", "tonight", "hours", "models", "moon", "provenance"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "f1-place/1"},
+    "place": {
+      "type": "object",
+      "required": ["id", "name", "lat", "lon", "time_zone", "height_m", "height_source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "name": {"type": "string", "minLength": 1},
+        "lat": {"type": "number", "minimum": -90, "maximum": 90},
+        "lon": {"type": "number", "minimum": -180, "maximum": 180},
+        "time_zone": {"type": "string", "minLength": 1},
+        "height_m": {"description": "GLO-30 ground height, m above mean sea level.", "type": "number"},
+        "height_source": {"enum": ["glo30", "hand-entered"]}
+      }
+    },
+    "tonight": {"$ref": "#/$defs/tonight"},
+    "hours": {
+      "description": "Tonight, local mean solar noon to the next one: 24 hourly rows.",
+      "type": "array",
+      "minItems": 24,
+      "maxItems": 24,
+      "items": {"$ref": "#/$defs/hour"}
+    },
+    "models": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/id"},
+      "additionalProperties": {"$ref": "#/$defs/model"}
+    },
+    "moon": {
+      "type": "object",
+      "required": ["rise", "set", "phase_deg", "illuminated_fraction"],
+      "additionalProperties": false,
+      "properties": {
+        "rise": {"description": "Moonrise during Tonight, or null if none.", "$ref": "#/$defs/utc_time_or_null"},
+        "set": {"description": "Moonset during Tonight, or null if none.", "$ref": "#/$defs/utc_time_or_null"},
+        "phase_deg": {"description": "Ecliptic longitude Moon minus Sun: 0 new, 180 full.", "type": "number", "minimum": 0, "exclusiveMaximum": 360},
+        "illuminated_fraction": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["commit", "config_hash", "run_ids"],
+      "additionalProperties": false,
+      "properties": {
+        "commit": {"$ref": "#/$defs/commit"},
+        "config_hash": {"$ref": "#/$defs/sha256"},
+        "run_ids": {
+          "description": "Manifest run id per forecast model behind this file.",
+          "type": "object",
+          "propertyNames": {"$ref": "#/$defs/id"},
+          "additionalProperties": {"type": "integer", "minimum": 1}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "utc_time": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "utc_time_or_null": {"anyOf": [{"$ref": "#/$defs/utc_time"}, {"type": "null"}]},
+    "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0},
+    "pct": {"type": "number", "minimum": 0, "maximum": 100},
+    "number_or_null": {"type": ["number", "null"]},
+    "cloud_class": {"enum": ["clear", "some_cloud", "cloudy"]},
+    "majority": {"description": "The cloud class more than half the families give, or split.", "enum": ["clear", "some_cloud", "cloudy", "split"]},
+
+    "tonight": {
+      "description": "A direct serialisation of forecast.tonight's Tonight (D48).",
+      "type": "object",
+      "required": ["night", "basis", "started", "current_hour", "counted_hours", "clear_hours",
+                   "incomplete_hours", "chips", "seeing", "meps", "nothing_to_count", "runs"],
+      "additionalProperties": false,
+      "properties": {
+        "night": {"description": "The Night, named by the date of its evening.", "$ref": "#/$defs/date"},
+        "basis": {"description": "Which hours are counted: dark time, else Sun below -12 deg, else Sun down (D48 item 2).", "enum": ["dark", "sun_below_12", "sun_down"]},
+        "started": {"description": "Tonight has started, so the headline says 'left'.", "type": "boolean"},
+        "current_hour": {"description": "The hour containing now (a step at hh:00 counts until hh:30, D48 item 3), or null before Tonight begins.", "$ref": "#/$defs/utc_time_or_null"},
+        "counted_hours": {"description": "n: counted hours from the current hour on.", "$ref": "#/$defs/count"},
+        "clear_hours": {"description": "x: counted hours that are mostly clear.", "$ref": "#/$defs/count"},
+        "incomplete_hours": {"description": "k: counted hours with fewer than two families.", "$ref": "#/$defs/count"},
+        "chips": {
+          "description": "Consecutive counted hours merged by class, in time order.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["class", "start", "end"],
+            "additionalProperties": false,
+            "properties": {
+              "class": {"enum": ["clear", "some_cloud", "cloudy", "split", "incomplete"]},
+              "start": {"$ref": "#/$defs/utc_time"},
+              "end": {"$ref": "#/$defs/utc_time"}
+            }
+          }
+        },
+        "seeing": {
+          "description": "D48 item 7: each counting family's median O&S free-atmosphere seeing over the counted hours (median taken on J). Null when no family has seeing tonight.",
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["min_arcsec", "max_arcsec", "per_family"],
+              "additionalProperties": false,
+              "properties": {
+                "min_arcsec": {"type": "number", "exclusiveMinimum": 0},
+                "max_arcsec": {"type": "number", "exclusiveMinimum": 0},
+                "per_family": {
+                  "type": "object",
+                  "propertyNames": {"$ref": "#/$defs/id"},
+                  "additionalProperties": {"type": "number", "exclusiveMinimum": 0}
+                }
+              }
+            }
+          ]
+        },
+        "meps": {
+          "description": "D48 item 9: the regional-only line, or null where MEPS does not cover the place.",
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["clear_hours", "counted_hours"],
+              "additionalProperties": false,
+              "properties": {
+                "clear_hours": {"$ref": "#/$defs/count"},
+                "counted_hours": {"$ref": "#/$defs/count"}
+              }
+            }
+          ]
+        },
+        "nothing_to_count": {
+          "description": "D48 item 10, or null when there are hours to count.",
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "required": ["reason", "dark_time_ended_at", "families"],
+              "additionalProperties": false,
+              "properties": {
+                "reason": {"enum": ["dark_time_ended", "not_enough_models"]},
+                "dark_time_ended_at": {"$ref": "#/$defs/utc_time_or_null"},
+                "families": {
+                  "description": "Each counting family's state, for 'Not enough models for a verdict: ...'.",
+                  "type": "object",
+                  "propertyNames": {"$ref": "#/$defs/id"},
+                  "additionalProperties": {"enum": ["ok", "stale", "missing", "partial"]}
+                }
+              }
+            }
+          ]
+        },
+        "runs": {
+          "description": "The run each forecast model's values come from, with its age at the time of writing.",
+          "type": "object",
+          "propertyNames": {"$ref": "#/$defs/id"},
+          "additionalProperties": {
+            "type": "object",
+            "required": ["run_id", "run_time", "age_h", "stale"],
+            "additionalProperties": false,
+            "properties": {
+              "run_id": {"type": "integer", "minimum": 1},
+              "run_time": {"$ref": "#/$defs/utc_time"},
+              "age_h": {"type": "number", "minimum": 0},
+              "stale": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    },
+
+    "hour": {
+      "type": "object",
+      "required": ["time", "sun_altitude_deg", "sun_class", "moon_altitude_deg", "past",
+                   "counted", "agreement", "models"],
+      "additionalProperties": false,
+      "properties": {
+        "time": {"description": "hh:00 UTC; the value stands for hh-0:30 to hh+0:30.", "$ref": "#/$defs/utc_time"},
+        "sun_altitude_deg": {"type": "number", "minimum": -90, "maximum": 90},
+        "sun_class": {"enum": ["day", "civil_twilight", "nautical_twilight", "astronomical_twilight", "dark"]},
+        "moon_altitude_deg": {"type": "number", "minimum": -90, "maximum": 90},
+        "past": {"type": "boolean"},
+        "counted": {"type": "boolean"},
+        "agreement": {
+          "description": "Model agreement over the global families with a value this hour (D48 item 4).",
+          "type": "object",
+          "required": ["clear", "of", "majority", "state"],
+          "additionalProperties": false,
+          "properties": {
+            "clear": {"$ref": "#/$defs/count"},
+            "of": {"$ref": "#/$defs/count"},
+            "majority": {"anyOf": [{"$ref": "#/$defs/majority"}, {"type": "null"}]},
+            "state": {"enum": ["mostly_clear", "not_clear", "incomplete"]}
+          }
+        },
+        "models": {
+          "description": "Every forecast model of the place's area: its values this hour, or why it has none (never filled).",
+          "type": "object",
+          "propertyNames": {"$ref": "#/$defs/id"},
+          "additionalProperties": {"anyOf": [{"$ref": "#/$defs/model_hour"}, {"$ref": "#/$defs/model_hour_missing"}]}
+        }
+      }
+    },
+
+    "model_hour_missing": {
+      "type": "object",
+      "required": ["missing"],
+      "additionalProperties": false,
+      "properties": {
+        "missing": {"description": "off_step: IFS's in-between hours; no_run: no usable run; partial: the run lacks this step.", "enum": ["off_step", "no_run", "partial"]}
+      }
+    },
+
+    "model_hour": {
+      "type": "object",
+      "required": ["run_id", "cloud", "cloud_class", "seeing", "wind_200hpa_ms", "fog"],
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {"type": "integer", "minimum": 1},
+        "cloud": {
+          "description": "Unrounded, instantaneous cloud cover (%).",
+          "type": "object",
+          "required": ["total_pct", "low_pct", "mid_pct", "high_pct"],
+          "additionalProperties": false,
+          "properties": {
+            "total_pct": {"$ref": "#/$defs/pct"},
+            "low_pct": {"$ref": "#/$defs/pct"},
+            "mid_pct": {"$ref": "#/$defs/pct"},
+            "high_pct": {"$ref": "#/$defs/pct"}
+          }
+        },
+        "cloud_class": {"$ref": "#/$defs/cloud_class"},
+        "seeing": {
+          "description": "Per Cn2 model; uncalibrated, 500 nm, zenith (D47). Null where the column gives no value.",
+          "type": "object",
+          "required": ["osborn_sarazin", "tatarskii"],
+          "additionalProperties": false,
+          "properties": {
+            "osborn_sarazin": {"$ref": "#/$defs/seeing"},
+            "tatarskii": {"$ref": "#/$defs/seeing"}
+          }
+        },
+        "wind_200hpa_ms": {"type": "number", "minimum": 0},
+        "fog": {
+          "description": "Fog signals (D49 item 3), experimental and not counted: a value, or \"absent\" where the model has no such field.",
+          "type": "object",
+          "required": ["fog_fraction_pct", "visibility_m", "weather_code", "dewpoint_depression_2m_k"],
+          "additionalProperties": false,
+          "properties": {
+            "fog_fraction_pct": {"$ref": "#/$defs/fog_value"},
+            "visibility_m": {"$ref": "#/$defs/fog_value"},
+            "weather_code": {"$ref": "#/$defs/fog_value"},
+            "dewpoint_depression_2m_k": {"$ref": "#/$defs/fog_value"}
+          }
+        }
+      }
+    },
+
+    "fog_value": {"anyOf": [{"type": "number"}, {"const": "absent"}]},
+
+    "seeing": {
+      "type": "object",
+      "required": ["free_atmosphere_arcsec", "total_arcsec", "hbar_km"],
+      "additionalProperties": false,
+      "properties": {
+        "free_atmosphere_arcsec": {"$ref": "#/$defs/number_or_null"},
+        "total_arcsec": {"$ref": "#/$defs/number_or_null"},
+        "hbar_km": {"description": "Effective turbulence altitude above the observer.", "$ref": "#/$defs/number_or_null"}
+      }
+    },
+
+    "model": {
+      "type": "object",
+      "required": ["name", "family", "level_count", "regional", "observer_height_m", "raise_m",
+                   "gap_to_first_level_m", "model_ground_m", "terrain_caveat_m", "credit"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "family": {"$ref": "#/$defs/id"},
+        "level_count": {"type": "integer", "minimum": 2},
+        "regional": {"type": "boolean"},
+        "observer_height_m": {"description": "The place's height, raised to the model ground where that is higher (D47 item 1).", "type": "number"},
+        "raise_m": {"type": "number", "minimum": 0},
+        "gap_to_first_level_m": {"description": "Model ground to the first usable pressure level; null if unknown.", "type": ["number", "null"], "minimum": 0},
+        "model_ground_m": {"type": "number"},
+        "terrain_caveat_m": {"description": "Metres the place lies below the model ground (D49 item 4), or null.", "type": ["number", "null"], "exclusiveMinimum": 0},
+        "credit": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
