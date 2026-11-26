@@ -40,7 +40,7 @@ function modelName(place, id) {
 
 // -- header -------------------------------------------------------------------------
 
-export function renderHeader(latest, place) {
+export function renderHeader(place) {
   const p = place.place;
   document.title = `${p.name}: tonight's sky`;
   document.getElementById("place-name").textContent = p.name;
@@ -213,6 +213,7 @@ export function renderTable(place) {
           attrs.title = m && "missing" in m ? MISSING_REASONS[m.missing] ?? `no value: ${m.missing}` : "no value";
         } else {
           attrs.dataset.value = String(value);
+          // the veil's thickness only: the text and data-value keep the file's value
           if (row.kind === "cloud") attrs.style = `--cover:${Math.min(Math.max(value, 0), 100) / 100}`;
         }
         tr.append(el("td", attrs, value === null ? "" : row.format(value)));

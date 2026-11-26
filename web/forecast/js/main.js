@@ -46,7 +46,7 @@ async function show(latest) {
   const place = await getJson(new URL(latest.set_path + entry.file, dataBase));
   state.latest = latest;
   state.place = place;
-  renderHeader(latest, place);
+  renderHeader(place);
   renderUpdated(latest, place.place.time_zone);
   renderRuns(latest, place, Date.now());
   renderTable(place);

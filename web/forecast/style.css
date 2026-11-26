@@ -122,11 +122,15 @@ thead th {
 thead th .hour { display: block; font-size: 1.05rem; }
 thead th .day { display: block; min-height: 1.1em; font-size: 0.72rem; font-weight: 500; }
 
-thead th.sun-day { background: var(--sky-day); color: #13213d; }
-thead th.sun-civil_twilight { background: var(--sky-civil_twilight); color: #f4f7fc; }
-thead th.sun-nautical_twilight { background: var(--sky-nautical_twilight); color: #e8eef9; }
-thead th.sun-astronomical_twilight { background: var(--sky-astronomical_twilight); color: #dde5f4; }
-thead th.sun-dark { background: var(--sky-dark); color: #cfd8ea; }
+/* Each hour's sky, from the place file's sun class: the header's colour, the text on
+   it, and how strongly the colour tints the column below. */
+.sun-day { --sky: var(--sky-day); --sky-ink: #13213d; --tint: 14%; }
+.sun-civil_twilight { --sky: var(--sky-civil_twilight); --sky-ink: #f4f7fc; --tint: 16%; }
+.sun-nautical_twilight { --sky: var(--sky-nautical_twilight); --sky-ink: #e8eef9; --tint: 18%; }
+.sun-astronomical_twilight { --sky: var(--sky-astronomical_twilight); --sky-ink: #dde5f4; --tint: 22%; }
+.sun-dark { --sky: var(--sky-dark); --sky-ink: #cfd8ea; --tint: 55%; }
+
+thead th[data-sun] { background: var(--sky); color: var(--sky-ink); }
 
 thead th.corner, tbody th[scope="row"] {
   position: sticky;
@@ -155,11 +159,7 @@ tbody td {
 }
 
 /* A faint tint of each hour's sky down the whole column. */
-tbody td.sun-day { background: color-mix(in srgb, var(--sky-day) 14%, var(--panel)); }
-tbody td.sun-civil_twilight { background: color-mix(in srgb, var(--sky-civil_twilight) 16%, var(--panel)); }
-tbody td.sun-nautical_twilight { background: color-mix(in srgb, var(--sky-nautical_twilight) 18%, var(--panel)); }
-tbody td.sun-astronomical_twilight { background: color-mix(in srgb, var(--sky-astronomical_twilight) 22%, var(--panel)); }
-tbody td.sun-dark { background: color-mix(in srgb, var(--sky-dark) 55%, var(--panel)); }
+tbody td[class*="sun-"] { background: color-mix(in srgb, var(--sky) var(--tint), var(--panel)); }
 
 /* Cloud cells carry a white veil as thick as the cover. */
 tr.cloud td:not(.missing) {
@@ -206,11 +206,7 @@ tr.seeing-head .cap { color: var(--ink); font-size: 0.85rem; }
 }
 .legend li { display: flex; align-items: center; gap: 0.4rem; }
 .swatch { display: inline-block; width: 1.1rem; height: 0.8rem; border-radius: 2px; border: 1px solid var(--rule); }
-.swatch.sun-day { background: var(--sky-day); }
-.swatch.sun-civil_twilight { background: var(--sky-civil_twilight); }
-.swatch.sun-nautical_twilight { background: var(--sky-nautical_twilight); }
-.swatch.sun-astronomical_twilight { background: var(--sky-astronomical_twilight); }
-.swatch.sun-dark { background: var(--sky-dark); }
+.swatch[class*="sun-"] { background: var(--sky); }
 .swatch.past { background: var(--sky-civil_twilight); opacity: 0.38; }
 
 .credits { margin: 0.8rem 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 0.85rem; }

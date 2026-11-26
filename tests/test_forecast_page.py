@@ -383,14 +383,19 @@ def test_desktop_width(case_b):
         b.call("screenshot", path=str(d / "desktop-1440.png"), fullPage=True)
 
 
+def about_panel(b: Browser) -> dict[str, str]:
+    """The About this data panel's entries, by their labels."""
+    return b.eval(
+        """Object.fromEntries([...document.querySelectorAll('#about-list dt')]
+            .map(dt => [dt.textContent, dt.nextElementSibling.textContent]))"""
+    )
+
+
 def test_about_credits_and_data_sources(case_b):
     place = case_b.place()
     latest = case_b.latest()
     b = case_b.open("2026-11-26T10:05:00Z")
-    about = b.eval(
-        """Object.fromEntries([...document.querySelectorAll('#about-list dt')]
-            .map(dt => [dt.textContent, dt.nextElementSibling.textContent]))"""
-    )
+    about = about_panel(b)
     assert about["Back-end commit"] == latest["provenance"]["commit"] == "a" * 40
     assert about["Config hash"] == latest["provenance"]["config_hash"]
     assert about["Run IDs"] == f"GFS 0.25°: {place['provenance']['run_ids']['gfs']}"
@@ -415,11 +420,7 @@ def test_without_a_recorded_page_commit_the_about_panel_says_so(case_b):
     (case_b.site_files / "version.json").unlink()
     case_b.expect_console_errors = 1  # the 404 for version.json
     b = case_b.open("2026-11-26T10:05:00Z")
-    about = b.eval(
-        """Object.fromEntries([...document.querySelectorAll('#about-list dt')]
-            .map(dt => [dt.textContent, dt.nextElementSibling.textContent]))"""
-    )
-    assert about["This page's commit"].startswith("not recorded")
+    assert about_panel(b)["This page's commit"].startswith("not recorded")
 
 
 def test_past_hours_are_greyed_only_where_the_place_file_says_so(case_b):

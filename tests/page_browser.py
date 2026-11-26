@@ -38,7 +38,6 @@ CONTENT_TYPES = {
     ".js": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".json": "application/json",
-    ".svg": "image/svg+xml",
 }
 
 
@@ -169,12 +168,17 @@ class Browser:
             stdout=subprocess.PIPE,
             text=True,
         )
-        self.call(
-            "launch",
-            origin=origin,
-            viewport={"width": width, "height": height},
-            deviceScaleFactor=scale,
-        )
+        try:
+            self.call(
+                "launch",
+                origin=origin,
+                viewport={"width": width, "height": height},
+                deviceScaleFactor=scale,
+            )
+        except BaseException:
+            self._proc.kill()
+            self._proc.wait(timeout=30)
+            raise
 
     def call(self, op: str, **args):
         assert self._proc.stdin and self._proc.stdout
