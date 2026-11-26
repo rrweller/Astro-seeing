@@ -91,7 +91,7 @@ A forecast model's latest run whose run time is more than 24 hours old: shown, b
 _Avoid_: old forecast, expired run
 
 **Saved place**:
-A place listed in the forecast's configuration (Kongsberg, Paranal) that gets the full view: the hourly table, the verdict, and seeing at its real ground height. Every place is treated the same way; Kongsberg is only the first.
+A place listed in the forecast's configuration (Kongsberg, Paranal) that gets the full view: the hourly table, the verdict, and seeing at its real ground height, raised to each forecast model's ground where that is higher. Every place is treated the same way; Kongsberg is only the first.
 _Avoid_: site (for this), location, favourite
 
 **Cell card**:
