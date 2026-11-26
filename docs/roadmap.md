@@ -36,13 +36,13 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · this run: F1-1, then F1-2, F1-4, F1-5, then F1-3 · ticket: none
 
-- `F1-2` · **blocked** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
+- `F1-2` · **ready** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
 
 - `F1-3` · **blocked** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
 
-- `F1-4` · **blocked** · cloud · Tonight: the verdict rules and the Moon · [#53](https://github.com/rrweller/Astro-seeing/issues/53)
+- `F1-4` · **ready** · cloud · Tonight: the verdict rules and the Moon · [#53](https://github.com/rrweller/Astro-seeing/issues/53)
 
-- `F1-5` · **blocked** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54)
+- `F1-5` · **ready** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54)
 
 - `F1-6` · **blocked** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
@@ -244,13 +244,13 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_2 blocked
+  class F1_2 ready
   %% ---
   class F1_3 blocked
   %% ---
-  class F1_4 blocked
+  class F1_4 ready
   %% ---
-  class F1_5 blocked
+  class F1_5 ready
   %% ---
   class F1_6 blocked
   %% ---
