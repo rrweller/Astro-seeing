@@ -18,6 +18,10 @@ Single-context. The glossary is `CONTEXT.md` at the root, created when first nee
 
 `docs/roadmap.md` on `dev` is Riley's single source for what runs next, where, and with which prompt. Every session that works on a roadmap item, ticket or PR reads `docs/agents/session-handoff.md` first and follows it: claim the item at the start, keep its status current, and delete it from the roadmap when its PR merges (D67, D70).
 
+### Merging
+
+Agents may squash-merge their own PRs into `dev`, never `main`, when the session's prompt authorizes it, the `tests` check is green, code review left nothing serious, and the item needs nothing from Riley (D93; the conditions are in `docs/agents/session-handoff.md`, "Merging into `dev`").
+
 ### Asking Riley questions
 
 Write every question, choice and recommendation to Riley in plain language (D60):

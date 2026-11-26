@@ -1,0 +1,36 @@
+# Runs the full test suite and lint on every pull request into dev (D93).
+# Agents may merge their own PR into dev only while this check is green.
+name: tests
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      DO_NOT_TRACK: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
+        with:
+          pixi-version: v0.85.0
+          locked: true
+          cache: true
+      - name: Lint (ruff check and format)
+        run: pixi run lint
+      - name: Tests (pytest, full suite)
+        run: pixi run test
