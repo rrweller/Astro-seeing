@@ -130,7 +130,7 @@ def test_a_day_of_ticks_publishes_kongsberg_from_the_gfs_run(world):
     sample_bytes = sum(f.stat().st_size for f in world.folder.glob("*.grb2"))
     assert len(files) == 98 and run["bytes"] == sum(f["bytes"] for f in files) == sample_bytes
     assert all(f["verified"] == 1 and f["raw_deleted_at"] for f in files)
-    assert not any(world.paths.raw_root.rglob("*.grb2"))
+    assert not any(world.paths.root.rglob("*.grb2"))
     fetches = [r for r in world.server.requests if r.method == "GET"]
     assert len(fetches) == 98  # one fetch of the run in the whole day
 
@@ -160,11 +160,14 @@ def test_a_day_of_ticks_publishes_kongsberg_from_the_gfs_run(world):
         assert g["seeing"]["osborn_sarazin"]["free_atmosphere_arcsec"] > 0
         assert g["fog"]["visibility_m"] != "absent" and g["fog"]["weather_code"] == "absent"
     gfs = place["models"]["gfs"]
-    # Kongsberg (59.669° N 9.652° E, 162 m) takes GFS's point 59.75° N 9.75° E, whose
-    # ground is 327 m (D47's evidence): raised by 165 m, which is also the terrain caveat
+    # Kongsberg (59.669° N 9.652° E, 162.28 m by GLO-30) takes GFS's point 59.75° N
+    # 9.75° E, whose ground is 327 m (D47's evidence): raised by about 165 m, which is
+    # also the terrain caveat
+    height = world.settings.places["kongsberg"].height.metres
+    assert place["place"]["height_m"] == height == pytest.approx(162.28, abs=0.01)
     assert gfs["model_ground_m"] == pytest.approx(327, abs=1)
     assert gfs["observer_height_m"] == gfs["model_ground_m"]
-    assert gfs["raise_m"] == pytest.approx(gfs["model_ground_m"] - 162.0)
+    assert gfs["raise_m"] == pytest.approx(gfs["model_ground_m"] - height)
     assert gfs["terrain_caveat_m"] == gfs["raise_m"]
     assert gfs["level_count"] == 39 and not gfs["regional"] and "NOAA" in gfs["credit"]
     assert 0 < gfs["gap_to_first_level_m"] < 1000
@@ -213,7 +216,7 @@ def test_a_sample_with_a_variable_removed_fails_the_run_and_keeps_its_raw_files(
             }
         ]
         # raw files stay until the run is retried or abandoned (D51 item 5)
-        assert len(list(w.paths.raw_root.rglob("*.grb2"))) == 98
+        assert len(list(w.paths.root.rglob("*.grb2"))) == 98
         files = w.manifest.conn.execute("SELECT * FROM forecast_files").fetchall()
         assert all(f["raw_deleted_at"] is None and f["verified"] == 0 for f in files)
         # the page still gets its files: GFS shows as missing, never filled
@@ -236,14 +239,55 @@ def test_a_second_tick_waits_for_the_lock(world):
     assert world.runs() == [] and not world.paths.latest.exists()
 
 
-def test_a_place_with_no_height_is_refused(tmp_path, ephemeris):
+@pytest.mark.parametrize("height", [None, "hand-entered"])
+def test_a_place_without_a_looked_up_height_refuses_the_tick(tmp_path, ephemeris, height):
+    """Ticket #54: the tick never computes a place at a guessed or missing height."""
     w = World(tmp_path, ephemeris)
-    w.settings = small_box_settings(tmp_path / "config2", **{"places.kongsberg.height": None})
+    edit = (
+        None
+        if height is None
+        else {
+            "metres": 162.0,
+            "source": "hand-entered",
+            "tile": None,
+            "sha256": None,
+            "posting": None,
+            "attribution": None,
+        }
+    )
+    w.settings = small_box_settings(tmp_path / "config2", **{"places.kongsberg.height": edit})
     try:
         report = w.at(DAY + dt.timedelta(hours=10))
-        assert report.refused_places == {
-            "kongsberg": "no ground height (astro forecast place-height kongsberg)"
-        }
-        assert not w.paths.latest.exists()
+        assert "astro forecast place-height kongsberg" in report.skipped
+        assert w.runs() == [] and not w.paths.latest.exists()
+        assert w.server.requests == []  # nothing fetched either
     finally:
         w.close()
+
+
+def test_astro_forecast_tick_refuses_a_hand_entered_height_before_any_fetch(
+    tmp_path, monkeypatch, capsys
+):
+    from astroseeing import cli
+
+    for var, name in (
+        ("ASTRO_DATA_ROOT", "data"),
+        ("ASTRO_STAGING", "staging"),
+        ("ASTRO_STATE_DIR", "state"),
+    ):
+        monkeypatch.setenv(var, str(tmp_path / name))
+    hand = {
+        "metres": 162.0,
+        "source": "hand-entered",
+        "tile": None,
+        "sha256": None,
+        "posting": None,
+        "attribution": None,
+    }
+    small_box_settings(tmp_path / "config", **{"places.kongsberg.height": hand})
+    code = cli.main(["forecast", "tick", "--settings", str(tmp_path / "config/forecast.yaml")])
+    assert code == 1
+    err = capsys.readouterr().err
+    assert "refused" in err and "astro forecast place-height kongsberg" in err
+    assert not (tmp_path / "state" / "manifest.sqlite").exists()
+    assert not (tmp_path / "staging").exists()

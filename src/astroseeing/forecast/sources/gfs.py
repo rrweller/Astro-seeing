@@ -32,7 +32,7 @@ from urllib.parse import urlencode
 
 import numpy as np
 
-from astroseeing.forecast.http import HttpClient, HttpError, HttpUnavailable
+from astroseeing.forecast.http import HttpClient, HttpError
 from astroseeing.forecast.settings import Area, Model
 from astroseeing.forecast.sources.interface import (
     FetchedFile,
@@ -188,9 +188,8 @@ class GfsAdapter:
             for part in ("pgrb2", "pgrb2b"):
                 name = f"gfs.t{hh}z.{part}.0p25.f{step:03d}"
                 variables = [*PROFILE_VARS, "TCDC"]
-                levels = sorted(
-                    set(self._levels[part]) | set(self._cloud_levels[part]), reverse=True
-                )
+                cloud = self._cloud_levels[part] if self.model.level_cloud else []
+                levels = sorted(set(self._levels[part]) | set(cloud), reverse=True)
                 extra_levels: list[str] = []
                 if part == "pgrb2":
                     variables += ["LCDC", "MCDC", "HCDC", "VIS", "PRES"]
@@ -235,9 +234,7 @@ class GfsAdapter:
         self.pacer.wait()
         try:
             self.http.head(url)
-        except HttpUnavailable:
-            raise
-        except HttpError as e:
+        except HttpError as e:  # no answer at all (HttpUnavailable) is raised
             if e.status in (403, 404):
                 return False
             raise

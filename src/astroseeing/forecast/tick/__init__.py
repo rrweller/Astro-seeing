@@ -35,7 +35,8 @@ from pathlib import Path
 import astroseeing
 from astroseeing.forecast.column import column_products
 from astroseeing.forecast.grid import map_grid, nearest_point
-from astroseeing.forecast.http import HttpClient
+from astroseeing.forecast.http import HttpClient, HttpError
+from astroseeing.forecast.places import PlaceHeightMissing, require_looked_up_heights
 from astroseeing.forecast.publish.place_file import (
     build_place_file,
     night_hours,
@@ -60,8 +61,7 @@ from astroseeing.provenance import git_state
 
 log = logging.getLogger(__name__)
 
-#: D51 item 5: no fetch below this much free space on /staging (the alert is ticket #61).
-GB = 1e9
+GB = 1e9  # bytes in the settings' gigabytes (alerts.staging_min_free_gb)
 
 
 @dataclass(frozen=True)
@@ -75,13 +75,9 @@ class ForecastPaths:
     def from_paths(cls, paths: Paths) -> ForecastPaths:
         return cls(root=paths.staging / "forecast", lock=paths.state_dir / "forecast-tick.lock")
 
-    @property
-    def raw_root(self) -> Path:
-        return self.root / "raw"
-
     def raw_dir(self, run: RunRef, area: str) -> Path:
-        """``/staging/forecast/raw/<model>/<run>/<area>/``."""
-        return self.raw_root / run.model / run.label / area
+        """``/staging/forecast/<model>/<run>/<area>/`` (D51 item 5's folder per run)."""
+        return self.root / run.model / run.label / area
 
     @property
     def products(self) -> Path:
@@ -122,7 +118,6 @@ class TickReport:
     now: dt.datetime
     skipped: str | None = None
     runs: list[dict] = field(default_factory=list)  # each new run: model, area, state, error
-    refused_places: dict[str, str] = field(default_factory=dict)
     set_id: str | None = None
     published: bool = False
 
@@ -131,7 +126,6 @@ class TickReport:
             "now": utc_text(self.now),
             "skipped": self.skipped,
             "runs": self.runs,
-            "refused_places": self.refused_places,
             "set_id": self.set_id,
             "published": self.published,
         }
@@ -175,6 +169,12 @@ def tick(
     (eph, ts); ``free_bytes`` measures free space on /staging (default: the real disk)."""
     report = TickReport(now)
     try:
+        require_looked_up_heights(settings)  # ticket #54: never at a guessed height
+    except PlaceHeightMissing as e:
+        log.error("tick refused: %s", e)
+        report.skipped = str(e)
+        return report
+    try:
         with tick_lock(paths.lock):
             _tick(
                 now,
@@ -202,16 +202,7 @@ def _free_bytes(path: Path) -> float:
 def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes, report) -> None:
     records = ForecastRecords(manifest)
     store = PlaceStore(paths.places)
-    places = {}
-    for place in settings.places.values():
-        if place.height is None:
-            report.refused_places[place.id] = (
-                f"no ground height (astro forecast place-height {place.id})"
-            )
-        else:
-            places[place.id] = place
-    for place_id, why in report.refused_places.items():
-        log.error("place %s refused: %s", place_id, why)
+    places = settings.places
 
     # 1-3: newest runs, fetched, verified, computed and stored
     newest: dict[str, RunRef | None] = {}
@@ -224,11 +215,15 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
             if adapter is None:
                 continue  # no adapter yet (ICON-EU, MEPS, IFS: tickets #55-#57)
             if model_id not in newest:
-                newest[model_id] = adapter.latest_published(now)
+                try:
+                    newest[model_id] = adapter.latest_published(now)
+                except HttpError as e:  # host down: nothing new this tick (ticket #58)
+                    log.warning("%s: no answer on the newest run: %s", model_id, e)
+                    newest[model_id] = None
             run = newest[model_id]
             if run is None or not _is_new(records, run, area.id):
                 continue
-            free = free_bytes(paths.raw_root)
+            free = free_bytes(paths.root)
             min_free = settings.alerts.staging_min_free_gb * GB
             if free < min_free:
                 log.error(
@@ -246,10 +241,6 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
             )
 
     # 4-5: the place files and latest.json, published when anything changed
-    default = settings.places[settings.default_place]
-    if default.id not in places:
-        log.error("nothing published: the default place %s is refused", default.id)
-        return
     files = {}
     for place in places.values():
         area = settings.areas[place.area]

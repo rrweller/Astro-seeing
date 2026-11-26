@@ -30,12 +30,14 @@ BOX_1DEG = Box(west=9.2, east=10.3, south=59.2, north=60.3)
 
 
 def small_box_settings(tmp_path: Path, **edits) -> ForecastSettings:
-    """The real forecast settings with the Kongsberg area cut to the sample box and
-    only GFS in it (the other models have no samples yet)."""
+    """The real forecast settings with the Kongsberg area cut to the sample box, only
+    GFS in it and no Paranal (the other models and Paranal have no samples yet);
+    ``edits`` replace values by dotted path, e.g. ``{"places.kongsberg.height": None}``."""
     raw = yaml.safe_load(default_settings_path().read_text())
     raw["areas"]["kongsberg"]["box"] = dict(vars(BOX_1DEG))
     raw["areas"]["kongsberg"]["models"] = ["gfs"]
     raw["areas"]["kongsberg"]["map_grid_model"] = "gfs"
+    del raw["areas"]["paranal"], raw["places"]["paranal"]  # no Paranal samples yet
     for path, value in edits.items():
         node = raw
         *head, last = path.split(".")
