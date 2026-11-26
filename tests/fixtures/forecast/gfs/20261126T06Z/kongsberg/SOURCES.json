@@ -1,0 +1,37 @@
+{
+ "provider": "NOAA/NCEP GFS 0.25\u00b0, via the NOMADS grib filter (US-government open data)",
+ "fetched_at": "2026-11-26T13:19:24+00:00",
+ "run": "2026-11-26T06:00:00+00:00",
+ "box": {
+  "west": 4.65,
+  "east": 14.65,
+  "south": 54.67,
+  "north": 64.67
+ },
+ "steps_h": [
+  0,
+  1
+ ],
+ "files": {
+  "gfs.t06z.pgrb2.0p25.f000.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f000&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=4.65&rightlon=14.65&toplat=64.67&bottomlat=54.67",
+   "bytes": 261438,
+   "sha256": "b282063151912b297fae22da92e8ed039121271cf1f5cf90186a956e8ba6a957"
+  },
+  "gfs.t06z.pgrb2b.0p25.f000.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f000&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=4.65&rightlon=14.65&toplat=64.67&bottomlat=54.67",
+   "bytes": 169899,
+   "sha256": "75304a7bb8a193d8b651277474a5def5378188debd93645ab1ecdf20fc419a65"
+  },
+  "gfs.t06z.pgrb2.0p25.f001.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f001&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=4.65&rightlon=14.65&toplat=64.67&bottomlat=54.67",
+   "bytes": 269650,
+   "sha256": "7d637e2793dd44e48aae4d65196c911df71aa95d875a15e77c03f592836bd9d5"
+  },
+  "gfs.t06z.pgrb2b.0p25.f001.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f001&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=4.65&rightlon=14.65&toplat=64.67&bottomlat=54.67",
+   "bytes": 168099,
+   "sha256": "8c66801c40696eb27fc17185f6abd41170e5f554af7b855cee4d1394816c80be"
+  }
+ }
+}

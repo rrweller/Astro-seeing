@@ -22,7 +22,7 @@
         "height_source": {"enum": ["glo30", "hand-entered"]}
       }
     },
-    "tonight": {"$ref": "#/$defs/tonight"},
+    "tonight": {"description": "Null until the tick fills it from forecast.tonight (D72: F1-14 fills it; F1-2 leaves it empty).", "anyOf": [{"$ref": "#/$defs/tonight"}, {"type": "null"}]},
     "hours": {
       "description": "Tonight, local mean solar noon to the next one: 24 hourly rows.",
       "type": "array",
@@ -35,17 +35,7 @@
       "propertyNames": {"$ref": "#/$defs/id"},
       "additionalProperties": {"$ref": "#/$defs/model"}
     },
-    "moon": {
-      "type": "object",
-      "required": ["rise", "set", "phase_deg", "illuminated_fraction"],
-      "additionalProperties": false,
-      "properties": {
-        "rise": {"description": "Moonrise during Tonight, or null if none.", "$ref": "#/$defs/utc_time_or_null"},
-        "set": {"description": "Moonset during Tonight, or null if none.", "$ref": "#/$defs/utc_time_or_null"},
-        "phase_deg": {"description": "Ecliptic longitude Moon minus Sun: 0 new, 180 full.", "type": "number", "minimum": 0, "exclusiveMaximum": 360},
-        "illuminated_fraction": {"type": "number", "minimum": 0, "maximum": 1}
-      }
-    },
+    "moon": {"description": "Null until the tick fills it from forecast.tonight's moon_track (D72: F1-14 fills it; F1-2 leaves it empty).", "anyOf": [{"$ref": "#/$defs/moon"}, {"type": "null"}]},
     "provenance": {
       "type": "object",
       "required": ["commit", "config_hash", "run_ids"],
@@ -180,6 +170,30 @@
       }
     },
 
+    "agreement": {
+      "type": "object",
+      "required": ["clear", "of", "majority", "state"],
+      "additionalProperties": false,
+      "properties": {
+        "clear": {"$ref": "#/$defs/count"},
+        "of": {"$ref": "#/$defs/count"},
+        "majority": {"anyOf": [{"$ref": "#/$defs/majority"}, {"type": "null"}]},
+        "state": {"enum": ["mostly_clear", "not_clear", "incomplete"]}
+      }
+    },
+
+    "moon": {
+      "type": "object",
+      "required": ["rise", "set", "phase_deg", "illuminated_fraction"],
+      "additionalProperties": false,
+      "properties": {
+        "rise": {"description": "Moonrise during Tonight, or null if none.", "$ref": "#/$defs/utc_time_or_null"},
+        "set": {"description": "Moonset during Tonight, or null if none.", "$ref": "#/$defs/utc_time_or_null"},
+        "phase_deg": {"description": "Ecliptic longitude Moon minus Sun: 0 new, 180 full.", "type": "number", "minimum": 0, "exclusiveMaximum": 360},
+        "illuminated_fraction": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+
     "hour": {
       "type": "object",
       "required": ["time", "sun_altitude_deg", "sun_class", "moon_altitude_deg", "past",
@@ -189,21 +203,10 @@
         "time": {"description": "hh:00 UTC; the value stands for hh-0:30 to hh+0:30.", "$ref": "#/$defs/utc_time"},
         "sun_altitude_deg": {"type": "number", "minimum": -90, "maximum": 90},
         "sun_class": {"enum": ["day", "civil_twilight", "nautical_twilight", "astronomical_twilight", "dark"]},
-        "moon_altitude_deg": {"type": "number", "minimum": -90, "maximum": 90},
-        "past": {"type": "boolean"},
-        "counted": {"type": "boolean"},
-        "agreement": {
-          "description": "Model agreement over the global families with a value this hour (D48 item 4).",
-          "type": "object",
-          "required": ["clear", "of", "majority", "state"],
-          "additionalProperties": false,
-          "properties": {
-            "clear": {"$ref": "#/$defs/count"},
-            "of": {"$ref": "#/$defs/count"},
-            "majority": {"anyOf": [{"$ref": "#/$defs/majority"}, {"type": "null"}]},
-            "state": {"enum": ["mostly_clear", "not_clear", "incomplete"]}
-          }
-        },
+        "moon_altitude_deg": {"description": "Null until filled with the Moon (D72).", "type": ["number", "null"], "minimum": -90, "maximum": 90},
+        "past": {"description": "Null until filled from forecast.tonight (D72).", "type": ["boolean", "null"]},
+        "counted": {"description": "Null until filled from forecast.tonight (D72).", "type": ["boolean", "null"]},
+        "agreement": {"description": "Model agreement over the global families with a value this hour (D48 item 4); null until filled from forecast.tonight (D72).", "anyOf": [{"$ref": "#/$defs/agreement"}, {"type": "null"}]},
         "models": {
           "description": "Every forecast model of the place's area: its values this hour, or why it has none (never filled).",
           "type": "object",

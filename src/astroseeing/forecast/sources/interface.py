@@ -216,6 +216,7 @@ class SourceAdapter(Protocol):
     injected ``forecast.http.HttpClient``, so tests swap in a fake server."""
 
     model: Model
+    credit: str  # the short credit beside the model's rows (D44 item 8)
 
     def latest_published(self, now: dt.datetime) -> RunRef | None:
         """The newest run the source has published by ``now``: a cheap listing, index or

@@ -542,6 +542,32 @@ def cmd_forecast_place_height(args, paths: Paths) -> int:
     return 0
 
 
+def cmd_forecast_tick(args, paths: Paths) -> int:
+    """One forecast tick (F1 spec Module 8): what's new is fetched, stored and published."""
+    from astroseeing.forecast.http import HttpClient
+    from astroseeing.forecast.places import PlaceHeightMissing, require_looked_up_heights
+    from astroseeing.forecast.settings import load_settings
+    from astroseeing.forecast.tick import BuildInfo, ForecastPaths, default_adapters, tick
+    from astroseeing.solar.sun import load_ephemeris
+
+    settings = load_settings(Path(args.settings) if args.settings else None)
+    try:
+        require_looked_up_heights(settings)  # refuse before touching the network (#54)
+    except PlaceHeightMissing as e:
+        print(f"forecast tick: refused: {e}", file=sys.stderr)
+        return 1
+    manifest = _manifest(paths)
+    try:
+        report = tick(dt.datetime.now(dt.UTC), settings,
+                      default_adapters(settings, HttpClient()), manifest,
+                      ForecastPaths.from_paths(paths), ephemeris=load_ephemeris(),
+                      build=BuildInfo.current())  # fmt: skip
+    finally:
+        manifest.close()
+    print(json.dumps(report.as_dict(), indent=2))
+    return 1 if any(r["state"] == "failed" for r in report.runs) else 0  # locked: 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="astro", description=__doc__)
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -674,6 +700,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--settings", help="settings file (default: configs/forecast.yaml)")
     p.add_argument("--dem-url", help="GLO-30 bucket URL (default: from the settings; tests)")
     p.set_defaults(fn=cmd_forecast_place_height)
+    p = fsub.add_parser("tick", help="fetch new forecast runs, store them and publish the page "
+                        "files (every 15 min from astro-forecast.timer)")  # fmt: skip
+    p.add_argument("--settings", help="settings file (default: configs/forecast.yaml)")
+    p.set_defaults(fn=cmd_forecast_tick)
 
     args = ap.parse_args(argv)
     _setup_logging(args.verbose)
