@@ -915,3 +915,23 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   - C0, C1 and C2, already finished, are deleted in the same change.
 - **Evidence:** finished items are still on record in the merged PRs, closed tickets, git history and this log.
 - **Who:** Riley (deletion, dropping the guides); agent (mechanism (b), arrows as dependencies).
+
+## 2026-11-26 — Cloud planning session: the F1 spec (roadmap C3)
+
+### D60. Gaps closed for the F1 spec: saved places, the map grid, the sunset map, and plain-language questions
+- **Context:** writing the F1 spec (map #20) from D43–D56 left three questions the decisions don't answer. Riley answered each in the C3 session, 2026-11-26. The spec is the F1 spec issue under map #20.
+- **Evidence:**
+  - D43 item 2 (the user picks a place; Kongsberg default), D45 item 5 (per-place series for Kongsberg, Paranal "and any saved later"), D47 item 1 (a place's DEM height, raised to the model ground), D49 item 4 (terrain caveat per place), D52 item 2 ("one JSON file per place") and AGENTS.md's F2 ("any place in a wider domain") leave open what a click on an arbitrary map point shows in F1.
+  - D45 item 3 and D48 item 11: the map's clear layer counts model agreement across the global families per spot, so GFS, IFS and ICON-EU must share one grid. GFS and IFS are 0.25° (≈28 × 14 km at 60° N); ICON-EU is 0.0625°, and its grid points include every GFS/IFS point (`docs/research/forecast-sources.md`). D45 item 4 blends only at regional-domain edges (F2) and doesn't name a grid for F1.
+  - D45 item 5 keeps "each day's tonight summary map for 7 days", but the map is rewritten every 15 min (D51 items 1 and 13), so which version is kept is open. D54 item 4 scores the run that was latest at local sunset.
+- **Choices (Riley, 2026-11-26; each was the agent's recommendation):**
+  1. **Saved places only, in F1.** A **saved place** (Kongsberg and Paranal to start) gets the full view: the hourly multi-model table, the verdict, D47's observer height from GLO-30 and D49's terrain caveat. Adding one is one config entry (name, lat/lon, IANA time zone); its GLO-30 height is looked up automatically. A click anywhere else on the map opens a **cell card** with that map cell's tonight values from the map layers (mostly clear counted hours left, each family's seeing median, dark hours left), computed at each model's ground and labelled so. The verdict rules (D48) exist only in the Python code, never re-implemented in the browser. Times show in the saved place's time zone; the map and cell cards use the default saved place's time zone.
+     - **Riley:** F1 does this, but the project will expand to the full globe later, so nothing in F1 may block a full view for any clicked point (F2/F3).
+     - Options rejected: a full table for every map cell (≈25,600 tables rewritten hourly, plus a DEM lookup per cell); building tables in the browser (D48's rules written twice).
+  2. **The F1 map grid is ICON-EU's 0.0625° grid.** Each map cell takes ICON-EU's own value and the value of the GFS and IFS grid cell it falls in (nearest grid point; the tie rule for points exactly between two coarse points is fixed in the spec). Nothing is averaged or interpolated; GFS and IFS show as blocks of 4 × 4 cells. The general rule, for later areas: within an area, the finest global family sets the map grid. MEPS isn't on the map (D45 item 3).
+     - Options rejected: a 0.25° grid with ICON-EU averaged into it (loses detail; averaging cloud is smoothing); a 0.25° grid with ICON-EU subsampled (drops 15 of 16 values).
+  3. **The kept daily map is the one at sunset at the default saved place** (Kongsberg): the latest product set written at or before that day's sunset there. Seven are kept on the SSD (D51 item 10), oldest deleted first. One moment for the whole map, although sunset differs by up to about an hour across the box.
+     - Options rejected: one map per new run (more clutter than "one per night"); the map at local noon (older runs).
+  4. **Plain-language questions.** Riley asked that every question to him, in every session from now on, uses plain language: no project jargon, no bare decision or ticket numbers he would have to look up, and a short explanation of any scientific or meteorological term. Written into `CLAUDE.md`.
+- **Glossary:** saved place, cell card, map grid and sunset map added to `CONTEXT.md`.
+- **Who:** Riley (all four, 2026-11-26); the agent proposed items 1–3 and drafted the wording.
