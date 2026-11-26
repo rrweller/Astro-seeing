@@ -14,12 +14,14 @@ import sqlite3
 
 from astroseeing.forecast.http import HttpClient
 from astroseeing.forecast.sources.gfs import GfsAdapter, RatePacer
+from astroseeing.forecast.sources.icon_eu import IconEuAdapter
 from astroseeing.forecast.tick import BuildInfo, ForecastPaths, tick
 from astroseeing.manifest import Manifest
 from astroseeing.paths import Paths
 
 from fake_http import FakeHttpServer
 from forecast_samples import SAMPLES, serve_samples, small_box_settings
+from icon_eu_samples import sample_messages, serve_icon_samples
 
 DAY = dt.datetime(2026, 11, 26, tzinfo=dt.UTC)
 PUBLISHED = DAY + dt.timedelta(hours=9, minutes=40)  # the 06z run appears on NOMADS
@@ -29,8 +31,16 @@ BUILD = BuildInfo(commit="a" * 40, software={"astroseeing": "0.1.0"})
 class World:
     """Settings, a fake NOMADS, a temp manifest and temp folders: one CT in miniature."""
 
-    def __init__(self, tmp_path, ephemeris, sample_folder=None):
-        self.settings = small_box_settings(tmp_path / "config")
+    def __init__(self, tmp_path, ephemeris, sample_folder=None, icon_eu=False):
+        """``icon_eu``: also ICON-EU in the area, from a fake DWD opendata publishing the
+        saved samples of the same run at the same time (ticket #55)."""
+        edits = {}
+        if icon_eu:
+            edits = {
+                "areas.kongsberg.models": ["gfs", "icon_eu"],
+                "areas.kongsberg.map_grid_model": "icon_eu",  # the finest global family
+            }
+        self.settings = small_box_settings(tmp_path / "config", **edits)
         self.paths = ForecastPaths.from_paths(
             Paths(
                 data_root=tmp_path / "data",
@@ -50,6 +60,19 @@ class World:
             base_url=self.server.url,
             pacer=RatePacer(None),
         )
+        self.adapters = {"gfs": self.gfs}
+        self.dwd = None
+        if icon_eu:
+            self.dwd = FakeHttpServer()
+            self.dwd.__enter__()
+            self.icon_eu = IconEuAdapter(
+                self.settings.models["icon_eu"],
+                HttpClient(timeout_s=5),
+                self.settings.areas,
+                base_url=self.dwd.url,
+                pacer=RatePacer(None),
+            )
+            self.adapters["icon_eu"] = self.icon_eu
         self.area = self.settings.areas["kongsberg"]
         self.folder = sample_folder or SAMPLES / "box1deg"
         self.published = False
@@ -59,11 +82,13 @@ class World:
             serve_samples(
                 self.server, self.gfs, self.area, self.gfs.model.steps_h, folder=self.folder
             )
+            if self.dwd is not None:
+                serve_icon_samples(self.dwd, sample_messages())
             self.published = True
         return tick(
             now,
             self.settings,
-            {"gfs": self.gfs},
+            self.adapters,
             self.manifest,
             self.paths,
             ephemeris=self.ephemeris,
@@ -85,3 +110,5 @@ class World:
     def close(self):
         self.manifest.close()
         self.server.__exit__(None, None, None)
+        if self.dwd is not None:
+            self.dwd.__exit__(None, None, None)
