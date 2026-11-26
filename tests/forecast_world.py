@@ -60,7 +60,6 @@ class World:
             base_url=self.server.url,
             pacer=RatePacer(None),
         )
-        self.adapters = {"gfs": self.gfs}
         self.dwd = None
         if icon_eu:
             self.dwd = FakeHttpServer()
@@ -72,7 +71,6 @@ class World:
                 base_url=self.dwd.url,
                 pacer=RatePacer(None),
             )
-            self.adapters["icon_eu"] = self.icon_eu
         self.area = self.settings.areas["kongsberg"]
         self.folder = sample_folder or SAMPLES / "box1deg"
         self.published = False
@@ -88,12 +86,18 @@ class World:
         return tick(
             now,
             self.settings,
-            self.adapters,
+            self.adapters(),
             self.manifest,
             self.paths,
             ephemeris=self.ephemeris,
             build=BUILD,
         )
+
+    def adapters(self) -> dict:
+        """The adapters each tick gets (a test world with more models adds to them)."""
+        if self.dwd is not None:
+            return {"gfs": self.gfs, "icon_eu": self.icon_eu}
+        return {"gfs": self.gfs}
 
     def latest(self) -> dict:
         return json.loads(self.paths.latest.read_text())

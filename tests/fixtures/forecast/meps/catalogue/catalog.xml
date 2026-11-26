@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<catalog xmlns="http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.2">
+  <service name="allServices" serviceType="Compound" base="">
+    <service name="dapService" serviceType="OpenDAP" base="/thredds/dodsC/" />
+    <service name="httpService" serviceType="HTTPServer" base="/thredds/fileServer/" />
+    <service name="wms" serviceType="WMS" base="/thredds/wms/" />
+    <service name="wcs" serviceType="WCS" base="/thredds/wcs/" />
+  </service>
+  <service name="dapOnly" serviceType="Compound" base="">
+    <service name="dapService" serviceType="OpenDAP" base="/thredds/dodsC/" />
+  </service>
+  <service name="ncssServices" serviceType="Compound" base="">
+    <service name="dapService" serviceType="OpenDAP" base="/thredds/dodsC/" />
+    <service name="httpService" serviceType="HTTPServer" base="/thredds/fileServer/" />
+    <service name="wms" serviceType="WMS" base="/thredds/wms/" />
+    <service name="wcs" serviceType="WCS" base="/thredds/wcs/" />
+    <service name="subsetServer" serviceType="NetcdfSubset" base="/thredds/ncss/grid/" />
+  </service>
+  <service name="DODShttp" serviceType="Compound" base="">
+    <service name="thisDODS" serviceType="OpenDAP" base="/thredds/dodsC/" />
+    <service name="httpService" serviceType="HTTPServer" base="/thredds/fileServer/" />
+  </service>
+  <service name="virtualServices" serviceType="Compound" base="">
+    <service name="thisDODS" serviceType="OpenDAP" base="/thredds/dodsC/" />
+    <service name="wms" serviceType="WMS" base="/thredds/wms/" />
+    <service name="wcs" serviceType="WCS" base="/thredds/wcs/" />
+  </service>
+  <dataset name="MEPS Latest">
+    <property name="DatasetScan" value="true" />
+    <metadata inherited="true">
+      <serviceName>dapOnly</serviceName>
+    </metadata>
+    <dataset name="meps_det_2_5km_20261125T15Z.ncml" ID="mepslatest/meps_det_2_5km_20261125T15Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261125T15Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-25T17:23:53Z</date>
+    </dataset>
+    <dataset name="meps_det_2_5km_20261125T18Z.ncml" ID="mepslatest/meps_det_2_5km_20261125T18Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261125T18Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-25T20:24:35Z</date>
+    </dataset>
+    <dataset name="meps_det_2_5km_20261125T21Z.ncml" ID="mepslatest/meps_det_2_5km_20261125T21Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261125T21Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-25T23:24:14Z</date>
+    </dataset>
+    <dataset name="meps_det_2_5km_20261126T00Z.ncml" ID="mepslatest/meps_det_2_5km_20261126T00Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261126T00Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-26T02:25:12Z</date>
+    </dataset>
+    <dataset name="meps_det_2_5km_20261126T03Z.ncml" ID="mepslatest/meps_det_2_5km_20261126T03Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261126T03Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-26T05:26:13Z</date>
+    </dataset>
+    <dataset name="meps_det_2_5km_20261126T06Z.ncml" ID="mepslatest/meps_det_2_5km_20261126T06Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261126T06Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-26T08:23:24Z</date>
+    </dataset>
+    <dataset name="meps_det_2_5km_20261126T09Z.ncml" ID="mepslatest/meps_det_2_5km_20261126T09Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261126T09Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-26T11:27:47Z</date>
+    </dataset>
+    <dataset name="meps_det_2_5km_20261126T12Z.ncml" ID="mepslatest/meps_det_2_5km_20261126T12Z.ncml" urlPath="mepslatest/meps_det_2_5km_20261126T12Z.ncml">
+      <dataSize units="Kbytes">7.103</dataSize>
+      <date type="modified">2026-11-26T14:27:49Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261125T15Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261125T15Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261125T15Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-25T16:44:08Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261125T18Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261125T18Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261125T18Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-25T19:42:42Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261125T21Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261125T21Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261125T21Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-25T22:42:43Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261126T00Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261126T00Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261126T00Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-26T01:42:09Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261126T03Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261126T03Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261126T03Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-26T04:42:57Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261126T06Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261126T06Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261126T06Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-26T07:43:06Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261126T09Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261126T09Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261126T09Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-26T10:44:55Z</date>
+    </dataset>
+    <dataset name="meps_det_vc_2_5km_20261126T12Z.ncml" ID="mepslatest/meps_det_vc_2_5km_20261126T12Z.ncml" urlPath="mepslatest/meps_det_vc_2_5km_20261126T12Z.ncml">
+      <dataSize units="Kbytes">7.036</dataSize>
+      <date type="modified">2026-11-26T13:45:41Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T14Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T14Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T14Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T15:57:48Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T14Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T14Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T14Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T15:46:16Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T15Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T15Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T15Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T16:59:40Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T15Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T15Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T15Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T16:48:13Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T16Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T16Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T16Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T17:56:01Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T16Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T16Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T16Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T17:46:12Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T17Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T17Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T17Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T18:58:23Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T17Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T17Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T17Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T18:46:56Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T18Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T18Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T18Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T19:56:43Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T18Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T18Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T18Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T19:46:40Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T19Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T19Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T19Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T20:57:21Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T19Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T19Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T19Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T20:46:31Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T20Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T20Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T20Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T21:57:27Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T20Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T20Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T20Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T21:46:15Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T21Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T21Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T21Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T22:54:06Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T21Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T21Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T21Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T22:47:36Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T22Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T22Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T22Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-25T23:57:15Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T22Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T22Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T22Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T23:47:07Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T23Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T23Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T23Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T00:52:11Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261125T23Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T23Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261125T23Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T00:45:48Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T00Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T00Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T00Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T01:52:55Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T00Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T00Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T00Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T01:46:20Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T01Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T01Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T01Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T02:56:54Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T01Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T01Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T01Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T02:46:19Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T02Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T02Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T02Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T04:07:29Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T02Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T02Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T02Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T03:57:22Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T03Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T03Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T03Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T04:58:12Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T03Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T03Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T03Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T04:48:06Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T04Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T04Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T04Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T05:51:56Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T04Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T04Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T04Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T05:45:31Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T05Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T05Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T05Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T06:57:24Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T05Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T05Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T05Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T06:45:42Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T06Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T06Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T06Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T07:57:45Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T06Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T06Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T06Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T07:47:12Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T07Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T07Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T07Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T08:54:41Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T07Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T07Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T07Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T08:48:14Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T08Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T08Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T08Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T09:59:31Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T08Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T08Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T08Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T09:52:26Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T09Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T09Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T09Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T10:55:27Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T09Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T09Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T09Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T10:48:42Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T10Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T10Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T10Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T11:57:58Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T10Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T10Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T10Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T11:47:56Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T11Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T11Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T11Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T12:59:43Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T11Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T11Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T11Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T12:48:43Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T12Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T12Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T12Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T13:55:35Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T12Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T12Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T12Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T13:48:47Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T13Z.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T13Z.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T13Z.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T14:55:32Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_20261126T13Z.ncml" ID="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T13Z.ncml" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_20261126T13Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T14:48:27Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_latest_2_5km_latest.nc" ID="mepslatest/meps_lagged_6_h_latest_2_5km_latest.nc" urlPath="mepslatest/meps_lagged_6_h_latest_2_5km_latest.nc">
+      <dataSize units="Gbytes">121.2</dataSize>
+      <date type="modified">2026-11-26T14:55:32Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261125T15Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261125T15Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261125T15Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T16:56:57Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261125T18Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261125T18Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261125T18Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T19:56:27Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261125T21Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261125T21Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261125T21Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-25T22:54:23Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261126T00Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T00Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T00Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T01:54:45Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261126T03Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T03Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T03Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T04:57:13Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261126T06Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T06Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T06Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T07:59:06Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261126T09Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T09Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T09Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T10:57:48Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_subset_2_5km_20261126T12Z.ncml" ID="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T12Z.ncml" urlPath="mepslatest/meps_lagged_6_h_subset_2_5km_20261126T12Z.ncml">
+      <dataSize units="Kbytes">7.327</dataSize>
+      <date type="modified">2026-11-26T13:58:15Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_vc_2_5km_20261125T18Z.ncml" ID="mepslatest/meps_lagged_6_h_vc_2_5km_20261125T18Z.ncml" urlPath="mepslatest/meps_lagged_6_h_vc_2_5km_20261125T18Z.ncml">
+      <dataSize units="Kbytes">7.079</dataSize>
+      <date type="modified">2026-11-25T19:57:51Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_vc_2_5km_20261126T00Z.ncml" ID="mepslatest/meps_lagged_6_h_vc_2_5km_20261126T00Z.ncml" urlPath="mepslatest/meps_lagged_6_h_vc_2_5km_20261126T00Z.ncml">
+      <dataSize units="Kbytes">7.079</dataSize>
+      <date type="modified">2026-11-26T01:56:58Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_vc_2_5km_20261126T06Z.ncml" ID="mepslatest/meps_lagged_6_h_vc_2_5km_20261126T06Z.ncml" urlPath="mepslatest/meps_lagged_6_h_vc_2_5km_20261126T06Z.ncml">
+      <dataSize units="Kbytes">7.079</dataSize>
+      <date type="modified">2026-11-26T07:58:10Z</date>
+    </dataset>
+    <dataset name="meps_lagged_6_h_vc_2_5km_20261126T12Z.ncml" ID="mepslatest/meps_lagged_6_h_vc_2_5km_20261126T12Z.ncml" urlPath="mepslatest/meps_lagged_6_h_vc_2_5km_20261126T12Z.ncml">
+      <dataSize units="Kbytes">7.079</dataSize>
+      <date type="modified">2026-11-26T14:00:56Z</date>
+    </dataset>
+    <catalogRef xlink:href="archive/catalog.xml" xlink:title="archive" ID="mepslatest/archive" name="archive">
+      <property name="DatasetScan" value="true" />
+    </catalogRef>
+  </dataset>
+</catalog>
