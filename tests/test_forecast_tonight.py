@@ -381,11 +381,10 @@ def test_no_meps_line_where_meps_does_not_cover_the_place():
     assert paranal(gfs, ifs, now=at(10, 18)).meps is None
 
 
-# PROVISIONAL until Riley answers on ticket #53: how the MEPS line treats hours MEPS
-# lacks, and a stale MEPS run. Implemented as recommended there: n stays Tonight's
-# counted hours, the missing hours are reported, and a stale run's hours count as
-# missing (as for the global models).
-def test_meps_line_reports_its_missing_hours_provisional():
+# Riley's choice on ticket #53 (2026-11-26, D74 item 10): n stays Tonight's counted
+# hours, the hours MEPS lacks are reported as missing, and a stale MEPS run's hours all
+# count as missing (as for the global models).
+def test_meps_line_reports_its_missing_hours():
     values = clouds(0.0)
     values[row(3)] = Missing("partial")
     values[row(4)] = Missing("partial")
@@ -394,7 +393,7 @@ def test_meps_line_reports_its_missing_hours_provisional():
     assert t.meps.stale is False
 
 
-def test_a_stale_meps_run_is_shown_but_its_line_counts_nothing_provisional():
+def test_a_stale_meps_run_is_shown_but_its_line_counts_nothing():
     t = verdict(table(*ALL_CLEAR, meps(clouds(0.0), run(9, 6))), now=at(10, 10))  # 28 h old
     assert t.runs["meps"].stale is True
     assert (t.meps.clear_hours, t.meps.counted_hours, t.meps.missing_hours) == (0, 13, 13)
@@ -409,10 +408,10 @@ def test_dark_time_ended_when_no_counted_hour_is_left_before_sunrise():
     assert t.seeing is None
 
 
-# PROVISIONAL until Riley answers on ticket #53: the time in "Dark time ended at
-# hh:mm" is when the last counted hour stopped counting (its hh:00 + 30 min, D48
+# Riley's choice on ticket #53 (2026-11-26, D74 item 10): the time in "Dark time ended
+# at hh:mm" is when the last counted hour stopped counting (its hh:00 + 30 min, D48
 # item 3), the moment this message appears.
-def test_dark_time_ended_at_is_when_the_last_counted_hour_stopped_counting_provisional():
+def test_dark_time_ended_at_is_when_the_last_counted_hour_stopped_counting():
     t = verdict(table(*ALL_CLEAR), now=at(11, 6, 30))
     assert t.nothing_to_count.dark_time_ended_at == at(11, 6, 30)
     assert t.nothing_to_count.families == {}

@@ -20,7 +20,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import yaml
 
 from astroseeing.config import config_dir
-from astroseeing.provenance import config_hash
+from astroseeing.provenance import DEM_ATTRIBUTION, config_hash
 
 SCHEMA = "forecast-settings/1"
 
@@ -97,13 +97,31 @@ class Area:
 
 
 @dataclass(frozen=True)
+class Posting:
+    """The GLO-30 grid posting a height was read at: its row and column in the tile,
+    and its position."""
+
+    row: int
+    col: int
+    lat: float
+    lon: float
+
+
+@dataclass(frozen=True)
 class PlaceHeight:
-    """A saved place's ground height (GLO-30), and where the number came from."""
+    """A saved place's ground height (GLO-30), and where the number came from.
+
+    Only a ``glo30`` height (written by ``astro forecast place-height``) counts as looked
+    up; it carries its tile, the tile's SHA-256, the posting read and the Copernicus DEM
+    credit line. A ``hand-entered`` one has those null, and the tick refuses it.
+    """
 
     metres: float
     source: str  # "hand-entered" or "glo30"
     tile: str | None
     sha256: str | None
+    posting: Posting | None
+    attribution: str | None
 
 
 @dataclass(frozen=True)
@@ -115,6 +133,15 @@ class Place:
     time_zone: str
     area: str
     height: PlaceHeight | None
+    published_height_m: float | None  # a published height to compare with, if any
+
+
+@dataclass(frozen=True)
+class PlaceHeights:
+    """Where saved places' heights are looked up, and when a lookup is flagged."""
+
+    dem: Host  # the public GLO-30 bucket
+    flag_published_difference_m: float
 
 
 @dataclass(frozen=True)
@@ -152,6 +179,7 @@ class ForecastSettings:
     areas: Mapping[str, Area]
     default_place: str
     places: Mapping[str, Place]
+    place_heights: PlaceHeights
     cloud_classes: CloudClasses
     run_rules: RunRules
     alerts: Alerts
@@ -182,6 +210,12 @@ def _parse_settings(raw: Any, source: str) -> ForecastSettings:
     areas = {aid: _area(aid, node, models) for aid, node in root.map("areas").items()}
     places = {pid: _place(pid, node, areas) for pid, node in root.map("places").items()}
     default_place = root.text("default_place", allowed=tuple(places))
+    ph = root.node("place_heights")
+    place_heights = PlaceHeights(
+        dem=_host(ph.node("dem")),
+        flag_published_difference_m=ph.number("flag_published_difference_m", positive=True),
+    )
+    ph.done()
     cc = root.node("cloud_classes")
     cloud = CloudClasses(cc.number("clear_max_pct"), cc.number("some_cloud_max_pct"))
     if not 0 <= cloud.clear_max_pct < cloud.some_cloud_max_pct <= 100:
@@ -215,6 +249,7 @@ def _parse_settings(raw: Any, source: str) -> ForecastSettings:
         areas=areas,
         default_place=default_place,
         places=places,
+        place_heights=place_heights,
         cloud_classes=cloud,
         run_rules=run_rules,
         alerts=alerts,
@@ -312,20 +347,38 @@ def _place(pid: str, n: _Node, areas: Mapping[str, Area]) -> Place:
     if not areas[area].box.contains(lat, lon):
         raise n.error(f"({lat}, {lon}) lies outside area {area!r}")
     h = n.node("height", nullable=True)
-    height = None
-    if h is not None:
-        height = PlaceHeight(
-            metres=h.number("metres"),
-            source=h.text("source", allowed=("hand-entered", "glo30")),
-            tile=h.get("tile", str, nullable=True),
-            sha256=h.get("sha256", str, nullable=True),
-        )
-        if height.source == "glo30" and not (height.tile and height.sha256):
-            raise h.error("a GLO-30 height needs its tile and sha256")
-        h.done()
-    place = Place(pid, n.text("name"), lat, lon, tz, area, height)
+    height = None if h is None else _place_height(h)
+    published = n.get("published_height_m", (int, float), nullable=True)
+    place = Place(pid, n.text("name"), lat, lon, tz, area, height,
+                  None if published is None else float(published))  # fmt: skip
     n.done()
     return place
+
+
+def _place_height(h: _Node) -> PlaceHeight:
+    p = h.node("posting", nullable=True)
+    posting = None
+    if p is not None:
+        posting = Posting(p.integer("row", minimum=0), p.integer("col", minimum=0),
+                          p.number("lat"), p.number("lon"))  # fmt: skip
+        p.done()
+    height = PlaceHeight(
+        metres=h.number("metres"),
+        source=h.text("source", allowed=("hand-entered", "glo30")),
+        tile=h.get("tile", str, nullable=True),
+        sha256=h.get("sha256", str, nullable=True),
+        posting=posting,
+        attribution=h.get("attribution", str, nullable=True),
+    )
+    if height.source == "glo30":
+        if not (height.tile and height.sha256 and height.posting and height.attribution):
+            raise h.error("a GLO-30 height needs its tile, sha256, posting and attribution")
+        if height.attribution != DEM_ATTRIBUTION:
+            raise h.error("attribution must be the Copernicus DEM wording (RESEARCH §7)")
+        if not re.fullmatch(r"[0-9a-f]{64}", height.sha256):
+            raise h.error(f"sha256 must be 64 hex digits, got {height.sha256!r}")
+    h.done()
+    return height
 
 
 class _Node:

@@ -124,7 +124,7 @@
           ]
         },
         "meps": {
-          "description": "D48 item 9: the regional-only line, or null where MEPS does not cover the place. counted_hours is Tonight's n; missing_hours are counted hours MEPS has no value for; a stale MEPS run counts every hour as missing (D74, provisional).",
+          "description": "D48 item 9: the regional-only line, or null where MEPS does not cover the place. counted_hours is Tonight's n; missing_hours are counted hours MEPS has no value for; a stale MEPS run counts every hour as missing (D74 item 10, Riley's choice).",
           "anyOf": [
             {"type": "null"},
             {

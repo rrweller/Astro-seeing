@@ -83,9 +83,9 @@ class MepsLine(NamedTuple):
     """D48 item 9: the regional-only model's own line, never counted: hours of the same
     counted hours that it alone puts in the clear class.
 
-    PROVISIONAL (ticket #53, question to Riley): ``counted_hours`` stays Tonight's n,
+    Riley's choice (2026-11-26, D74 item 10): ``counted_hours`` stays Tonight's n,
     ``missing_hours`` reports the counted hours it has no value for, and a stale run's
-    hours all count as missing, as for the global models."""
+    hours all count as missing, as for the global models, with ``stale`` set."""
 
     clear_hours: int
     counted_hours: int
@@ -101,7 +101,7 @@ class NothingToCount(NamedTuple):
 
     ``dark_time_ended``: no counted hour is left before sunrise; ``dark_time_ended_at``
     is when the last counted hour stopped counting (its hh:00 + 30 min, D48 item 3;
-    PROVISIONAL, ticket #53). ``not_enough_models``: every counted hour left is
+    Riley's choice, D74 item 10). ``not_enough_models``: every counted hour left is
     incomplete; ``families`` gives each global family's state."""
 
     reason: Literal["dark_time_ended", "not_enough_models"]

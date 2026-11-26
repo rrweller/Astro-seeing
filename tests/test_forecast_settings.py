@@ -24,7 +24,18 @@ def test_committed_settings_hold_the_decided_values():
     place = s.places["kongsberg"]
     assert (place.lat, place.lon, place.time_zone) == (59.669, 9.652, "Europe/Oslo")
     assert place.height is not None
-    assert (place.height.metres, place.height.source) == (162.0, "hand-entered")  # D47
+    # GLO-30, looked up on 2026-11-26 (D75); D47's evidence read 162 m by hand
+    assert (place.height.metres, place.height.source) == (162.28006, "glo30")
+    assert place.height.tile == "Copernicus_DSM_COG_10_N59_00_E009_00_DEM"
+    assert (place.height.posting.row, place.height.posting.col) == (1192, 1565)
+    paranal = s.places["paranal"]  # ESO's VLTI array centre (D75)
+    assert (paranal.lat, paranal.lon) == (-24.6279483, -70.40479659)
+    assert (paranal.time_zone, paranal.area, paranal.published_height_m) == (
+        "America/Santiago", "paranal", 2635.0)  # fmt: skip
+    assert paranal.height.metres == 2636.0247  # 1.0 m above the published 2635 m
+    assert paranal.height.tile == "Copernicus_DSM_COG_10_S25_00_W071_00_DEM"
+    assert s.place_heights.dem.url == "https://copernicus-dem-30m.s3.amazonaws.com"
+    assert s.place_heights.flag_published_difference_m == 50  # D54 item 3
     assert s.default_place == "kongsberg"
 
     levels = {m: len(s.models[m].pressure_levels_hpa) for m in s.models}
@@ -126,8 +137,8 @@ def test_a_missing_required_value_is_refused_by_name(tmp_path, raw, path):
         (lambda r: r["eso"].update(fetch_time_utc="5pm"), r"HH:MM"),
         (lambda r: r["run_rules"].update(file_retries="five"), r"must be an integer"),
         (lambda r: r["models"]["gfs"].update(regional="no"), r"must be true/false"),
-        (lambda r: r["places"]["kongsberg"]["height"].update(source="glo30"),
-         r"needs its tile and sha256"),
+        (lambda r: r["places"]["kongsberg"]["height"].update(tile=None),
+         r"needs its tile, sha256, posting and attribution"),
         (lambda r: r.update(default_place="oslo"), r"default_place is 'oslo'"),
         (lambda r: r["models"]["ifs"]["expected"].update(fog_signals=["fog_risk"]),
          r"unknown fog signal"),
