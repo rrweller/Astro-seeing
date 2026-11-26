@@ -16,7 +16,7 @@ import pytest
 
 from astroseeing.forecast.grid import map_grid
 from astroseeing.forecast.http import HttpClient
-from astroseeing.forecast.settings import load_settings
+from astroseeing.forecast.settings import Area, Box, load_settings
 from astroseeing.forecast.sources import FormatMismatch, RunRef
 from astroseeing.forecast.sources.gfs import RatePacer
 from astroseeing.forecast.sources.icon_eu import IconEuAdapter
@@ -147,17 +147,21 @@ def box_settings(tmp_path_factory):
     )
 
 
-def read_samples(tmp_path, settings, messages, steps=(0, 7), raw=None, area="kongsberg"):
+def read_samples(tmp_path, settings, messages, steps=(0, 7), raw=None, area=None):
+    """Fetch the samples from a fake DWD and read them for the Kongsberg area, or for
+    ``area`` (an extra ``Area``) if given."""
     with FakeHttpServer() as server:
         serve_icon_samples(server, messages, raw)
         icon = adapter_for(server, settings)
         fetched = icon.fetch(ICON_RUN, settings.areas["kongsberg"], steps, tmp_path / "raw")
         assert not fetched.missing_steps
-        if area != "kongsberg":
-            fetched = dataclasses.replace(fetched, area=area)
+        if area is not None:
+            icon.areas = {**icon.areas, area.id: area}
+            fetched = dataclasses.replace(fetched, area=area.id)
         return icon.read(fetched)
 
 
+@pytest.mark.slow  # ~25 s: all 5244 sample files
 def test_reads_every_step_0_to_48_with_the_20_levels(tmp_path, box_settings, messages):
     f = read_samples(tmp_path, box_settings, messages, steps=ICON.steps_h)
     assert f.n_steps == 49 and f.level_count == 20
@@ -204,8 +208,10 @@ def test_a_whole_domain_file_is_cut_to_the_same_points_and_values(tmp_path, box_
 
 
 def test_a_box_the_samples_do_not_cover_is_refused(tmp_path, box_settings, messages):
-    with pytest.raises(FormatMismatch, match=r"does not cover area paranal") as e:
-        read_samples(tmp_path, box_settings, messages, area="paranal")
+    elsewhere = Area("elsewhere", Box(west=9.2, east=11.0, south=59.2, north=60.3), ("icon_eu",),
+                     "icon_eu")  # fmt: skip
+    with pytest.raises(FormatMismatch, match=r"does not cover area elsewhere") as e:
+        read_samples(tmp_path, box_settings, messages, area=elsewhere)
     assert e.value.model == "icon_eu"
 
 
@@ -225,10 +231,16 @@ def test_a_fetch_without_one_of_its_files_raises_format_mismatch_naming_it(
 @pytest.mark.parametrize(
     ("ending", "keys", "named"),
     [
-        ("_007_500_T.grib2.bz2", {"level": 400}, r"T:500 hPa .* holds T:400 hPa"),
-        ("_007_CLCT.grib2.bz2", {"parameterNumber": 3}, r"CLCT .* holds \(0, 6, 3\)"),
+        ("_007_500_T.grib2.bz2", {"level": 400}, r"T:500 hPa.* holds T:400 hPa"),
+        ("_007_CLCT.grib2.bz2", {"parameterNumber": 3}, r"CLCT.* holds \(0, 6, 3\)"),
         ("_007_PS.grib2.bz2", {"dataTime": 1200}, r"run time 2026-11-26T12Z"),
-        ("_007_VIS.grib2.bz2", {"forecastTime": 8}, r"step 8 h, expected 7 h"),
+        ("_007_VIS.grib2.bz2", {"stepUnits": 1, "step": 8}, r"step 8 h, expected 7 h"),
+        # low and mid cloud share a parameter: the layer's pressures tell them apart
+        (
+            "_007_CLCL.grib2.bz2",
+            {"scaledValueOfFirstFixedSurface": 40000},
+            r"CLCL.* holds \(100, 400.0, 1, 0.0\)",
+        ),
     ],
 )
 def test_a_file_holding_another_field_level_run_or_step_raises_format_mismatch(
@@ -244,7 +256,7 @@ def test_an_empty_file_raises_format_mismatch(tmp_path, box_settings, messages):
     name = next(n for n in messages if n.endswith("_007_WW.grib2.bz2"))
     import bz2
 
-    with pytest.raises(FormatMismatch, match=r"WW .* no GRIB message"):
+    with pytest.raises(FormatMismatch, match=r"WW.* no GRIB message"):
         read_samples(tmp_path, box_settings, messages, raw={name: bz2.compress(b"")})
 
 

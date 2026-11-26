@@ -52,43 +52,58 @@ STEM = "icon-eu_europe_regular-lat-lon"
 PRESSURE, SINGLE, INVARIANT = "pressure-level", "single-level", "time-invariant"
 
 
+#: A GRIB2 fixed surface: its type and value (hPa on an isobaric surface, type 100;
+#: as coded otherwise), ``None`` for a missing value. ``LEVEL`` stands for the level a
+#: pressure-level file's name gives.
+LEVEL = "level"
+ISOBARIC, GROUND_SURFACE, MEAN_SEA_LEVEL, NO_SURFACE = 100, 1, 101, 255
+
+
 @dataclass(frozen=True)
 class Field:
-    """One ICON-EU field as DWD publishes it, and how its GRIB2 messages are coded."""
+    """One ICON-EU field as DWD publishes it, and how its GRIB2 message is coded: the
+    parameter's code numbers and its first and second fixed surfaces (``read`` checks
+    every one; DWD codes its low, mid and high cloud as cloud cover between isobaric
+    surfaces, so the parameter alone doesn't tell them apart)."""
 
     name: str  # DWD's name, upper case in file names, lower case as the folder
     kind: str  # PRESSURE, SINGLE or INVARIANT
     code: tuple[int, int, int]  # GRIB2 discipline, parameter category, parameter number
-    surface: int  # GRIB2 type of first fixed surface
+    surfaces: tuple  # (first type, first value, second type, second value)
 
     @property
     def folder(self) -> str:
         return self.name.lower()
 
 
-#: The pressure-level fields: temperature, wind, geopotential and cloud cover.
+_ON_LEVEL = (ISOBARIC, LEVEL, NO_SURFACE, None)
+_AT_GROUND = (GROUND_SURFACE, 0.0, NO_SURFACE, None)
+
+#: The pressure-level fields: temperature, wind and geopotential.
 PROFILE_FIELDS = {
-    "temperature_k": Field("T", PRESSURE, (0, 0, 0), 100),
-    "u_ms": Field("U", PRESSURE, (0, 2, 2), 100),
-    "v_ms": Field("V", PRESSURE, (0, 2, 3), 100),
-    "geopotential_height_m": Field("FI", PRESSURE, (0, 3, 4), 100),  # Φ; ÷ g₀ below
+    "temperature_k": Field("T", PRESSURE, (0, 0, 0), _ON_LEVEL),
+    "u_ms": Field("U", PRESSURE, (0, 2, 2), _ON_LEVEL),
+    "v_ms": Field("V", PRESSURE, (0, 2, 3), _ON_LEVEL),
+    "geopotential_height_m": Field("FI", PRESSURE, (0, 3, 4), _ON_LEVEL),  # Φ; ÷ g₀ below
 }
-LEVEL_CLOUD = Field("CLC", PRESSURE, (0, 6, 22), 100)
-#: Instantaneous total, low, mid and high cloud (D48 item 1), and surface pressure.
+LEVEL_CLOUD = Field("CLC", PRESSURE, (0, 6, 22), _ON_LEVEL)
+#: Instantaneous total, low, mid and high cloud (D48 item 1), and surface pressure. Low
+#: cloud is cloud cover from the ground up to 800 hPa, mid 800-400 hPa, high above 400.
 SINGLE_FIELDS = {
-    "total_cloud_pct": Field("CLCT", SINGLE, (0, 6, 1), 1),
-    "low_cloud_pct": Field("CLCL", SINGLE, (0, 6, 3), 1),
-    "mid_cloud_pct": Field("CLCM", SINGLE, (0, 6, 4), 1),
-    "high_cloud_pct": Field("CLCH", SINGLE, (0, 6, 5), 1),
-    "surface_pressure_hpa": Field("PS", SINGLE, (0, 3, 0), 1),  # Pa; ÷ 100 below
+    "total_cloud_pct": Field("CLCT", SINGLE, (0, 6, 1), _AT_GROUND),
+    "low_cloud_pct": Field("CLCL", SINGLE, (0, 6, 22), (ISOBARIC, 800.0, GROUND_SURFACE, 0.0)),
+    "mid_cloud_pct": Field("CLCM", SINGLE, (0, 6, 22), (ISOBARIC, 400.0, ISOBARIC, 800.0)),
+    "high_cloud_pct": Field("CLCH", SINGLE, (0, 6, 22), (ISOBARIC, 0.0, ISOBARIC, 400.0)),
+    "surface_pressure_hpa": Field("PS", SINGLE, (0, 3, 0), _AT_GROUND),  # Pa; ÷ 100 below
 }
 #: Fog signals ICON-EU has (D49 item 3), in RunFields' vocabulary. ``WW`` is kept as
 #: the code DWD gives (45 and 48 are fog); the low cloud is ``low_cloud_pct``.
 FOG_FIELDS = {
-    "visibility_m": Field("VIS", SINGLE, (0, 19, 0), 1),
-    "weather_code": Field("WW", SINGLE, (0, 19, 25), 1),
+    "visibility_m": Field("VIS", SINGLE, (0, 19, 0), _AT_GROUND),
+    "weather_code": Field("WW", SINGLE, (0, 19, 25), _AT_GROUND),
 }
-GROUND = Field("HSURF", INVARIANT, (0, 3, 6), 1)
+#: The model ground: geometric height of the ground above mean sea level (m).
+GROUND = Field("HSURF", INVARIANT, (0, 3, 6), (GROUND_SURFACE, 0.0, MEAN_SEA_LEVEL, 0.0))
 #: DWD's field name → the RunFields name it fills.
 _FIELD_NAMES = {
     f.name: name
@@ -326,23 +341,23 @@ class IconEuAdapter:
             raise FormatMismatch(model, f"{where}: no GRIB message")
         h = ec.codes_new_from_message(data)
         try:
-            if int(ec.codes_get(h, "totalLength")) != len(data):
+            if ec.codes_get_long(h, "totalLength") != len(data):
                 raise FormatMismatch(model, f"{where}: more than one GRIB message")
             code = tuple(
-                int(ec.codes_get(h, k))
+                ec.codes_get_long(h, k)
                 for k in ("discipline", "parameterCategory", "parameterNumber")
             )
-            surface = int(ec.codes_get(h, "typeOfFirstFixedSurface"))
-            if (code, surface) != (f.field.code, f.field.surface):
+            got = _surfaces(h)
+            want = tuple(f.level_hpa if v == LEVEL else v for v in f.field.surfaces)
+            if code != f.field.code or (got[0], got[2]) != (want[0], want[2]):
                 raise FormatMismatch(
                     model,
-                    f"{where}: holds {code} on surface type {surface}, expected "
-                    f"{f.field.code} on surface type {f.field.surface}",
+                    f"{where}: holds {code} on surfaces {got}, expected "
+                    f"{f.field.code} on surfaces {want}",
                 )
-            if f.level_hpa is not None:
-                level = _level_hpa(h)
-                if abs(level - f.level_hpa) > 1e-6:
-                    raise FormatMismatch(model, f"{where}: holds {f.field.name}:{level:g} hPa")
+            if got != want:
+                what = f"{f.field.name}:{got[1]:g} hPa" if f.level_hpa is not None else got
+                raise FormatMismatch(model, f"{where}: holds {what}, expected {want}")
             step_type = str(ec.codes_get(h, "stepType"))
             if step_type != "instant":
                 raise FormatMismatch(model, f"{where}: {step_type}, not instantaneous")
@@ -430,12 +445,23 @@ def _box_points(spacing: float, box: Box) -> _BoxPoints:
     )
 
 
-def _level_hpa(h) -> float:
+def _surfaces(h) -> tuple:
+    """(first type, first value, second type, second value) of a message, values in hPa
+    on isobaric surfaces and ``None`` where missing (as ``Field.surfaces``)."""
     import eccodes as ec
 
-    scale = int(ec.codes_get(h, "scaleFactorOfFirstFixedSurface"))
-    value = int(ec.codes_get(h, "scaledValueOfFirstFixedSurface"))
-    return round(value * 10.0 ** (-scale) / 100.0, 6)  # Pa → hPa
+    out: list = []
+    for which in ("First", "Second"):
+        kind = ec.codes_get_long(h, f"typeOf{which}FixedSurface")
+        value = None
+        if kind != NO_SURFACE:
+            scale = ec.codes_get_long(h, f"scaleFactorOf{which}FixedSurface")
+            scaled = ec.codes_get_long(h, f"scaledValueOf{which}FixedSurface")
+            value = float(scaled) * 10.0 ** (-scale)
+            if kind == ISOBARIC:
+                value = round(value / 100.0, 6)  # Pa → hPa
+        out += [kind, value]
+    return tuple(out)
 
 
 def _check_time(h, run: RunRef, step: int, model: str, where: str) -> None:

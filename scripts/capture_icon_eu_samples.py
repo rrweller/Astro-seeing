@@ -18,7 +18,7 @@ the box. eccodes re-packs the values (CCSDS, DWD's 16 bits per value), so a cut 
 can differ from DWD's by up to one packing step of the box's range; integer codes such
 as ``WW`` come out exactly.
 
-    pixi run python scripts/capture_icon_eu_samples.py 2026-11-26T06
+    pixi run python scripts/capture_icon_eu_samples.py 2026-11-26T06 --work-dir /staging/tmp/icon
 
 Writes ``tests/fixtures/forecast/icon_eu/<run>/`` and prints the run's total size.
 """
@@ -31,13 +31,13 @@ import datetime as dt
 import json
 import math
 import sys
-import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import numpy as np
 
-from astroseeing.forecast.http import HttpClient
+from astroseeing.forecast.http import HttpClient, HttpUnavailable
 from astroseeing.forecast.settings import Box, load_settings
 from astroseeing.forecast.sources import RunRef
 from astroseeing.forecast.sources.icon_eu import IconEuAdapter
@@ -98,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("run", help="run time, e.g. 2026-11-26T06")
     ap.add_argument("--workers", type=int, default=6, help="parallel downloads (default 6)")
+    ap.add_argument("--work-dir", required=True, help="where each file's cut is kept (resumable)")
     args = ap.parse_args(argv)
     settings = load_settings()
     model = settings.models["icon_eu"]
@@ -108,35 +109,49 @@ def main(argv: list[str] | None = None) -> int:
     dest = ROOT / run.label
     (dest / "box1deg").mkdir(parents=True, exist_ok=True)
     (dest / "whole-domain").mkdir(parents=True, exist_ok=True)
-    bundles: dict[str, list[bytes]] = {}
-    sources: dict[str, list[dict]] = {}
-    total, seen_keys = 0, {}
+    work = Path(args.work_dir) / run.label  # each file's cut, kept so a rerun resumes
+    work.mkdir(parents=True, exist_ok=True)
 
-    def one(f, tmp: str):
-        """Download one file and cut it; only the cut is kept (the file is deleted)."""
-        d = http.download(adapter.base_url + f.path, Path(tmp) / f.filename)
+    def one(f) -> None:
+        """Download one file (up to 5 tries), cut it, and keep the cut and its record in
+        ``work``; the downloaded file is deleted."""
+        if (work / f"{f.filename}.json").exists():
+            return
+        for attempt in range(5):
+            try:
+                d = http.download(adapter.base_url + f.path, work / f.filename)
+                break
+            except HttpUnavailable as e:
+                print(f"retrying {f.filename}: {e}", file=sys.stderr)
+                time.sleep(10 * (attempt + 1))
+        else:
+            raise RuntimeError(f"{f.filename}: no complete answer in 5 tries")
         try:
             raw = d.path.read_bytes()
             cut, keys = cut_message(bz2.decompress(raw), BOX_1DEG)
-            return d, cut, keys, raw if f.step == 0 and f.field.name == "WW" else None
+            if f.step == 0 and f.field.name == "WW":
+                (dest / "whole-domain" / f.filename).write_bytes(raw)
         finally:
             d.path.unlink()
+        (work / f"{f.filename}.cut").write_bytes(cut)
+        record = {"file": f.filename, "url": d.url, "bytes": d.bytes, "sha256": d.sha256}
+        (work / f"{f.filename}.json").write_text(json.dumps({**record, "keys": keys}))
 
-    with tempfile.TemporaryDirectory() as tmp, ThreadPoolExecutor(args.workers) as pool:
-        # map() yields in plan order, so each bundle keeps the plan's field order
-        results = pool.map(lambda f: one(f, tmp), plan)
-        for n, (f, (d, cut, keys, whole)) in enumerate(zip(plan, results, strict=True)):
-            total += d.bytes
-            seen_keys.setdefault(f.field.name, keys)
-            bundle = "hsurf.grib2.bz2" if f.step is None else f"step_{f.step:03d}.grib2.bz2"
-            bundles.setdefault(bundle, []).append(cut)
-            sources.setdefault(bundle, []).append(
-                {"file": f.filename, "url": d.url, "bytes": d.bytes, "sha256": d.sha256}
-            )
-            if whole is not None:
-                (dest / "whole-domain" / f.filename).write_bytes(whole)
+    with ThreadPoolExecutor(args.workers) as pool:
+        for n, _ in enumerate(pool.map(one, plan)):
             if n % 107 == 0:
-                print(f"{n + 1}/{len(plan)} files, {total / 1e9:.2f} GB", file=sys.stderr)
+                print(f"{n + 1}/{len(plan)} files", file=sys.stderr)
+    bundles: dict[str, list[bytes]] = {}
+    sources: dict[str, list[dict]] = {}
+    total, seen_keys = 0, {}
+    for f in plan:  # in plan order, so each bundle keeps the plan's field order
+        record = json.loads((work / f"{f.filename}.json").read_text())
+        keys = record.pop("keys")
+        total += record["bytes"]
+        seen_keys.setdefault(f.field.name, keys)
+        bundle = "hsurf.grib2.bz2" if f.step is None else f"step_{f.step:03d}.grib2.bz2"
+        bundles.setdefault(bundle, []).append((work / f"{f.filename}.cut").read_bytes())
+        sources.setdefault(bundle, []).append(record)
     for name, messages in bundles.items():
         (dest / "box1deg" / name).write_bytes(bz2.compress(b"".join(messages), 9))
     doc = {

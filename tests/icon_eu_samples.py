@@ -57,7 +57,7 @@ def whole_domain_file(name: str) -> bytes:
 
 def dwd_path(name: str) -> str:
     """The URL path DWD serves a file at: ``<DATA_DIR>/<HH>/<field folder>/<name>``."""
-    stamp = name.split("_")[3]  # icon-eu_europe_regular-lat-lon_<kind>_<YYYYMMDDHH>_...
+    stamp = name.split("_")[4]  # icon-eu_europe_regular-lat-lon_<kind>_<YYYYMMDDHH>_...
     field = name.removesuffix(".grib2.bz2").rsplit("_", 1)[1].lower()
     return f"{DATA_DIR}/{stamp[8:10]}/{field}/{name}"
 

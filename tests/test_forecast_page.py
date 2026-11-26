@@ -442,6 +442,7 @@ def test_past_hours_are_greyed_only_where_the_place_file_says_so(case_b):
     assert greyed == [h["time"] for h in place["hours"] if h["time"] < "2026-11-26T19:00:00Z"]
 
 
+@pytest.mark.slow  # ~45 s: the tick fetches 5244 files from the fake DWD
 def test_icon_eu_shows_in_the_table_beside_gfs_with_no_page_change(tmp_path, ephemeris):
     """Ticket #55: the tick's files with ICON-EU added (a fake DWD beside the fake NOMADS)."""
     require_browser()

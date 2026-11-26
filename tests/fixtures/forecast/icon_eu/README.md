@@ -8,13 +8,13 @@ fields here are cut to a small box by us (below), so they are modified DWD data.
 
 Captured on 2026-11-26 with `scripts/capture_icon_eu_samples.py 2026-11-26T06`
 (ticket #55): every file the adapter's plan names for the 06 UTC run, steps 0–48
-(SIZE_FILES files, SIZE_RUN GB as downloaded), fetched with the generic
+(5244 files, 4.46 GB as downloaded), fetched with the generic
 `astro-seeing/<version>` User-Agent, each cut to the box and then deleted.
 
 | Folder | What | Points | Steps | Size |
 |---|---|---|---|---|
-| `20261126T06Z/box1deg/` | every field the adapter reads, cut to 59.2–60.3° N × 9.2–10.3° E (the GFS samples' box) | 17 × 17 | 0–48, hourly | SIZE_BOX MB |
-| `20261126T06Z/whole-domain/` | the step-0 `WW` file exactly as DWD served it (bz2, the whole ICON-EU domain) | 1377 × 657 | 0 | SIZE_WHOLE MB |
+| `20261126T06Z/box1deg/` | every field the adapter reads, cut to 59.2–60.3° N × 9.2–10.3° E (the GFS samples' box) | 17 × 17 | 0–48, hourly | 3.96 MB |
+| `20261126T06Z/whole-domain/` | the step-0 `WW` file exactly as DWD served it (bz2, the whole ICON-EU domain) | 1377 × 657 | 0 | 0.16 MB |
 
 **How the cut was made.** Each DWD file holds one GRIB2 message over the whole domain
 (29.5–70.5° N × 23.5° W–62.5° E, 0.0625°, CCSDS packing at 16 bits). The capture keeps
