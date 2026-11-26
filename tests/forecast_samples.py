@@ -70,6 +70,86 @@ def serve_samples(
         server.route(f"{DATA_DIR}/gfs.{day}/{hh}/atmos/gfs.t{hh}z.{part}.0p25.f{last:03d}.idx", b"")
 
 
+#: The NCEP names an AWS ``.idx`` line gives a message (as on ``noaa-gfs-bdp-pds``, seen
+#: in the real index files under ``fixtures/forecast/gfs/aws-idx/``), by GRIB2 codes.
+_IDX_VARS = {
+    (0, 0, 0): "TMP", (0, 3, 5): "HGT", (0, 2, 2): "UGRD", (0, 2, 3): "VGRD",
+    (0, 6, 1): "TCDC", (0, 6, 3): "LCDC", (0, 6, 4): "MCDC", (0, 6, 5): "HCDC",
+    (0, 19, 0): "VIS", (0, 3, 0): "PRES",
+}  # fmt: skip
+_IDX_LEVELS = {
+    1: "surface", 214: "low cloud layer", 224: "middle cloud layer",
+    234: "high cloud layer", 10: "entire atmosphere",
+}  # fmt: skip
+
+
+def aws_file(nomads_file: Path, run: RunRef) -> tuple[bytes, str]:
+    """The NOMADS sample's messages laid out as the AWS bucket's file of that step and
+    part, and its ``.idx`` (``n:offset:d=YYYYMMDDHH:VAR:level:forecast:``)."""
+    import eccodes as ec
+
+    body, lines = b"", []
+    with open(nomads_file, "rb") as f:
+        while (h := ec.codes_grib_new_from_file(f)) is not None:
+            try:
+                code = tuple(
+                    ec.codes_get(h, k, int)
+                    for k in ("discipline", "parameterCategory", "parameterNumber")
+                )
+                surface = ec.codes_get(h, "typeOfFirstFixedSurface", int)
+                if surface == 100:
+                    level = f"{ec.codes_get(h, 'level', int):g} mb"
+                else:
+                    level = _IDX_LEVELS[surface]
+                ec.codes_set(h, "stepUnits", 1)
+                start, end = ec.codes_get(h, "startStep", int), ec.codes_get(h, "endStep", int)
+                if ec.codes_get(h, "stepType") != "instant":
+                    forecast = f"{start}-{end} hour ave fcst"
+                else:
+                    forecast = "anl" if end == 0 else f"{end} hour fcst"
+                message = ec.codes_get_message(h)
+            finally:
+                ec.codes_release(h)
+            lines.append(
+                f"{len(lines) + 1}:{len(body)}:d={run.run_time:%Y%m%d%H}:"
+                f"{_IDX_VARS[code]}:{level}:{forecast}:"
+            )
+            body += message
+    return body, "\n".join(lines) + "\n"
+
+
+def serve_aws_samples(
+    server, steps, folder: Path | None = None, run: RunRef = SAMPLE_RUN
+) -> None:
+    """Serve the samples where the AWS bucket keeps each step's two files and their
+    ``.idx`` (``/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p25.fNNN``, no area cut)."""
+    folder = folder or SAMPLES / "box1deg"
+    day, hh = run.run_time.strftime("%Y%m%d"), run.run_time.strftime("%H")
+    for step in steps:
+        for part in ("pgrb2", "pgrb2b"):
+            name = f"gfs.t{hh}z.{part}.0p25.f{step:03d}"
+            body, idx = aws_file(folder / f"{name}.grb2", run)
+            server.route(f"/gfs.{day}/{hh}/atmos/{name}", body)
+            server.route(f"/gfs.{day}/{hh}/atmos/{name}.idx", idx.encode())
+
+
+def retime_samples(dest: Path, hour: int, sample_set: str = "box1deg") -> Path:
+    """A copy of the samples as if from the run of ``hour`` UTC on the same day: run
+    time and file names changed, values and steps as they are (for a second run)."""
+    import eccodes as ec
+
+    copy_samples(dest, sample_set)
+    for f in sorted(dest.glob("gfs.t06z.*.grb2")):
+
+        def change(h, keys):
+            ec.codes_set(h, "dataTime", hour * 100)
+            return ec.codes_get_message(h), True
+
+        _rewrite(f, change)
+        f.rename(f.with_name(f.name.replace("t06z", f"t{hour:02d}z")))
+    return dest
+
+
 def copy_samples(dest: Path, sample_set: str = "box1deg") -> Path:
     dest.mkdir(parents=True, exist_ok=True)
     for f in (SAMPLES / sample_set).glob("*.grb2"):

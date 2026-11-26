@@ -7,6 +7,10 @@
         nomads.delay("/", seconds=5)                        # a slow host / timeouts
         nomads.outage(); nomads.restore()                    # connections dropped unanswered
         nomads.requests                                      # every request, in order
+        nomads.fail("/cgi-bin/", status=503, contains="f012")  # only targets holding "f012"
+
+``clock`` (default ``time.monotonic``) stamps each recorded request, so a test with a
+fake clock can check request spacing on the fake clock's time.
 
 A URL path maps to the file at the same relative path under the root. A request with
 a query string (a NOMADS grib-filter call, say) is served from an explicit
@@ -25,7 +29,7 @@ import time
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 
 @dataclass(frozen=True)
@@ -34,7 +38,7 @@ class RecordedRequest:
     path: str
     query: dict[str, list[str]]
     headers: dict[str, str]
-    at: float  # time.monotonic() when the request arrived
+    at: float  # the server's clock (default time.monotonic()) when the request arrived
     status: int | None  # None: dropped without an answer
 
 
@@ -43,14 +47,16 @@ class _Behaviour:
     kind: str  # "fail", "delay", "truncate", "drop"
     prefix: str
     times: int | None  # None: until cleared
+    contains: str | None = None  # only request targets (path and query) holding this
     status: int = 503
     seconds: float = 0.0
     used: int = field(default=0)
 
 
 class FakeHttpServer:
-    def __init__(self, root: Path | None = None):
+    def __init__(self, root: Path | None = None, clock=time.monotonic):
         self.root = Path(root) if root is not None else None
+        self.clock = clock
         self.routes: dict[str, bytes | Path] = {}
         self.header_overrides: dict[str, dict[str, str | None]] = {}
         self.requests: list[RecordedRequest] = []
@@ -86,9 +92,11 @@ class FakeHttpServer:
         leave the header out), e.g. a wrong ``ETag`` to test checksum checks."""
         self.header_overrides.setdefault(path, {})[name] = value
 
-    def fail(self, prefix: str = "/", status: int = 503, times: int | None = None) -> None:
-        """Answer requests under ``prefix`` with ``status`` (the next ``times`` of them)."""
-        self._add(_Behaviour("fail", prefix, times, status=status))
+    def fail(self, prefix: str = "/", status: int = 503, times: int | None = None,
+             contains: str | None = None) -> None:  # fmt: skip
+        """Answer requests under ``prefix`` with ``status`` (the next ``times`` of them);
+        with ``contains``, only those whose target (path and query) holds that text."""
+        self._add(_Behaviour("fail", prefix, times, contains=contains, status=status))
 
     def delay(self, prefix: str = "/", seconds: float = 1.0, times: int | None = None) -> None:
         """Wait ``seconds`` before answering (a slow host; a timeout if long enough)."""
@@ -111,12 +119,16 @@ class FakeHttpServer:
         with self._lock:
             self._behaviours.append(b)
 
-    def _take(self, path: str) -> list[_Behaviour]:
+    def _take(self, path: str, target: str) -> list[_Behaviour]:
         """The behaviours that apply to this request, using up counted ones."""
         out = []
         with self._lock:
             for b in self._behaviours:
-                if path.startswith(b.prefix) and (b.times is None or b.used < b.times):
+                if (
+                    path.startswith(b.prefix)
+                    and (b.contains is None or b.contains in target)
+                    and (b.times is None or b.used < b.times)
+                ):
                     b.used += 1
                     out.append(b)
         return out
@@ -149,9 +161,9 @@ def _handler_for(server: FakeHttpServer) -> type[BaseHTTPRequestHandler]:
             pass
 
         def _serve(self, body: bool) -> None:
-            arrived = time.monotonic()
+            arrived = server.clock()
             parts = urlsplit(self.path)
-            behaviours = {b.kind: b for b in server._take(parts.path)}
+            behaviours = {b.kind: b for b in server._take(parts.path, unquote(self.path))}
             extra: tuple = ()
             if "drop" in behaviours:
                 status, content = None, b""

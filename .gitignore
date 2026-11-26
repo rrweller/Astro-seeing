@@ -36,6 +36,7 @@ cache/
 # provider's credit (ticket #51; tests/fixtures/forecast/*/README.md)
 !tests/fixtures/forecast/**/*.grb2
 !tests/fixtures/forecast/**/*.grib2
+!tests/fixtures/forecast/**/*.idx
 
 # --- Logs and run state ---
 logs/*
