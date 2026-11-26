@@ -38,7 +38,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-6` · **in-progress** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
-- `F1-7` · **in-progress** · cloud · IFS source adapter (3-hourly) · [#56](https://github.com/rrweller/Astro-seeing/issues/56)
+- `F1-7` · **review** · cloud · IFS source adapter (3-hourly) · [#56](https://github.com/rrweller/Astro-seeing/issues/56) · PR [#83](https://github.com/rrweller/Astro-seeing/pull/83)
 
 - `F1-8` · **in-progress** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57)
 
@@ -215,7 +215,7 @@ flowchart LR
   %% ---
   class F1_6 inprogress
   %% ---
-  class F1_7 inprogress
+  class F1_7 review
   %% ---
   class F1_8 inprogress
   %% ---
