@@ -36,23 +36,23 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · this run: F1-1, then F1-2, F1-4, F1-5, then F1-3 · ticket: none
 
-- `F1-3` · **blocked** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
+- `F1-3` · **ready** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
 
-- `F1-6` · **blocked** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
+- `F1-6` · **ready** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
-- `F1-7` · **blocked** · cloud · IFS source adapter (3-hourly) · [#56](https://github.com/rrweller/Astro-seeing/issues/56)
+- `F1-7` · **ready** · cloud · IFS source adapter (3-hourly) · [#56](https://github.com/rrweller/Astro-seeing/issues/56)
 
-- `F1-8` · **blocked** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57)
+- `F1-8` · **ready** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57)
 
-- `F1-9` · **blocked** · cloud · Run rules: retries, backup hosts, late, partial and abandoned runs · [#58](https://github.com/rrweller/Astro-seeing/issues/58)
+- `F1-9` · **ready** · cloud · Run rules: retries, backup hosts, late, partial and abandoned runs · [#58](https://github.com/rrweller/Astro-seeing/issues/58)
 
-- `F1-10` · **blocked** · cloud · Per-place daily stores on the NAS · [#59](https://github.com/rrweller/Astro-seeing/issues/59)
+- `F1-10` · **ready** · cloud · Per-place daily stores on the NAS · [#59](https://github.com/rrweller/Astro-seeing/issues/59)
 
-- `F1-11` · **blocked** · cloud · `astro forecast status` and the 7-day size report · [#60](https://github.com/rrweller/Astro-seeing/issues/60)
+- `F1-11` · **ready** · cloud · `astro forecast status` and the 7-day size report · [#60](https://github.com/rrweller/Astro-seeing/issues/60)
 
-- `F1-12` · **blocked** · cloud · Forecast phone alerts and the daily health line · [#61](https://github.com/rrweller/Astro-seeing/issues/61)
+- `F1-12` · **ready** · cloud · Forecast phone alerts and the daily health line · [#61](https://github.com/rrweller/Astro-seeing/issues/61)
 
-- `F1-13` · **blocked** · cloud · Web server and timer setup files, one-command deploy · [#62](https://github.com/rrweller/Astro-seeing/issues/62)
+- `F1-13` · **ready** · cloud · Web server and timer setup files, one-command deploy · [#62](https://github.com/rrweller/Astro-seeing/issues/62)
 
 - `F1-14` · **blocked** · cloud · The verdict on the place view · [#63](https://github.com/rrweller/Astro-seeing/issues/63)
 
@@ -221,23 +221,23 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_3 blocked
+  class F1_3 ready
   %% ---
-  class F1_6 blocked
+  class F1_6 ready
   %% ---
-  class F1_7 blocked
+  class F1_7 ready
   %% ---
-  class F1_8 blocked
+  class F1_8 ready
   %% ---
-  class F1_9 blocked
+  class F1_9 ready
   %% ---
-  class F1_10 blocked
+  class F1_10 ready
   %% ---
-  class F1_11 blocked
+  class F1_11 ready
   %% ---
-  class F1_12 blocked
+  class F1_12 ready
   %% ---
-  class F1_13 blocked
+  class F1_13 ready
   %% ---
   class F1_14 blocked
   %% ---
