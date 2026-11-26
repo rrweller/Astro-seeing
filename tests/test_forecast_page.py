@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from forecast_world import DAY, World
+from icon_eu_samples import IconWorld
 from page_browser import Browser, PageSite, require_browser
 
 PAGE = "/forecast/"
@@ -440,3 +441,34 @@ def test_past_hours_are_greyed_only_where_the_place_file_says_so(case_b):
         "[...new Set([...document.querySelectorAll('td.past, th.past')].map(e => e.dataset.time))]"
     )
     assert greyed == [h["time"] for h in place["hours"] if h["time"] < "2026-11-26T19:00:00Z"]
+
+
+@pytest.mark.slow  # ~45 s: the tick fetches 5244 files from the fake DWD
+def test_icon_eu_shows_in_the_table_beside_gfs_with_no_page_change(tmp_path, ephemeris):
+    """Ticket #55: the tick's files with ICON-EU added (a fake DWD beside the fake NOMADS)."""
+    require_browser()
+    world = IconWorld(tmp_path / "world", ephemeris)
+    products = {}
+    try:
+        for name, hour in (("a", 9), ("b", 10)):
+            world.at(DAY + dt.timedelta(hours=hour))
+            products[name] = tmp_path / name
+            shutil.copytree(
+                world.paths.products, products[name], ignore=shutil.ignore_patterns("places")
+            )
+    finally:
+        world.close()
+    case = Case(tmp_path / "case", products, "b")
+    try:
+        place = case.place()
+        b = case.open("2026-11-26T10:05:00Z")
+        for model in ("gfs", "icon_eu"):
+            shown = cells(b, model, "total")
+            assert [c["time"] for c in shown] == [h["time"] for h in place["hours"]]
+            for c, hour in zip(shown, place["hours"], strict=True):
+                assert float(c["value"]) == hour["models"][model]["cloud"]["total_pct"]
+        credits = b.eval("[...document.querySelectorAll('#credits li')].map(li => li.textContent)")
+        assert credits == [place["models"][m]["credit"] for m in ("gfs", "icon_eu")]
+        assert "Deutscher Wetterdienst" in credits[1]
+    finally:
+        case.close()

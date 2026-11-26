@@ -18,6 +18,7 @@ from astroseeing.forecast.tick import tick_lock
 
 from forecast_samples import copy_samples, drop_messages, edit_values, small_box_settings
 from forecast_world import DAY, PUBLISHED, World
+from icon_eu_samples import IconWorld
 
 
 @pytest.fixture
@@ -221,6 +222,57 @@ def test_astro_forecast_tick_refuses_a_hand_entered_height_before_any_fetch(
     assert "refused" in err and "astro forecast place-height kongsberg" in err
     assert not (tmp_path / "state" / "manifest.sqlite").exists()
     assert not (tmp_path / "staging").exists()
+
+
+@pytest.mark.slow  # ~40 s: 5244 files from the fake DWD
+def test_icon_eu_hours_show_in_the_kongsberg_place_file(tmp_path, ephemeris):
+    """Ticket #55: a second forecast model behind the same interface, from a fake DWD."""
+    w = IconWorld(tmp_path, ephemeris)
+    try:
+        for hour in (9, 10, 11):
+            assert w.at(DAY + dt.timedelta(hours=hour)).skipped is None
+        latest, place = w.latest(), w.place_file()
+        validate(latest, "f1-latest/1")
+        validate(place, "f1-place/1")
+
+        runs = {r["model"]: r for r in w.runs()}
+        icon = runs["icon_eu"]
+        assert icon["state"] == "processed" and icon["attempts"] == 1
+        assert json.loads(icon["steps_verified"]) == {str(s): "ok" for s in range(49)}
+        # the download size per run is recorded (the 7-day size report reads it):
+        # every file served, the model ground once and 107 files a step
+        files = w.manifest.conn.execute(
+            "SELECT * FROM forecast_files WHERE run_id = ?", (icon["id"],)
+        ).fetchall()
+        served = [r for r in w.dwd.requests if r.method == "GET" and r.path.endswith(".bz2")]
+        assert len(files) == len(served) == 1 + 49 * 107
+        assert icon["bytes"] == sum(f["bytes"] for f in files) > 0
+        assert all(f["host"] == "dwd-opendata" for f in files)
+        assert all(f["verified"] == 1 and f["raw_deleted_at"] for f in files)
+        assert not any(w.paths.root.rglob("*.bz2"))
+
+        assert latest["runs"]["icon_eu"]["run_time"] == "2026-11-26T06:00:00Z"
+        assert not latest["runs"]["icon_eu"]["stale"]
+        assert place["provenance"]["run_ids"] == {"gfs": runs["gfs"]["id"], "icon_eu": icon["id"]}
+        for h in place["hours"]:  # Tonight is 12 UTC on the 26th to 11 UTC on the 27th
+            i = h["models"]["icon_eu"]
+            assert i["run_id"] == icon["id"]
+            assert 0 <= i["cloud"]["total_pct"] <= 100
+            assert i["seeing"]["osborn_sarazin"]["free_atmosphere_arcsec"] > 0
+            assert i["fog"]["visibility_m"] != "absent" and i["fog"]["weather_code"] != "absent"
+            assert i["fog"]["fog_fraction_pct"] == "absent"
+        model = place["models"]["icon_eu"]
+        assert model["family"] == "icon" and not model["regional"]
+        assert model["level_count"] == 20 and "Deutscher Wetterdienst" in model["credit"]
+        # Kongsberg takes ICON-EU's point 59.6875° N 9.625° E, whose ground is 347 m
+        # (D47's evidence): raised by about 185 m above the town's 162 m
+        assert model["model_ground_m"] == pytest.approx(347, abs=1)
+        assert model["observer_height_m"] == model["model_ground_m"]
+        assert model["terrain_caveat_m"] == model["raise_m"] == pytest.approx(185, abs=1)
+        # the map grid is ICON-EU's, the finest global family (D60 item 2)
+        assert (latest["grid"]["dlat"], latest["grid"]["nlat"]) == (0.0625, 17)
+    finally:
+        w.close()
 
 
 def test_cloud_a_hair_over_100_is_published_as_100_and_counted(world):
