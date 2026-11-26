@@ -34,8 +34,7 @@ class StepStatus:
 
     fetched: tuple[int, ...]  # a try succeeded
     pending: tuple[int, ...]  # not fetched, tries left
-    exhausted: tuple[int, ...]  # not fetched, no tries left
-    reasons: Mapping[int, str]  # why each step not fetched is missing
+    reasons: Mapping[int, str]  # why each step not fetched is missing (out of tries too)
 
     @property
     def final(self) -> bool:
@@ -46,7 +45,7 @@ class StepStatus:
 def step_status(
     steps: Sequence[int], tries: Mapping[int, Sequence[StepTry]], rules: RunRules
 ) -> StepStatus:
-    fetched, pending, exhausted, reasons = [], [], [], {}
+    fetched, pending, reasons = [], [], {}
     for s in steps:
         ts = tries.get(s, ())
         if any(t.error is None for t in ts):
@@ -55,12 +54,11 @@ def step_status(
             pending.append(s)
             reasons[s] = "not tried yet"
         elif len(ts) >= rules.file_retries:
-            exhausted.append(s)
             reasons[s] = f"{len(ts)} tries failed; last: {ts[-1].error}"
         else:
             pending.append(s)
             reasons[s] = f"try {len(ts)} of {rules.file_retries} failed: {ts[-1].error}"
-    return StepStatus(tuple(fetched), tuple(pending), tuple(exhausted), reasons)
+    return StepStatus(tuple(fetched), tuple(pending), reasons)
 
 
 def ready_steps(

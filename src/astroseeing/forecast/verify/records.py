@@ -297,10 +297,14 @@ class ForecastRecords:
         with self.manifest.tx() as c:
             c.execute("UPDATE forecast_files SET verified=1 WHERE run_id=?", (run_id,))
 
-    def mark_raw_deleted(self, run_id: int, at: dt.datetime) -> None:
+    def mark_raw_deleted(
+        self, run_id: int, at: dt.datetime, except_paths: Iterable[str] = ()
+    ) -> None:
+        """Record the run's raw files as deleted, but for ``except_paths`` (left alone)."""
+        kept = tuple(except_paths)
         with self.manifest.tx() as c:
             c.execute(
                 "UPDATE forecast_files SET raw_deleted_at=? WHERE run_id=?"
-                " AND raw_deleted_at IS NULL",
-                (_iso(at), run_id),
+                f" AND raw_deleted_at IS NULL AND path NOT IN ({','.join('?' * len(kept))})",
+                (_iso(at), run_id, *kept),
             )

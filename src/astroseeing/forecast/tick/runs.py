@@ -26,6 +26,7 @@ import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from astroseeing.forecast.column import column_products
 from astroseeing.forecast.grid import nearest_point
@@ -49,6 +50,9 @@ from astroseeing.forecast.verify.rules import (
     step_status,
 )
 
+if TYPE_CHECKING:
+    from astroseeing.forecast.tick import BuildInfo
+
 log = logging.getLogger(__name__)
 
 GB = 1e9  # bytes in the settings' gigabytes (alerts.staging_min_free_gb)
@@ -65,7 +69,7 @@ class RunWork:
     store: PlaceStore
     raw_dir: Callable[[RunRef, str], Path]  # ForecastPaths.raw_dir
     staging: Path  # where free space is measured
-    build: object  # tick.BuildInfo
+    build: BuildInfo
     free_bytes: Callable[[Path], float]
 
     def work_model(
@@ -119,7 +123,6 @@ class RunWork:
                 rec.transition(run.id, ("seen",), "fetching", at=self.now, increment_attempts=True)
             else:
                 rec.count_attempt(run.id, at=self.now)
-        if ready:
             tried = True
             try:
                 got = pick.adapter.fetch(ref, area, tuple(ready), dest)
@@ -338,8 +341,8 @@ class RunWork:
                 )
 
     def _delete_raw(self, run_id: int, ref: RunRef, area: Area) -> None:
-        _delete_files(self.records.raw_files(run_id), self.raw_dir(ref, area.id))
-        self.records.mark_raw_deleted(run_id, at=self.now)
+        kept = _delete_files(self.records.raw_files(run_id), self.raw_dir(ref, area.id))
+        self.records.mark_raw_deleted(run_id, at=self.now, except_paths=kept)
 
     @staticmethod
     def _entry(ref: RunRef, area: Area, state: str, error: str | None) -> dict:
@@ -352,14 +355,16 @@ class RunWork:
         }
 
 
-def _delete_files(files: tuple[FetchedFile, ...] | list[FetchedFile], dest: Path) -> None:
+def _delete_files(files: tuple[FetchedFile, ...] | list[FetchedFile], dest: Path) -> set[str]:
     """Delete raw files, only inside the run's own raw folder ``dest``; then remove the
-    run's folders if empty. A path anywhere else is never touched (logged)."""
-    root = Path(dest).resolve()
+    run's folders if empty. A path anywhere else is never touched (logged); those paths
+    are returned."""
+    root, kept = Path(dest).resolve(), set()
     for f in files:
         path = Path(f.path)
         if root not in path.resolve().parents:
             log.error("not deleting %s: outside the run's raw folder %s", path, root)
+            kept.add(str(path))
             continue
         path.unlink(missing_ok=True)
     for d in (dest, dest.parent, dest.parent.parent):
@@ -367,6 +372,7 @@ def _delete_files(files: tuple[FetchedFile, ...] | list[FetchedFile], dest: Path
             d.rmdir()  # only if empty
         except OSError:
             break
+    return kept
 
 
 def _at_point(f: RunFields, i: int, j: int) -> RunFields:

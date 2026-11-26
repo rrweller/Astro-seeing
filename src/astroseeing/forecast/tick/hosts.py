@@ -50,6 +50,12 @@ def pick_host(
 ) -> HostPick:
     state = records.host_state(model.id)
     main, fallback = model.hosts.main, model.hosts.fallback
+    on_fallback = getattr(adapter, "on_fallback", None)
+    if fallback is not None and on_fallback is None:
+        raise TypeError(
+            f"the settings give {model.id} the fallback host {fallback.name}, "
+            "but its adapter has no on_fallback()"
+        )
     try:
         newest = adapter.latest_published(now)
     except HttpError as e:
@@ -76,12 +82,6 @@ def pick_host(
             )
             failing = HostState("fallback", since, now)
         records.set_host_state(model.id, failing, at=now)
-        on_fallback = getattr(adapter, "on_fallback", None)
-        if on_fallback is None:
-            raise TypeError(
-                f"the settings give {model.id} the fallback host {fallback.name}, "
-                "but its adapter has no on_fallback()"
-            ) from None
         other = on_fallback()
         try:
             return HostPick(other, fallback.name, other.latest_published(now))

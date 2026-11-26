@@ -16,8 +16,9 @@ import pytest
 
 from astroseeing.forecast.schemas import validate
 from astroseeing.forecast.settings import load_settings
-from astroseeing.forecast.sources import RunRef
+from astroseeing.forecast.sources import FetchedFile, RunRef
 from astroseeing.forecast.sources.gfs import FILTERS
+from astroseeing.forecast.verify import ForecastRecords
 
 from forecast_samples import SAMPLE_RUN, SAMPLES, drop_messages, retime_samples
 from forecast_world import DAY, PUBLISHED, World
@@ -334,6 +335,14 @@ def test_a_failed_runs_raw_files_go_when_it_is_abandoned_and_nothing_else_is_tou
         assert len(list(raw00.glob("*.grb2"))) == 98  # kept for the fix (D51 item 8)
         w.at(DAY + dt.timedelta(hours=6))
         assert len(list(raw00.glob("*.grb2"))) == 98  # not abandoned yet
+        # a manifest row naming a file outside the run's raw folder (a faulty record):
+        # deleting the run's raw files must leave it alone
+        historical = staging / "grib" / "pl" / "chile" / "2021-01-03.grib"
+        ForecastRecords(w.manifest).add_file(
+            r00["id"],
+            FetchedFile("u", "nomads", historical, 15, 0.0, "0" * 64),
+            at=DAY + dt.timedelta(hours=6),
+        )
 
         w.at(DAY + dt.timedelta(hours=9, minutes=45))
         assert w.run(6)["state"] == "processed"
@@ -341,9 +350,11 @@ def test_a_failed_runs_raw_files_go_when_it_is_abandoned_and_nothing_else_is_tou
         assert r00["state"] == "failed"  # still says why it failed
         assert not raw00.exists()
         files00 = w.manifest.conn.execute(
-            "SELECT raw_deleted_at FROM forecast_files WHERE run_id = ?", (r00["id"],)
+            "SELECT path, raw_deleted_at FROM forecast_files WHERE run_id = ?", (r00["id"],)
         ).fetchall()
-        assert all(f[0] == "2026-11-26T09:45:00+00:00" for f in files00)
+        assert len(files00) == 99
+        for path, deleted in files00:  # the faulty row's file is left, and says so
+            assert deleted == (None if path == str(historical) else "2026-11-26T09:45:00+00:00")
         assert not any(w.paths.root.rglob("*/kongsberg/*.grb2"))
         for path, data in keep.items():
             assert path.read_bytes() == data, path
