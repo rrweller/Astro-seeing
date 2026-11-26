@@ -520,6 +520,28 @@ def _write_report(path: str, report: dict) -> None:
     p.write_text(json.dumps(report, indent=2, default=str) + "\n")
 
 
+def cmd_forecast_place_height(args, paths: Paths) -> int:
+    from astroseeing.forecast.http import HttpClient
+    from astroseeing.forecast.places import PlaceHeightError, set_place_height
+    from astroseeing.forecast.settings import default_settings_path
+
+    settings = Path(args.settings) if args.settings else default_settings_path()
+    try:
+        r = set_place_height(settings, args.place, http=HttpClient(), work_dir=paths.tmp_dir,
+                             dem_url=args.dem_url)  # fmt: skip
+    except PlaceHeightError as e:
+        print(f"place-height {args.place}: FAILED, nothing written: {e}", file=sys.stderr)
+        return 1
+    f = r.lookup
+    print(f"{r.place}: {f.metres:.2f} m (GLO-30, posting row {f.row} col {f.col} at "
+          f"{f.pixel_lat:.6f}, {f.pixel_lon:.6f} in {f.tile}, sha256 {f.sha256})")  # fmt: skip
+    if r.published_difference_m is not None:
+        print(f"{r.place}: minus the published {r.published_height_m:g} m = "
+              f"{r.published_difference_m:+.1f} m{'  FLAG' if r.flagged else ''}")  # fmt: skip
+    print(f"written to {settings}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="astro", description=__doc__)
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -643,6 +665,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--timeout-hours", type=float, default=6.0)
     p.add_argument("--out", default=str(REPO_ROOT / "reports" / "cds_smoke_test.json"))
     p.set_defaults(fn=cmd_cds_smoke_test)
+
+    forecast = sub.add_parser("forecast", help="the forecast track (F1)")
+    fsub = forecast.add_subparsers(dest="forecast_cmd", required=True)
+    p = fsub.add_parser("place-height", help="look up a saved place's GLO-30 ground height "
+                        "and write it into the forecast settings")  # fmt: skip
+    p.add_argument("place", help="saved place id, e.g. kongsberg")
+    p.add_argument("--settings", help="settings file (default: configs/forecast.yaml)")
+    p.add_argument("--dem-url", help="GLO-30 bucket URL (default: from the settings; tests)")
+    p.set_defaults(fn=cmd_forecast_place_height)
 
     args = ap.parse_args(argv)
     _setup_logging(args.verbose)

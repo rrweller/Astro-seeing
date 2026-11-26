@@ -27,7 +27,7 @@ extend-exclude = ["external", "papers", "notebooks"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["astroseeing"]
-known-local-folder = ["fakes", "fake_http"]
+known-local-folder = ["fakes", "fake_http", "glo30_tiles"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "NPY", "RUF", "SIM"]
