@@ -42,7 +42,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-4` · **in-progress** · cloud · Tonight: the verdict rules and the Moon · [#53](https://github.com/rrweller/Astro-seeing/issues/53)
 
-- `F1-5` · **ready** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54)
+- `F1-5` · **in-progress** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54)
 
 - `F1-6` · **blocked** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
@@ -250,7 +250,7 @@ flowchart LR
   %% ---
   class F1_4 inprogress
   %% ---
-  class F1_5 ready
+  class F1_5 inprogress
   %% ---
   class F1_6 blocked
   %% ---
