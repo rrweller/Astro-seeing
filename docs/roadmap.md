@@ -36,7 +36,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · this run: F1-1, then F1-2, F1-4, F1-5, then F1-3 · ticket: none
 
-- `F1-2` · **ready** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
+- `F1-2` · **in-progress** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
 
 - `F1-3` · **blocked** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
 
@@ -244,7 +244,7 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_2 ready
+  class F1_2 inprogress
   %% ---
   class F1_3 blocked
   %% ---
