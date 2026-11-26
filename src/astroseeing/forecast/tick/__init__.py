@@ -37,12 +37,7 @@ from astroseeing.forecast.column import column_products
 from astroseeing.forecast.grid import map_grid, nearest_point
 from astroseeing.forecast.http import HttpClient, HttpError
 from astroseeing.forecast.places import PlaceHeightMissing, require_looked_up_heights
-from astroseeing.forecast.publish.place_file import (
-    build_place_file,
-    night_hours,
-    sun_altitudes,
-    tonight,
-)
+from astroseeing.forecast.publish.place_file import build_place_file
 from astroseeing.forecast.publish.sets import publish
 from astroseeing.forecast.schemas import validate
 from astroseeing.forecast.settings import Area, ForecastSettings, Place
@@ -54,6 +49,7 @@ from astroseeing.forecast.sources.interface import (
     SourceAdapter,
 )
 from astroseeing.forecast.store import PlaceStore, run_document, utc_text
+from astroseeing.forecast.tonight.sun import sun_track
 from astroseeing.forecast.verify import ForecastRecords, verify_run
 from astroseeing.manifest import Manifest
 from astroseeing.paths import Paths
@@ -245,12 +241,13 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
     for place in places.values():
         area = settings.areas[place.area]
         models = [settings.models[m] for m in area.models]
-        hours = night_hours(tonight(place, now, ephemeris), place.lon)
+        sun = sun_track(place.lat, place.lon, now, *ephemeris)
+        hours = sun.hours
         doc = build_place_file(
             place,
             models,
             store.hours_for(place.id, models, hours),
-            sun_altitudes(place.lat, place.lon, hours, ephemeris),
+            sun.altitude_deg,
             settings.config_hash,
             build.commit,
         )

@@ -7,71 +7,27 @@ every model's values or the reason it has none), the models and provenance. The 
 altitude come from ``forecast.tonight`` and are null until ticket #63 (F1-14) wires it
 in (D72): nothing here re-derives a verdict rule.
 
-Which Night is Tonight, and its hours: the Night (local mean solar noon to the next) is
-Tonight until its sunrise; from sunrise on, Tonight is the next Night (``CONTEXT.md``).
-Sunrise is the Sun's upward crossing of -0.833° (D48 item 2), found on a 1-minute scan.
-The 24 rows are the hh:00 UTC times inside Tonight.
+Tonight's 24 hours and the Sun's altitude at each come from ``forecast.tonight``'s
+``sun_track`` (ticket #53), which also decides which Night is Tonight.
 """
 
 from __future__ import annotations
 
-import datetime as dt
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-import numpy as np
-
 from astroseeing.forecast.settings import Model, Place
 from astroseeing.forecast.store import PlaceHours, utc_text
-from astroseeing.solar.sun import solar_altitude_deg, sun_gha_dec, to_unix
+from astroseeing.forecast.tonight.sun import SUNRISE_ALTITUDE_DEG
 
 SCHEMA = "f1-place/1"
-HORIZON_DEG = -0.833  # the Sun "below the horizon", D48 item 2
 #: Sun classes by altitude at hh:00 (D48 item 1), lower bounds in degrees.
 SUN_CLASSES = (
-    (HORIZON_DEG, "day"),
+    (SUNRISE_ALTITUDE_DEG, "day"),
     (-6.0, "civil_twilight"),
     (-12.0, "nautical_twilight"),
     (-18.0, "astronomical_twilight"),
 )
-
-
-def night_start(evening: dt.date, lon: float) -> dt.datetime:
-    """Local mean solar noon on the evening's date: 12:00 UTC − λ/15 h (λ east-positive)."""
-    noon = dt.datetime(evening.year, evening.month, evening.day, 12, tzinfo=dt.UTC)
-    return noon - dt.timedelta(hours=lon / 15.0)
-
-
-def sun_altitudes(lat: float, lon: float, times: Sequence[dt.datetime], ephemeris) -> np.ndarray:
-    """The Sun's geometric altitude (degrees) at each time, straight from Skyfield."""
-    eph, ts = ephemeris
-    gha, dec = sun_gha_dec(np.array([to_unix(t) for t in times]), eph, ts)
-    return solar_altitude_deg(lat, lon, gha, dec)
-
-
-def tonight(place: Place, now: dt.datetime, ephemeris) -> dt.date:
-    """The evening date of Tonight at ``place`` (see the module docstring)."""
-    evening = (now + dt.timedelta(hours=place.lon / 15.0) - dt.timedelta(hours=12)).date()
-    start = night_start(evening, place.lon)
-    minutes = [start + dt.timedelta(minutes=m) for m in range(24 * 60 + 1)]
-    alt = sun_altitudes(place.lat, place.lon, minutes, ephemeris)
-    up = np.flatnonzero((alt[:-1] < HORIZON_DEG) & (alt[1:] >= HORIZON_DEG))
-    if up.size == 0:
-        raise ValueError(
-            f"{place.id}: no sunrise in the night of {evening}; places without "
-            "sunrise or sunset are out of F1's scope"
-        )
-    sunrise = minutes[int(up[0]) + 1]
-    return evening + dt.timedelta(days=1) if now >= sunrise else evening
-
-
-def night_hours(evening: dt.date, lon: float) -> tuple[dt.datetime, ...]:
-    """The 24 hh:00 UTC times inside the Night of ``evening``."""
-    start = night_start(evening, lon)
-    first = start.replace(minute=0, second=0, microsecond=0)
-    if first < start:
-        first += dt.timedelta(hours=1)
-    return tuple(first + dt.timedelta(hours=k) for k in range(24))
 
 
 def sun_class(altitude_deg: float) -> str:
