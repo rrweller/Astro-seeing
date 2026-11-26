@@ -18,8 +18,6 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C4` · **review** · cloud · F1 build tickets from the spec · tickets [#50](https://github.com/rrweller/Astro-seeing/issues/50)–[#71](https://github.com/rrweller/Astro-seeing/issues/71) · PR [#72](https://github.com/rrweller/Astro-seeing/pull/72)
-
 - `C5` · **ready** · cloud · Surface-pressure point fetcher for Haslebacher (b) · ticket: none yet
 
 - `C6` · **ready** · cloud · Multi-month surface requests and per-kind planning rates · ticket: none yet
@@ -109,7 +107,6 @@ Colors show each item's state (legend at the bottom). The arrows show what has t
 ```mermaid
 flowchart LR
   subgraph cloud["Cloud"]
-    C4["C4 · F1 tickets"]
     C5["C5 · Surface-pressure fetcher"]
     C6["C6 · Multi-month surface requests"]
     C7["C7 · Raw GRIB archive code"]
@@ -233,8 +230,6 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C4 review
-  %% ---
   class C5 ready
   %% ---
   class C6 ready
@@ -338,7 +333,6 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 | 1 | C9 | no | new module |
 | 2 | C6 | no | `download/requests.py`, `configs/era5.yaml`, `cli.py` |
 | 2 | C7 | no | `manifest.py`, `cli.py`, new module |
-| 3 | C4 | yes: approve the ticket list | issues, this file |
 | 3 | C10 | yes: approve | issues, this file |
 | 3 | C11 | yes: approve | issues, this file |
 | 3 | C12 | yes: approve | issues, this file |
@@ -416,35 +410,6 @@ Parallel sessions would otherwise take the same number.
 ## Prompts
 
 Every prompt has the same first sentence, which loads the session protocol. Most put a slash command in front of it on the same line, which starts that item's main skill. Copy everything inside the box and send it as one message. If a session ever shows the skill without the rest of the prompt (it shouldn't), send the prompt again without the slash command as the next message.
-
-### C4. F1 tickets
-
-Needs your approval.
-
-```text
-/mattpocock-skills:to-tickets Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C4. The spec is the approved F1 spec, issue #47 under map #20.
-
-Skills: this message starts to-tickets. Use its tracer-bullet slicing, its approval quiz with Riley and its issue template, plus the extra lines below. Use mattpocock-skills:codebase-design to cut tickets along module boundaries (so parallel tickets touch different files), and mattpocock-skills:writing-for-agents when writing the per-ticket prompts for docs/roadmap.md.
-
-You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md, and the approved F1 spec issue under map #20 with its comments.
-
-Task: break the F1 spec into build tickets as sub-issues of map #20 (follow docs/agents/issue-tracker.md). Each ticket has:
-- "Part of #20" and a "Blocked by:" line;
-- one runs-on label;
-- an acceptance test;
-- a "Suggested skills:" line (for code, usually "start with /mattpocock-skills:implement", which runs tdd and then code-review);
-- a "Can run alongside:" line naming tickets that touch different files.
-
-Order them so a working end-to-end slice (one model, one place, page shows data) lands first. Show Riley the list for approval before creating the issues (set C4 to needs-you while you wait).
-
-Then, in a PR into dev, replace roadmap item F1 with one item per ticket. Each item gets:
-- an ID F1-1, F1-2, …;
-- a board line with the ticket link;
-- a diagram node, its edges and a class line followed by a %% --- spacer;
-- a section with its dependencies and a short self-contained prompt. The prompt starts with the ticket's slash command (usually /mattpocock-skills:implement) followed on the same line by this prompt's standard first sentence, then has a "Skills:" line, and says "work ticket #N".
-
-The Blocked by line in each ticket body is the source of truth (docs/agents/issue-tracker.md), even where to-tickets would use native blocking links. Don't close or change map #20 except to add the tickets as sub-issues.
-```
 
 ### C5. Surface-pressure point fetcher for Haslebacher (b)
 
