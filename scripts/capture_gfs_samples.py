@@ -53,8 +53,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         plan = {r.filename: r.target for r in adapter.request_plan(run, area, steps)}
         sources = {
-            "provider": "NOAA/NCEP GFS 0.25°, via the NOMADS grib filter (US-government open "
-                        "data)",
+            "provider": "NOAA/NCEP GFS 0.25°, via the NOMADS grib filter (US-government open data)",
             "fetched_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
             "run": run.run_time.isoformat(),
             "box": vars(area.box),
@@ -63,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
                 f.path.name: {"target": plan[f.path.name], "bytes": f.bytes, "sha256": f.sha256}
                 for f in result.files
             },
-        }  # fmt: skip
+        }
         (dest / "SOURCES.json").write_text(json.dumps(sources, indent=1) + "\n")
         print(f"{name}: {len(result.files)} files, {result.bytes / 1e6:.2f} MB → {dest}")
     return 0

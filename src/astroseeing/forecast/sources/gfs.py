@@ -99,8 +99,12 @@ _GRID_TOL = 1e-6
 class RatePacer:
     """Spaces request starts at least ``1 / max_per_s`` seconds apart (D51 item 14)."""
 
-    def __init__(self, max_per_s: float | None, monotonic: Callable[[], float] = time.monotonic,
-                 sleep: Callable[[float], None] = time.sleep):  # fmt: skip
+    def __init__(
+        self,
+        max_per_s: float | None,
+        monotonic: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ):
         self.interval = 0.0 if not max_per_s else 1.0 / max_per_s
         self.monotonic, self.sleep = monotonic, sleep
         self._last: float | None = None
@@ -134,8 +138,14 @@ class GfsAdapter:
     checks the grid against the fetched area's box); ``base_url`` replaces the configured
     main host (tests point it at a fake server); ``pacer`` paces every request to it."""
 
-    def __init__(self, model: Model, http: HttpClient | None, areas: Mapping[str, Area],
-                 base_url: str | None = None, pacer: RatePacer | None = None):  # fmt: skip
+    def __init__(
+        self,
+        model: Model,
+        http: HttpClient | None,
+        areas: Mapping[str, Area],
+        base_url: str | None = None,
+        pacer: RatePacer | None = None,
+    ):
         if model.grid.kind != "regular_latlon":
             raise ValueError(f"GFS needs a regular lat-lon grid, settings say {model.grid.kind}")
         unknown = sorted(set(model.fog_signals) - set(FOG_FIELDS))
@@ -164,25 +174,39 @@ class GfsAdapter:
         """Every request a fetch of these steps makes, in order (two per step)."""
         day, hh = run.run_time.strftime("%Y%m%d"), run.run_time.strftime("%H")
         box = area.box
-        region = (("subregion", ""), ("leftlon", _deg(box.west % 360)),
-                  ("rightlon", _deg(box.east % 360 or 360)), ("toplat", _deg(box.north)),
-                  ("bottomlat", _deg(box.south)))  # fmt: skip
+        region = (
+            ("subregion", ""),
+            ("leftlon", _deg(box.west % 360)),
+            ("rightlon", _deg(box.east % 360 or 360)),
+            ("toplat", _deg(box.north)),
+            ("bottomlat", _deg(box.south)),
+        )
         plan = []
         for step in steps_h:
             for part in ("pgrb2", "pgrb2b"):
                 name = f"gfs.t{hh}z.{part}.0p25.f{step:03d}"
                 variables = [*PROFILE_VARS, "TCDC"]
-                levels = sorted(set(self._levels[part]) | set(self._cloud_levels[part]),
-                                reverse=True)  # fmt: skip
+                levels = sorted(
+                    set(self._levels[part]) | set(self._cloud_levels[part]), reverse=True
+                )
                 extra_levels: list[str] = []
                 if part == "pgrb2":
                     variables += ["LCDC", "MCDC", "HCDC", "VIS", "PRES"]
-                    extra_levels = ["surface", "low_cloud_layer", "middle_cloud_layer",
-                                    "high_cloud_layer", "entire_atmosphere"]  # fmt: skip
-                params = (("dir", f"/gfs.{day}/{hh}/atmos"), ("file", name),
-                          *((f"var_{v}", "on") for v in variables),
-                          *((f"lev_{p:g}_mb", "on") for p in levels),
-                          *((f"lev_{s}", "on") for s in extra_levels), *region)  # fmt: skip
+                    extra_levels = [
+                        "surface",
+                        "low_cloud_layer",
+                        "middle_cloud_layer",
+                        "high_cloud_layer",
+                        "entire_atmosphere",
+                    ]
+                params = (
+                    ("dir", f"/gfs.{day}/{hh}/atmos"),
+                    ("file", name),
+                    *((f"var_{v}", "on") for v in variables),
+                    *((f"lev_{p:g}_mb", "on") for p in levels),
+                    *((f"lev_{s}", "on") for s in extra_levels),
+                    *region,
+                )
                 plan.append(FilterRequest(step, part, FILTERS[part], params, f"{name}.grb2"))
         return plan
 
@@ -203,8 +227,9 @@ class GfsAdapter:
 
     def _listed(self, run: RunRef, part: str, step: int) -> bool:
         day, hh = run.run_time.strftime("%Y%m%d"), run.run_time.strftime("%H")
-        url = (f"{self.base_url}{DATA_DIR}/gfs.{day}/{hh}/atmos/"
-               f"gfs.t{hh}z.{part}.0p25.f{step:03d}.idx")  # fmt: skip
+        url = (
+            f"{self.base_url}{DATA_DIR}/gfs.{day}/{hh}/atmos/gfs.t{hh}z.{part}.0p25.f{step:03d}.idx"
+        )
         self.pacer.wait()
         try:
             self.http.head(url)
@@ -216,8 +241,9 @@ class GfsAdapter:
             raise
         return True
 
-    def fetch(self, run: RunRef, area: Area, steps_h: tuple[int, ...],
-              dest_dir: Path) -> FetchResult:  # fmt: skip
+    def fetch(
+        self, run: RunRef, area: Area, steps_h: tuple[int, ...], dest_dir: Path
+    ) -> FetchResult:
         files, missing = [], {}
         for req in self.request_plan(run, area, steps_h):
             if req.step in missing:
@@ -256,13 +282,18 @@ class GfsAdapter:
                 grid = self._decode(parts[part], area, run, step, got, ignored, grid)
                 missing = sorted(self._expected(part) - got.keys(), key=str)
                 if missing:
-                    raise FormatMismatch(self.model.id, f"step {step} ({parts[part].name}): "
-                                         f"missing {_names(missing)}")  # fmt: skip
+                    raise FormatMismatch(
+                        self.model.id,
+                        f"step {step} ({parts[part].name}): missing {_names(missing)}",
+                    )
                 fields.update(got)
             decoded.append(fields)
         if ignored:
-            log.info("GFS %s: skipped, as expected: %s", run.label,
-                     ", ".join(f"{k} ×{n}" for k, n in sorted(ignored.items())))  # fmt: skip
+            log.info(
+                "GFS %s: skipped, as expected: %s",
+                run.label,
+                ", ".join(f"{k} ×{n}" for k, n in sorted(ignored.items())),
+            )
         return self._assemble(run, area, steps, decoded, grid)
 
     # -- decoding ---------------------------------------------------------------------
@@ -276,8 +307,16 @@ class GfsAdapter:
             want |= {(*FOG_FIELDS[name], None) for name in self.model.fog_signals}
         return want
 
-    def _decode(self, path: Path, area: str, run: RunRef, step: int, fields: dict,
-                ignored: Counter, grid: tuple | None) -> tuple:  # fmt: skip
+    def _decode(
+        self,
+        path: Path,
+        area: str,
+        run: RunRef,
+        step: int,
+        fields: dict,
+        ignored: Counter,
+        grid: tuple | None,
+    ) -> tuple:
         import eccodes as ec
 
         model = self.model.id
@@ -310,8 +349,9 @@ class GfsAdapter:
                         self._check_area_grid(this_grid, area)
                         grid = this_grid
                     elif not _same_grid(this_grid, grid):
-                        raise FormatMismatch(model, f"{where}: grid {this_grid} differs from "
-                                             f"{grid}")  # fmt: skip
+                        raise FormatMismatch(
+                            model, f"{where}: grid {this_grid} differs from {grid}"
+                        )
                     fields[key] = _values(h, this_grid)
                 finally:
                     ec.codes_release(h)
@@ -324,12 +364,16 @@ class GfsAdapter:
             raise ValueError(f"unknown area {area_id!r}; known: {sorted(self.areas)}")
         want = expected_grid(self.model.grid.spacing, self.areas[area_id])
         if not _same_grid(grid, want):
-            raise FormatMismatch(self.model.id, f"grid {grid} is not the "
-                                 f"{self.model.grid.spacing:g}° grid of area {area_id}, {want} "
-                                 "(Nj, Ni, north, west, Δlat, Δlon)")  # fmt: skip
+            raise FormatMismatch(
+                self.model.id,
+                f"grid {grid} is not the "
+                f"{self.model.grid.spacing:g}° grid of area {area_id}, {want} "
+                "(Nj, Ni, north, west, Δlat, Δlon)",
+            )
 
-    def _assemble(self, run: RunRef, area: str, steps: tuple[int, ...], decoded: list[dict],
-                  grid: tuple) -> RunFields:  # fmt: skip
+    def _assemble(
+        self, run: RunRef, area: str, steps: tuple[int, ...], decoded: list[dict], grid: tuple
+    ) -> RunFields:
         levels = list(self.model.pressure_levels_hpa)  # bottom → top
         nj, ni, lat0, lon0, dlat, dlon = grid
         lats = lat0 - dlat * np.arange(nj)
@@ -337,8 +381,9 @@ class GfsAdapter:
         lat2, lon2 = np.meshgrid(lats, lons, indexing="ij")
 
         def level_field(var: str) -> np.ndarray:
-            return np.stack([np.stack([d[(var, "mb", p)] for p in levels], axis=-1)
-                             for d in decoded])  # fmt: skip
+            return np.stack(
+                [np.stack([d[(var, "mb", p)] for p in levels], axis=-1) for d in decoded]
+            )
 
         def single(var: str, surface: str) -> np.ndarray:
             return np.stack([d[(var, surface, None)] for d in decoded])
@@ -380,8 +425,9 @@ def _names(keys) -> str:
 def _message_key(h) -> tuple[tuple | None, str]:
     import eccodes as ec
 
-    code = tuple(ec.codes_get(h, k, int) for k in ("discipline", "parameterCategory",
-                                                     "parameterNumber"))  # fmt: skip
+    code = tuple(
+        ec.codes_get(h, k, int) for k in ("discipline", "parameterCategory", "parameterNumber")
+    )
     surface_code = ec.codes_get(h, "typeOfFirstFixedSurface", int)
     step_type = str(ec.codes_get(h, "stepType"))
     var, surface = PARAMETERS.get(code), SURFACES.get(surface_code)
@@ -404,8 +450,9 @@ def _check_time(h, run: RunRef, step: int, model: str, where: str) -> None:
         raise FormatMismatch(model, f"{where}: run time {t:%Y-%m-%dT%H}Z, expected {run.label}")
     ec.codes_set(h, "stepUnits", 1)
     if int(ec.codes_get(h, "endStep")) != step:
-        raise FormatMismatch(model, f"{where}: step {ec.codes_get(h, 'endStep')} h, expected "
-                             f"{step} h")  # fmt: skip
+        raise FormatMismatch(
+            model, f"{where}: step {ec.codes_get(h, 'endStep')} h, expected {step} h"
+        )
 
 
 def _grid(h) -> tuple:
@@ -430,8 +477,11 @@ def _grid(h) -> tuple:
 
 
 def _same_grid(a: tuple, b: tuple) -> bool:
-    return len(a) == len(b) == 6 and a[:2] == b[:2] and all(
-        abs(x - y) < _GRID_TOL for x, y in zip(a[2:], b[2:], strict=True))  # fmt: skip
+    return (
+        len(a) == len(b) == 6
+        and a[:2] == b[:2]
+        and all(abs(x - y) < _GRID_TOL for x, y in zip(a[2:], b[2:], strict=True))
+    )
 
 
 def expected_grid(spacing: float, area: Area) -> tuple:

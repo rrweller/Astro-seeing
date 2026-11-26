@@ -50,8 +50,13 @@ class FakeClock:
 def test_request_plan_asks_two_filtered_files_per_step_for_the_area_only():
     plan = GfsAdapter(GFS, http=None, areas=SETTINGS.areas).request_plan(RUN, KONGSBERG, (0, 1, 48))
     assert [(r.step, r.part) for r in plan] == [
-        (0, "pgrb2"), (0, "pgrb2b"), (1, "pgrb2"), (1, "pgrb2b"), (48, "pgrb2"), (48, "pgrb2b"),
-    ]  # fmt: skip
+        (0, "pgrb2"),
+        (0, "pgrb2b"),
+        (1, "pgrb2"),
+        (1, "pgrb2b"),
+        (48, "pgrb2"),
+        (48, "pgrb2b"),
+    ]
     a, b = plan[-2], plan[-1]
     assert a.path == "/cgi-bin/filter_gfs_0p25_1hr.pl"
     assert b.path == "/cgi-bin/filter_gfs_0p25b.pl"
@@ -61,19 +66,34 @@ def test_request_plan_asks_two_filtered_files_per_step_for_the_area_only():
     # the area box, cut on the server (longitudes 0-360 as GFS stores them)
     for q in (qa, qb):
         assert (q["leftlon"], q["rightlon"], q["bottomlat"], q["toplat"]) == (
-            "4.65", "14.65", "54.67", "64.67",
-        )  # fmt: skip
+            "4.65",
+            "14.65",
+            "54.67",
+            "64.67",
+        )
     # only the needed fields: 23 + 16 = 39 pressure levels between the two files
     lev_a = {k for k in qa if k.startswith("lev_") and k.endswith("_mb")}
     lev_b = {k for k in qb if k.startswith("lev_") and k.endswith("_mb")}
     assert len(lev_a) == 23 and len(lev_b) == 17  # b also asks 70 mb for its cloud cover
     assert {k for k in qa if k.startswith("var_")} == {
-        "var_HGT", "var_TMP", "var_UGRD", "var_VGRD", "var_TCDC", "var_LCDC", "var_MCDC",
-        "var_HCDC", "var_VIS", "var_PRES",
-    }  # fmt: skip
+        "var_HGT",
+        "var_TMP",
+        "var_UGRD",
+        "var_VGRD",
+        "var_TCDC",
+        "var_LCDC",
+        "var_MCDC",
+        "var_HCDC",
+        "var_VIS",
+        "var_PRES",
+    }
     assert {k for k in qb if k.startswith("var_")} == {
-        "var_HGT", "var_TMP", "var_UGRD", "var_VGRD", "var_TCDC",
-    }  # fmt: skip
+        "var_HGT",
+        "var_TMP",
+        "var_UGRD",
+        "var_VGRD",
+        "var_TCDC",
+    }
 
 
 def test_west_longitudes_are_asked_in_gfs_0_to_360_convention():
@@ -107,8 +127,13 @@ def nomads():
 
 
 def adapter_for(server, settings=SETTINGS, pacer=None) -> GfsAdapter:
-    return GfsAdapter(settings.models["gfs"], HttpClient(timeout_s=5), settings.areas,
-                      base_url=server.url, pacer=pacer or RatePacer(None))  # fmt: skip
+    return GfsAdapter(
+        settings.models["gfs"],
+        HttpClient(timeout_s=5),
+        settings.areas,
+        base_url=server.url,
+        pacer=pacer or RatePacer(None),
+    )
 
 
 def test_reads_the_whole_kongsberg_box_with_all_39_levels(nomads, tmp_path):
@@ -130,8 +155,13 @@ def test_reads_the_whole_kongsberg_box_with_all_39_levels(nomads, tmp_path):
     assert (np.diff(f.geopotential_height_m, axis=-1) > 0).all()
     assert f.temperature_k.min() > 180 and f.temperature_k.max() < 320
     assert f.surface_pressure_hpa.min() > 800 and f.surface_pressure_hpa.max() < 1060
-    for c in (f.total_cloud_pct, f.low_cloud_pct, f.mid_cloud_pct, f.high_cloud_pct,
-              f.level_cloud_pct):  # fmt: skip
+    for c in (
+        f.total_cloud_pct,
+        f.low_cloud_pct,
+        f.mid_cloud_pct,
+        f.high_cloud_pct,
+        f.level_cloud_pct,
+    ):
         assert c.min() >= 0 and c.max() <= 100
     assert f.fog["visibility_m"] is not None and f.fog["fog_fraction_pct"] is None
     # D47's evidence: GFS's ground is 327 m at 59.75° N 9.75° E (the 2026-11-05 run)
@@ -165,8 +195,12 @@ def read_copy(tmp_path, steps=(0, 7), edit=None):
 def test_never_reads_the_average_cloud_covers(tmp_path):
     # step 7 carries both the instantaneous cloud covers and the 6-7 h averages
     def no_averages(folder):
-        assert drop_messages(folder / "gfs.t06z.pgrb2.0p25.f007.grb2",
-                             lambda k: k["stepType"] == "avg") == 4  # fmt: skip
+        assert (
+            drop_messages(
+                folder / "gfs.t06z.pgrb2.0p25.f007.grb2", lambda k: k["stepType"] == "avg"
+            )
+            == 4
+        )
 
     def no_instant_total(folder):
         drop_messages(
@@ -185,14 +219,21 @@ def test_never_reads_the_average_cloud_covers(tmp_path):
     ("file", "drop", "named"),
     [
         ("gfs.t06z.pgrb2.0p25.f000.grb2", lambda k: k["shortName"] == "vis", "VIS:surface"),
-        ("gfs.t06z.pgrb2.0p25.f007.grb2",
-         lambda k: k["shortName"] == "t" and k["level"] == 500, "TMP:500 mb"),
-        ("gfs.t06z.pgrb2b.0p25.f000.grb2",
-         lambda k: k["shortName"] == "gh" and k["level"] == 875, "HGT:875 mb"),
+        (
+            "gfs.t06z.pgrb2.0p25.f007.grb2",
+            lambda k: k["shortName"] == "t" and k["level"] == 500,
+            "TMP:500 mb",
+        ),
+        (
+            "gfs.t06z.pgrb2b.0p25.f000.grb2",
+            lambda k: k["shortName"] == "gh" and k["level"] == 875,
+            "HGT:875 mb",
+        ),
     ],
-)  # fmt: skip
-def test_a_sample_with_a_variable_or_level_removed_raises_format_mismatch(tmp_path, file, drop,
-                                                                          named):  # fmt: skip
+)
+def test_a_sample_with_a_variable_or_level_removed_raises_format_mismatch(
+    tmp_path, file, drop, named
+):
     def edit(folder):
         assert drop_messages(folder / file, drop) == 1
 

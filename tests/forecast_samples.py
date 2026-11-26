@@ -48,8 +48,15 @@ def small_box_settings(tmp_path: Path, **edits) -> ForecastSettings:
     return load_settings(p)
 
 
-def serve_samples(server, adapter: GfsAdapter, area, steps, sample_set: str = "box1deg",
-                  folder: Path | None = None, run: RunRef = SAMPLE_RUN) -> None:  # fmt: skip
+def serve_samples(
+    server,
+    adapter: GfsAdapter,
+    area,
+    steps,
+    sample_set: str = "box1deg",
+    folder: Path | None = None,
+    run: RunRef = SAMPLE_RUN,
+) -> None:
     """Route every request of the adapter's plan to its saved sample, and the last
     step's two index files (what ``latest_published`` checks) to empty answers."""
     folder = folder or SAMPLES / sample_set
@@ -58,8 +65,7 @@ def serve_samples(server, adapter: GfsAdapter, area, steps, sample_set: str = "b
     day, hh = run.run_time.strftime("%Y%m%d"), run.run_time.strftime("%H")
     last = adapter.model.steps_h[-1]
     for part in ("pgrb2", "pgrb2b"):
-        server.route(f"{DATA_DIR}/gfs.{day}/{hh}/atmos/gfs.t{hh}z.{part}.0p25.f{last:03d}.idx",
-                     b"")  # fmt: skip
+        server.route(f"{DATA_DIR}/gfs.{day}/{hh}/atmos/gfs.t{hh}z.{part}.0p25.f{last:03d}.idx", b"")
 
 
 def copy_samples(dest: Path, sample_set: str = "box1deg") -> Path:
@@ -80,8 +86,9 @@ def drop_messages(path: Path, drop: Callable[[dict], bool]) -> int:
     with open(path, "rb") as f:
         while (h := ec.codes_grib_new_from_file(f)) is not None:
             try:
-                keys = {k: ec.codes_get(h, k)
-                        for k in ("shortName", "typeOfLevel", "level", "stepType")}  # fmt: skip
+                keys = {
+                    k: ec.codes_get(h, k) for k in ("shortName", "typeOfLevel", "level", "stepType")
+                }
                 if drop(keys):
                     dropped += 1
                 else:

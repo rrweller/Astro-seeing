@@ -118,6 +118,45 @@ CREATE TABLE IF NOT EXISTS events (
 """
 
 
+#: The forecast track's records (F1 spec Module 2, D51 item 6; ticket #51), kept apart
+#: from the CDS tables: the CDS gate, ``run_boxes.sh`` and the download watcher never
+#: read them. ``forecast.verify.ForecastRecords`` writes them. Created on every open, so
+#: an older manifest gains these two tables and nothing else changes.
+FORECAST_SCHEMA = """
+CREATE TABLE IF NOT EXISTS forecast_runs (
+    id                 INTEGER PRIMARY KEY,
+    model              TEXT NOT NULL,
+    area               TEXT NOT NULL,
+    run_time           TEXT NOT NULL,
+    first_seen_at      TEXT NOT NULL,
+    state              TEXT NOT NULL,
+    steps_expected     TEXT NOT NULL,
+    steps_verified     TEXT,
+    bytes              INTEGER,
+    download_seconds   REAL,
+    processing_seconds REAL,
+    derived_bytes      INTEGER,
+    attempts           INTEGER NOT NULL DEFAULT 0,
+    last_error         TEXT,
+    updated_at         TEXT NOT NULL,
+    UNIQUE (model, area, run_time)
+);
+CREATE TABLE IF NOT EXISTS forecast_files (
+    id             INTEGER PRIMARY KEY,
+    run_id         INTEGER NOT NULL REFERENCES forecast_runs(id),
+    url            TEXT NOT NULL,
+    host           TEXT NOT NULL,
+    path           TEXT NOT NULL,
+    bytes          INTEGER NOT NULL,
+    seconds        REAL NOT NULL,
+    sha256         TEXT NOT NULL,
+    fetched_at     TEXT NOT NULL,
+    verified       INTEGER NOT NULL DEFAULT 0,
+    raw_deleted_at TEXT
+);
+"""
+
+
 #: Event detail that marks a job the CDS lost (expired, deleted, HTTP 404).
 LOST_PREFIX = "lost at the CDS"
 
@@ -179,7 +218,7 @@ class Manifest:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.execute("PRAGMA busy_timeout=60000")
-        self.conn.executescript(SCHEMA)
+        self.conn.executescript(SCHEMA + FORECAST_SCHEMA)
         self._upgrade()
 
     def _upgrade(self) -> None:
