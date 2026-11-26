@@ -18,7 +18,7 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C4` · **in-progress** · cloud · F1 build tickets from the spec · ticket: none yet
+- `C4` · **needs-you** · cloud · F1 build tickets from the spec · needs you: approve the ticket list · ticket: none yet
 
 - `C5` · **ready** · cloud · Surface-pressure point fetcher for Haslebacher (b) · ticket: none yet
 
@@ -126,7 +126,7 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C4 inprogress
+  class C4 needsyou
   %% ---
   class C5 ready
   %% ---
