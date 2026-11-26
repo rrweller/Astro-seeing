@@ -20,6 +20,8 @@ from astroseeing.forecast.tonight.shapes import (
     Missing,
     ModelHours,
     SunTrack,
+    check_utc,
+    utc_text,
 )
 from astroseeing.physics.optics import seeing_arcsec
 
@@ -151,23 +153,26 @@ class Tonight:
                       "per_family": dict(sorted(s.per_family.items()))}  # fmt: skip
         nothing = None
         if n is not None:
-            nothing = {"reason": n.reason, "dark_time_ended_at": _utc(n.dark_time_ended_at),
+            ended = utc_text(n.dark_time_ended_at)
+            nothing = {"reason": n.reason, "dark_time_ended_at": ended,
                        "families": dict(sorted(n.families.items()))}  # fmt: skip
         runs = {
             model: {
                 "run_id": r.run_id,
-                "run_time": _utc(r.run_time),
+                "run_time": utc_text(r.run_time),
                 "age_h": r.age_h,
                 "stale": r.stale,
             }
             for model, r in sorted(self.runs.items())
         }
-        chips = [{"class": c.cls, "start": _utc(c.start), "end": _utc(c.end)} for c in self.chips]
+        chips = [
+            {"class": c.cls, "start": utc_text(c.start), "end": utc_text(c.end)} for c in self.chips
+        ]
         return {
             "night": self.night.isoformat(),
             "basis": self.basis,
             "started": self.started,
-            "current_hour": _utc(self.current_hour),
+            "current_hour": utc_text(self.current_hour),
             "counted_hours": self.counted_hours,
             "clear_hours": self.clear_hours,
             "incomplete_hours": self.incomplete_hours,
@@ -219,8 +224,7 @@ def tonight(
     ``now`` is not before the Night's sunrise (Tonight would be the next Night), when
     the table and the Sun are for different rows, or when a run time is after ``now``.
     """
-    if now.tzinfo is None or now.utcoffset() != dt.timedelta(0):
-        raise ValueError(f"now must be a timezone-aware UTC datetime, got {now!r}")
+    check_utc("now", now)
     if now >= sun.sunrise:
         # From sunrise on, Tonight is the next Night (CONTEXT.md, "Tonight").
         raise ValueError(f"now {now.isoformat()} is at or after this Night's sunrise "
@@ -359,10 +363,6 @@ def _chips(counted: list[HourVerdict]) -> tuple[Chip, ...]:
 def _stale(runs: Mapping[str, RunAge], m: ModelHours) -> bool:
     """Whether the model's run is stale (a model with no run has none to be stale)."""
     return m.model in runs and runs[m.model].stale
-
-
-def _utc(t: dt.datetime | None) -> str | None:
-    return None if t is None else t.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _run_age(run_id: int, run_time: dt.datetime, now: dt.datetime, stale_after_h: float) -> RunAge:

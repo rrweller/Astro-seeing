@@ -25,16 +25,22 @@ HOURS_PER_NIGHT = 24
 _HOUR = dt.timedelta(hours=1)
 
 
-def _check_utc(name: str, t: dt.datetime) -> None:
+def check_utc(name: str, t: dt.datetime) -> None:
+    """Refuse anything but a timezone-aware UTC datetime."""
     if not isinstance(t, dt.datetime) or t.tzinfo is None or t.utcoffset() != dt.timedelta(0):
         raise ValueError(f"{name} must be a timezone-aware UTC datetime, got {t!r}")
+
+
+def utc_text(t: dt.datetime | None) -> str | None:
+    """A UTC time as the page files write it, ``YYYY-MM-DDTHH:MM:SSZ`` (None stays None)."""
+    return None if t is None else t.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _check_rows(name: str, hours: tuple[dt.datetime, ...]) -> None:
     if len(hours) != HOURS_PER_NIGHT:
         raise ValueError(f"{name} must hold {HOURS_PER_NIGHT} hourly rows, got {len(hours)}")
     for t in hours:
-        _check_utc(f"{name} row", t)
+        check_utc(f"{name} row", t)
         if (t.minute, t.second, t.microsecond) != (0, 0, 0):
             raise ValueError(f"{name} rows must be at hh:00 UTC, got {t.isoformat()}")
     for a, b in itertools.pairwise(hours):
@@ -52,7 +58,7 @@ class RunInfo:
     def __post_init__(self) -> None:
         if not isinstance(self.run_id, int) or self.run_id < 1:
             raise ValueError(f"run_id must be a positive integer, got {self.run_id!r}")
-        _check_utc("run_time", self.run_time)
+        check_utc("run_time", self.run_time)
 
 
 @dataclass(frozen=True)
@@ -143,7 +149,7 @@ class SunTrack:
 
     def __post_init__(self) -> None:
         for name in ("start", "end", "sunset", "sunrise"):
-            _check_utc(name, getattr(self, name))
+            check_utc(name, getattr(self, name))
         _check_rows("SunTrack", self.hours)
         if len(self.altitude_deg) != HOURS_PER_NIGHT:
             raise ValueError(f"SunTrack needs {HOURS_PER_NIGHT} altitudes, "

@@ -19,7 +19,7 @@ import math
 
 import numpy as np
 
-from astroseeing.forecast.tonight.shapes import HOURS_PER_NIGHT, SunTrack
+from astroseeing.forecast.tonight.shapes import HOURS_PER_NIGHT, SunTrack, check_utc
 from astroseeing.solar.sun import UNIX_EPOCH, solar_altitude_deg, sun_gha_dec, to_unix
 
 #: The Sun's centre at sunrise and sunset, degrees (34′ refraction + 16′ radius).
@@ -35,8 +35,7 @@ def night_start(evening: dt.date, lon_deg: float) -> dt.datetime:
 
 def sun_track(lat_deg: float, lon_deg: float, now: dt.datetime, eph, ts) -> SunTrack:
     """The Sun over Tonight at a place, as seen at ``now`` (UTC)."""
-    if now.tzinfo is None or now.utcoffset() != dt.timedelta(0):
-        raise ValueError(f"now must be a timezone-aware UTC datetime, got {now!r}")
+    check_utc("now", now)
     days = (now - night_start(dt.date(1970, 1, 1), lon_deg)).total_seconds() / 86400.0
     evening = dt.date(1970, 1, 1) + dt.timedelta(days=math.floor(days))
     track = _night(lat_deg, lon_deg, evening, eph, ts)
@@ -59,6 +58,11 @@ def crossings(times_unix: np.ndarray, values: np.ndarray, level: float) -> list[
     return out
 
 
+def night_minutes(start: dt.datetime) -> np.ndarray:
+    """Unix times of every minute of the Night from ``start``, both ends included."""
+    return float(to_unix(start)) + 60.0 * np.arange(24 * 60 + 1)
+
+
 def from_unix(u: float) -> dt.datetime:
     return UNIX_EPOCH + dt.timedelta(seconds=u)
 
@@ -76,7 +80,7 @@ def _night(lat_deg: float, lon_deg: float, evening: dt.date, eph, ts) -> SunTrac
         return solar_altitude_deg(lat_deg, lon_deg, gha, dec)
 
     row_alts = altitude(np.array([float(to_unix(t)) for t in hours]))
-    minutes = float(to_unix(start)) + 60.0 * np.arange(24 * 60 + 1)
+    minutes = night_minutes(start)
     events = crossings(minutes, altitude(minutes), SUNRISE_ALTITUDE_DEG)
     sets = [u for u, rising in events if not rising]
     if not sets:

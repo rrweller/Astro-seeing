@@ -23,8 +23,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from astroseeing.forecast.tonight.shapes import SunTrack
-from astroseeing.forecast.tonight.sun import crossings, from_unix
+from astroseeing.forecast.tonight.shapes import SunTrack, utc_text
+from astroseeing.forecast.tonight.sun import crossings, from_unix, night_minutes
 from astroseeing.solar.sun import to_unix, unix_to_time
 
 MOON_RADIUS_M = 1.7374e6  # IAU mean radius, as Skyfield's almanac
@@ -43,8 +43,8 @@ class MoonTrack:
     def to_json(self) -> dict:
         """The per-place file's ``moon`` block (schema ``f1-place/1``)."""
         return {
-            "rise": _utc(self.rise),
-            "set": _utc(self.set),
+            "rise": utc_text(self.rise),
+            "set": utc_text(self.set),
             "phase_deg": self.phase_deg,
             "illuminated_fraction": self.illuminated_fraction,
         }
@@ -65,7 +65,7 @@ def moon_track(lat_deg: float, lon_deg: float, sun: SunTrack, eph, ts) -> MoonTr
     rows = np.array([float(to_unix(t)) for t in sun.hours])
     row_alts, _ = topocentric(rows)
 
-    minutes = float(to_unix(sun.start)) + 60.0 * np.arange(24 * 60 + 1)
+    minutes = night_minutes(sun.start)
     alt, dist = topocentric(minutes)
     # Centre altitude when the upper limb touches the horizon, per minute; scan the
     # altitude above that line for its zero crossings.
@@ -92,7 +92,3 @@ def moon_track(lat_deg: float, lon_deg: float, sun: SunTrack, eph, ts) -> MoonTr
         phase_deg=phase,
         illuminated_fraction=0.5 * (1.0 + math.cos(i)),
     )
-
-
-def _utc(t: dt.datetime | None) -> str | None:
-    return None if t is None else t.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")

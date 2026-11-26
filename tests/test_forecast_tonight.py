@@ -14,7 +14,7 @@ import json
 import pytest
 
 from astroseeing.forecast.schemas import check_document, load_schema
-from astroseeing.forecast.settings import CloudClasses
+from astroseeing.forecast.settings import CloudClasses, load_settings
 from astroseeing.forecast.tonight import (
     HourTable,
     HourValue,
@@ -22,6 +22,7 @@ from astroseeing.forecast.tonight import (
     ModelHours,
     RunInfo,
     SunTrack,
+    cloud_class,
     tonight,
 )
 from astroseeing.physics.optics import j_from_seeing
@@ -490,3 +491,14 @@ def test_the_json_form_spells_out_times_and_values():
     assert doc["nothing_to_count"] is None
     assert doc["runs"]["gfs"] == {"run_id": 1, "run_time": "2026-12-10T09:00:00Z",
                                   "age_h": pytest.approx(14 + 10 / 60), "stale": False}  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("total", "expected"),
+    [(0.0, "clear"), (10.0, "clear"), (10.0001, "some_cloud"), (50.0, "some_cloud"),
+     (50.0001, "cloudy"), (100.0, "cloudy")],
+)  # fmt: skip
+def test_cloud_classes_use_the_unrounded_value_and_the_settings_thresholds(total, expected):
+    # D48 item 6: clear T <= 10 %, some cloud 10 < T <= 50 %, cloudy T > 50 %, from the
+    # settings file; 10.0001 would round to 10 but is not clear.
+    assert cloud_class(total, load_settings().cloud_classes) == expected
