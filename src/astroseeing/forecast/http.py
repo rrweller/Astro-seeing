@@ -4,7 +4,8 @@ Adapters, the ESO step and the served-page check take an :class:`HttpClient` as 
 argument instead of making their own, so tests point them at a fake server. The
 client makes **one attempt** per call: retry spacing (at least 1 min apart) and the
 fallback-host switch are run rules (D51 items 7 and 14) that belong to the caller,
-which knows the clock and the manifest.
+which knows the clock and the manifest. :class:`RatePacer` keeps requests to a host
+within its stated rate (NOMADS: 1 a second).
 
 Every request carries the generic ``astro-seeing/<version>`` User-Agent, with no
 contact details. Failures raise :class:`HttpError` (an HTTP status) or
@@ -18,7 +19,7 @@ import hashlib
 import os
 import tempfile
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -131,6 +132,28 @@ class HttpClient:
             r.close()
             raise HttpError(url, r.status_code, r.reason or "error")
         return r
+
+
+class RatePacer:
+    """Spaces request starts at least ``1 / max_per_s`` seconds apart (D51 item 14),
+    for any adapter whose host states a limit (moved here from ``sources.gfs``, #58)."""
+
+    def __init__(
+        self,
+        max_per_s: float | None,
+        monotonic: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ):
+        self.interval = 0.0 if not max_per_s else 1.0 / max_per_s
+        self.monotonic, self.sleep = monotonic, sleep
+        self._last: float | None = None
+
+    def wait(self) -> None:
+        if self._last is not None:
+            gap = self._last + self.interval - self.monotonic()
+            if gap > 0:
+                self.sleep(gap)
+        self._last = self.monotonic()
 
 
 def _unavailable(url: str, e: requests.RequestException) -> HttpUnavailable:

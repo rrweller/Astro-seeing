@@ -19,7 +19,7 @@ from astroseeing.forecast.settings import load_settings
 from astroseeing.forecast.sources import RunRef
 from astroseeing.forecast.sources.gfs import FILTERS
 
-from forecast_samples import SAMPLE_RUN, SAMPLES, retime_samples
+from forecast_samples import SAMPLE_RUN, SAMPLES, drop_messages, retime_samples
 from forecast_world import DAY, PUBLISHED, World
 
 MIN = dt.timedelta(minutes=1)
@@ -182,12 +182,13 @@ def test_a_run_near_the_end_of_an_icon_eu_online_window_is_abandoned(tmp_path, e
     """ICON-EU keeps a run online ~24 h and has no fallback host, so a run still fetching
     20 h after its run time is given up (D51 item 7). The ICON-EU adapter isn't built
     yet, so GFS runs here under ICON-EU's settings: its online window and no fallback.
-    Steps 0-19 arrive at 09:45, step 20 fails, then the host is down for good."""
+    Steps 0-19 arrive at 09:45, steps 20-48 fail, then the host is down for good."""
     icon = load_settings().models["icon_eu"]
     assert (icon.online_window_h, icon.hosts.fallback) == (24, None)
     edits = {"models.gfs.online_window_h": icon.online_window_h, "models.gfs.hosts.fallback": None}
     w = World(tmp_path, ephemeris, settings_edits=edits)
-    w.server.fail(FILTERS["pgrb2"], status=503, contains="file=gfs.t06z.pgrb2.0p25.f020")
+    for tens in ("f02", "f03", "f04"):  # steps 20-48
+        w.server.fail(FILTERS["pgrb2"], status=503, contains=f"file=gfs.t06z.pgrb2.0p25.{tens}")
     try:
         w.at(DAY + dt.timedelta(hours=9, minutes=45))
         w.server.outage()
@@ -204,7 +205,7 @@ def test_a_run_near_the_end_of_an_icon_eu_online_window_is_abandoned(tmp_path, e
         verified = json.loads(run["steps_verified"])
         assert all(verified[str(s)] == "ok" for s in range(20))
         assert verified["20"].startswith(f"abandoned ({why}): try 1 of 5 failed")
-        assert verified["21"] == f"abandoned ({why}): not tried yet"
+        assert verified["48"].startswith(f"abandoned ({why}): try 1 of 5 failed")
         assert report.runs == [
             {
                 "model": "gfs",
@@ -235,7 +236,7 @@ def test_a_run_near_the_end_of_an_icon_eu_online_window_is_abandoned(tmp_path, e
 def test_a_main_host_outage_over_an_hour_switches_to_the_fallback_and_back(
     tmp_path, ephemeris, caplog
 ):
-    """NOMADS serves steps 0-20 at 09:45, fails step 21, then goes down. Its failure
+    """NOMADS serves every step but 21 at 09:45, then goes down. Its failure
     counts from 10:00 (the first unanswered check); at 11:00 it has lasted 1 h, so GFS
     switches to the AWS bucket (logged) and the run is finished from there. NOMADS
     answers again at 11:15 and GFS goes back to it (logged). The values are the same as
@@ -249,7 +250,7 @@ def test_a_main_host_outage_over_an_hour_switches_to_the_fallback_and_back(
             w.at(DAY + dt.timedelta(hours=10, minutes=minutes))
         assert w.run(6)["state"] == "partial"
         tries = w.manifest.conn.execute("SELECT * FROM forecast_step_tries").fetchall()
-        assert len(tries) == 22  # 21 steps fetched, step 21 failed once; a dead host costs none
+        assert len(tries) == 49  # one each at 09:45 (step 21 failed); a dead host costs none
         assert w.aws.requests == []  # not yet: the main host has failed for 45 min only
         hosts = dict(w.manifest.conn.execute("SELECT * FROM forecast_hosts").fetchone())
         assert hosts["current"] == "main"
@@ -263,7 +264,7 @@ def test_a_main_host_outage_over_an_hour_switches_to_the_fallback_and_back(
         assert run["state"] == "processed"
         assert json.loads(run["steps_verified"]) == {str(s): "ok" for s in range(49)}
         files = w.manifest.conn.execute("SELECT host, COUNT(*) FROM forecast_files GROUP BY host")
-        assert dict(files.fetchall()) == {"nomads": 42, "aws": 56}  # steps 0-20, 21-48
+        assert dict(files.fetchall()) == {"nomads": 96, "aws": 2}  # step 21 from AWS
         step21 = w.manifest.conn.execute(
             "SELECT host, error IS NULL FROM forecast_step_tries WHERE step = 21 ORDER BY id"
         ).fetchall()
@@ -298,3 +299,53 @@ def test_a_main_host_outage_over_an_hour_switches_to_the_fallback_and_back(
         ref.close()
     assert mixed["steps"] == alone["steps"]
     assert mixed["meta"] == alone["meta"]
+
+
+def test_a_failed_runs_raw_files_go_when_it_is_abandoned_and_nothing_else_is_touched(
+    tmp_path, ephemeris
+):
+    """A 00z run fails its format check at 03:45 and keeps its raw files; the complete
+    06z run at 09:45 is the point it would have been abandoned, so they go then (it
+    stays failed). Files under /staging that aren't a forecast run's raw files (the
+    historical downloads, temp files, and the forecast's own other files) are never
+    deleted."""
+    folder00 = retime_samples(tmp_path / "samples00", 0)
+    drop_messages(folder00 / "gfs.t00z.pgrb2.0p25.f012.grb2", lambda k: k["shortName"] == "vis")
+    publish = [
+        (DAY + dt.timedelta(hours=3, minutes=40), RunRef("gfs", DAY), folder00),
+        (PUBLISHED, SAMPLE_RUN, SAMPLES / "box1deg"),
+    ]
+    w = World(tmp_path / "w", ephemeris, publish=publish)
+    staging = w.paths.root.parent
+    keep = {
+        staging / "grib" / "pl" / "chile" / "2021-01-03.grib": b"GRIB historical",
+        staging / "tmp" / "request-17.part": b"half a download",
+        w.paths.root / "gfs" / "notes.txt": b"not a run's raw file",
+        w.paths.root / "gfs" / "20261126T00Z" / "kongsberg.grb2": b"beside a run folder",
+    }
+    for path, data in keep.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    try:
+        w.at(DAY + dt.timedelta(hours=3, minutes=45))
+        r00 = w.run(0)
+        assert r00["state"] == "failed" and "VIS:surface" in r00["last_error"]
+        raw00 = w.paths.root / "gfs" / "20261126T00Z" / "kongsberg"
+        assert len(list(raw00.glob("*.grb2"))) == 98  # kept for the fix (D51 item 8)
+        w.at(DAY + dt.timedelta(hours=6))
+        assert len(list(raw00.glob("*.grb2"))) == 98  # not abandoned yet
+
+        w.at(DAY + dt.timedelta(hours=9, minutes=45))
+        assert w.run(6)["state"] == "processed"
+        r00 = w.run(0)
+        assert r00["state"] == "failed"  # still says why it failed
+        assert not raw00.exists()
+        files00 = w.manifest.conn.execute(
+            "SELECT raw_deleted_at FROM forecast_files WHERE run_id = ?", (r00["id"],)
+        ).fetchall()
+        assert all(f[0] == "2026-11-26T09:45:00+00:00" for f in files00)
+        assert not any(w.paths.root.rglob("*/kongsberg/*.grb2"))
+        for path, data in keep.items():
+            assert path.read_bytes() == data, path
+    finally:
+        w.close()

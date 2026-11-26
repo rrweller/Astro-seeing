@@ -1,0 +1,324 @@
+{
+ "provider": "MET Norway, MEPS deterministic 2.5 km (MetCoOp), via THREDDS OPeNDAP; CC BY 4.0 and NLOD; based on data from MET Norway",
+ "fetched_at": "2026-11-26T15:21:21+00:00",
+ "run": "2026-11-26T06:00:00+00:00",
+ "box": {
+  "west": 9.55,
+  "east": 9.75,
+  "south": 59.6,
+  "north": 59.72
+ },
+ "steps_h": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23,
+  24,
+  25,
+  26,
+  27,
+  28,
+  29,
+  30,
+  31,
+  32,
+  33,
+  34,
+  35,
+  36,
+  37,
+  38,
+  39,
+  40,
+  41,
+  42,
+  43,
+  44,
+  45,
+  46,
+  47,
+  48
+ ],
+ "files": {
+  "meps_20261126T06Z.das": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.das",
+   "bytes": 108045,
+   "sha256": "f82048db153e383bd3a9e27a3222bd3734503dbcd9304a8b078f6018106947d5"
+  },
+  "meps_20261126T06Z_axes.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?x,y",
+   "bytes": 8201,
+   "sha256": "5078e85478ecf7c66ce86bd62d08c5df985be586a3600def4cd4173831547f1d"
+  },
+  "meps_20261126T06Z_grid.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?latitude%5B374:1:378%5D%5B302:1:306%5D,longitude%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 878,
+   "sha256": "0e29f2d06dc2a5f8f7cb8a6e614d06c75c1e6e7dc7d9293f3d27fd105de6e9bd"
+  },
+  "meps_20261126T06Z_f000.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B0:1:0%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B0:1:0%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B0:1:0%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B0:1:0%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B0:1:0%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B0:1:0%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "c3d633ac8a33124d3f786b815f450bf048719ade2a8ea71a0161a725712d642b"
+  },
+  "meps_20261126T06Z_f001.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B1:1:1%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B1:1:1%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B1:1:1%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B1:1:1%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B1:1:1%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B1:1:1%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "2e684c114e4741ef63fb5968a3dfc4f917b76107f4401c57445fb4897655d803"
+  },
+  "meps_20261126T06Z_f002.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B2:1:2%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B2:1:2%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B2:1:2%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B2:1:2%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B2:1:2%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B2:1:2%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "b7163423fbed0c311f1efbe448c9b3d59636215c74eb5b602e9bed72174daa5b"
+  },
+  "meps_20261126T06Z_f003.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B3:1:3%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B3:1:3%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B3:1:3%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B3:1:3%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B3:1:3%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B3:1:3%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "42bbc10d6c23ea76e21af1ed434f9e0d1504ce9f4f5739316dfe1988c08e6d71"
+  },
+  "meps_20261126T06Z_f004.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B4:1:4%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B4:1:4%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B4:1:4%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B4:1:4%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B4:1:4%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B4:1:4%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "0a36e280d47b9d71652b815ba3ae9379edc578da90297a97c0f640976487f44d"
+  },
+  "meps_20261126T06Z_f005.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B5:1:5%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B5:1:5%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B5:1:5%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B5:1:5%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B5:1:5%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B5:1:5%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "bfff4964d45783e2cffe1144be91907b9d03501f8761b1b845d7031cdac93fbb"
+  },
+  "meps_20261126T06Z_f006.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B6:1:6%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B6:1:6%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B6:1:6%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B6:1:6%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B6:1:6%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B6:1:6%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "0552a9d562dea92e87960926afb0f2bd14b5443fb8f18599bac31389d3f1f515"
+  },
+  "meps_20261126T06Z_f007.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B7:1:7%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B7:1:7%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B7:1:7%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B7:1:7%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B7:1:7%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B7:1:7%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "f2b15145691329df293f14a8206a9b58e7b0d83861093ceac5465ed21852cbcc"
+  },
+  "meps_20261126T06Z_f008.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B8:1:8%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B8:1:8%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B8:1:8%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B8:1:8%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B8:1:8%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B8:1:8%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "81d2252fb86fa3ef574236a402153e6419cacced52c1037ac32834f35f1cac91"
+  },
+  "meps_20261126T06Z_f009.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B9:1:9%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B9:1:9%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B9:1:9%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B9:1:9%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B9:1:9%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B9:1:9%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "a2252d4b433fe43044e9b2727ca36e66f659a500db3e8a691352325c4bd9a393"
+  },
+  "meps_20261126T06Z_f010.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B10:1:10%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B10:1:10%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B10:1:10%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B10:1:10%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B10:1:10%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B10:1:10%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "d750cec5d839c1fdfc7931d70c8c610ac6cbd3f7302c415232a49f80f9f6cc8f"
+  },
+  "meps_20261126T06Z_f011.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B11:1:11%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B11:1:11%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B11:1:11%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B11:1:11%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B11:1:11%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B11:1:11%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "a690ca20fd1a4429699292259554df21cc86e14ce7eb32e511894c0cdde0aabc"
+  },
+  "meps_20261126T06Z_f012.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B12:1:12%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B12:1:12%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B12:1:12%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B12:1:12%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B12:1:12%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B12:1:12%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "b2e62d6839a3b65ec8491bb35c61f39002da1d6717e9e6a7028340e73a04d3e3"
+  },
+  "meps_20261126T06Z_f013.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B13:1:13%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B13:1:13%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B13:1:13%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B13:1:13%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B13:1:13%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B13:1:13%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "2b7ba7f1b47fc419f0741ade18aa6e2b674f68335709e19554b05adc42484021"
+  },
+  "meps_20261126T06Z_f014.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B14:1:14%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B14:1:14%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B14:1:14%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B14:1:14%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B14:1:14%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B14:1:14%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "47eddca546e46c85b12d98798b6153c4a25bea623ea42e60cbe4459a0947fcf0"
+  },
+  "meps_20261126T06Z_f015.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B15:1:15%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B15:1:15%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B15:1:15%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B15:1:15%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B15:1:15%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B15:1:15%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "809fe5287b0c409ae7d74316ba6db7180e993cdfc7681a20e87c6749b3e8a4f6"
+  },
+  "meps_20261126T06Z_f016.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B16:1:16%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B16:1:16%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B16:1:16%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B16:1:16%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B16:1:16%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B16:1:16%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "9c26fc31b196e3f3f585965a850e621b63195f3585ca4ed464d3fbc093eaf8b1"
+  },
+  "meps_20261126T06Z_f017.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B17:1:17%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B17:1:17%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B17:1:17%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B17:1:17%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B17:1:17%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B17:1:17%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "b3b5e12365c3dfd2c3ccdc2c8845f7dc07a276ed08535e06f411c3a2c61f2258"
+  },
+  "meps_20261126T06Z_f018.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B18:1:18%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B18:1:18%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B18:1:18%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B18:1:18%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B18:1:18%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B18:1:18%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "f36fe122e41c36ad0d9a87ef44e1b86fb0e540f717c0f8b4e387eb9daee38bb6"
+  },
+  "meps_20261126T06Z_f019.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B19:1:19%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B19:1:19%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B19:1:19%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B19:1:19%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B19:1:19%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B19:1:19%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "0d03cac43fc053e32d377a4a3daab668cd1a99330371d4f2f2ac7de69c8b7d8b"
+  },
+  "meps_20261126T06Z_f020.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B20:1:20%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B20:1:20%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B20:1:20%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B20:1:20%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B20:1:20%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B20:1:20%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "f1a7c3e7942e3677337e69037608d50ca813ed359468f8a4b781e9211836b345"
+  },
+  "meps_20261126T06Z_f021.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B21:1:21%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B21:1:21%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B21:1:21%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B21:1:21%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B21:1:21%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B21:1:21%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "5c1e0b7405d4c15d02e4d93e27e7bedb552526ddc3d20cd71ac3da9c03cdbc82"
+  },
+  "meps_20261126T06Z_f022.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B22:1:22%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B22:1:22%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B22:1:22%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B22:1:22%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B22:1:22%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B22:1:22%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "ce14b3e49e974b7a61c98abbac6d394b3ce16e00d5dac070ed166239ebc6f844"
+  },
+  "meps_20261126T06Z_f023.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B23:1:23%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B23:1:23%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B23:1:23%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B23:1:23%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B23:1:23%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B23:1:23%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "060956a8c6a40e7fe88e30d66a1e60d908d265c9aa7790f56b75ae69ebd334c0"
+  },
+  "meps_20261126T06Z_f024.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B24:1:24%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B24:1:24%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B24:1:24%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B24:1:24%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B24:1:24%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B24:1:24%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "ec40b292f9d3c8af938f638b1df45a2dc2aa0a8a7a7f7b445c8adcef856ca6a4"
+  },
+  "meps_20261126T06Z_f025.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B25:1:25%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B25:1:25%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B25:1:25%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B25:1:25%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B25:1:25%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B25:1:25%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "faae6d0d131ea82d6ee0f85410a0b2f46532cf8eda7c3399693958ca5bd87864"
+  },
+  "meps_20261126T06Z_f026.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B26:1:26%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B26:1:26%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B26:1:26%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B26:1:26%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B26:1:26%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B26:1:26%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "15adc3eab6b7b38426069843e3ce19df57371fe44ef1f6a7813f203f362af4ac"
+  },
+  "meps_20261126T06Z_f027.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B27:1:27%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B27:1:27%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B27:1:27%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B27:1:27%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B27:1:27%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B27:1:27%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "8b3250703e5b760668cf432e51d27dd6df95560dd4df7ab87326f1b988da2bd6"
+  },
+  "meps_20261126T06Z_f028.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B28:1:28%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B28:1:28%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B28:1:28%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B28:1:28%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B28:1:28%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B28:1:28%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "217a546efb55ce0407794d9a5b70df523e559169cace8101467d510ebc4222fc"
+  },
+  "meps_20261126T06Z_f029.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B29:1:29%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B29:1:29%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B29:1:29%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B29:1:29%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B29:1:29%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B29:1:29%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "4b156bd7948b99ae2a514c61c582dc27053e3361cb18f532493256d78b9085c8"
+  },
+  "meps_20261126T06Z_f030.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B30:1:30%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B30:1:30%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B30:1:30%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B30:1:30%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B30:1:30%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B30:1:30%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "742478e898d75b47d9c963f19f35596797b73e978cf480cb85b664adbd080891"
+  },
+  "meps_20261126T06Z_f031.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B31:1:31%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B31:1:31%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B31:1:31%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B31:1:31%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B31:1:31%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B31:1:31%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "460048b7da6d420f3d91d17f69e725ed9accb62812cda2741e54ef2d46dc8b16"
+  },
+  "meps_20261126T06Z_f032.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B32:1:32%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B32:1:32%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B32:1:32%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B32:1:32%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B32:1:32%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B32:1:32%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "be35ccac0d15cf8cf0765cd9a3b529d8d52926de2b49b53e465ca0f3a859af6e"
+  },
+  "meps_20261126T06Z_f033.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B33:1:33%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B33:1:33%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B33:1:33%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B33:1:33%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B33:1:33%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B33:1:33%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "84907b1f2d1dfbe3ae93aadba2419b3dcf5f3eae4b796f784c7f2b33e3c9c6f1"
+  },
+  "meps_20261126T06Z_f034.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B34:1:34%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B34:1:34%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B34:1:34%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B34:1:34%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B34:1:34%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B34:1:34%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "3edeb1a7c86a2c40fd289590619b3faaba6faff922fe058a492e2f8b612e7572"
+  },
+  "meps_20261126T06Z_f035.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B35:1:35%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B35:1:35%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B35:1:35%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B35:1:35%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B35:1:35%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B35:1:35%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "a786cbd1055f19e4b792995cd9476fa21e9582381c3279b37fa3a29f2500a3e2"
+  },
+  "meps_20261126T06Z_f036.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B36:1:36%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B36:1:36%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B36:1:36%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B36:1:36%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B36:1:36%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B36:1:36%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "cd222625ef5b00d464ba37160ff1535c5b5eaeda84a35ddf9e745fa7369914ed"
+  },
+  "meps_20261126T06Z_f037.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B37:1:37%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B37:1:37%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B37:1:37%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B37:1:37%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B37:1:37%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B37:1:37%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "7eb9d4b3de32176988aceb5568ec9d794116eb8a0c24c047385c10a47943a22d"
+  },
+  "meps_20261126T06Z_f038.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B38:1:38%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B38:1:38%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B38:1:38%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B38:1:38%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B38:1:38%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B38:1:38%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "b108f6eb67da29d60cf4edd0a5016c80c37af9a1189f791805fcee012b603baf"
+  },
+  "meps_20261126T06Z_f039.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B39:1:39%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B39:1:39%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B39:1:39%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B39:1:39%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B39:1:39%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B39:1:39%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "4919418b24521f5ea76c87aced3c513de80a5b128f9b5da31a4c4a73cd2c7411"
+  },
+  "meps_20261126T06Z_f040.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B40:1:40%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B40:1:40%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B40:1:40%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B40:1:40%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B40:1:40%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B40:1:40%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "3536f606392163cb0399231e88fc418b90635e12d435f65b0de8be34a0453ba7"
+  },
+  "meps_20261126T06Z_f041.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B41:1:41%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B41:1:41%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B41:1:41%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B41:1:41%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B41:1:41%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B41:1:41%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "6f4a1dbc00bf1d84d3b151bb5e0769d87cb8990200cd4b1973e6af196d87610e"
+  },
+  "meps_20261126T06Z_f042.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B42:1:42%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B42:1:42%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B42:1:42%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B42:1:42%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B42:1:42%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B42:1:42%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "ee1b42133dd3903cd8f0465cea82e9a1ea1e30fadac0c7f97368c47f4d240cc4"
+  },
+  "meps_20261126T06Z_f043.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B43:1:43%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B43:1:43%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B43:1:43%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B43:1:43%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B43:1:43%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B43:1:43%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "d3655686f64578f9158514256e5bbee245787bf0f1423dad593243b4972566ca"
+  },
+  "meps_20261126T06Z_f044.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B44:1:44%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B44:1:44%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B44:1:44%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B44:1:44%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B44:1:44%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B44:1:44%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "8b95b0bc1a8bda7c902029b4c28d8e94e48d6b1fe708df469b68912ede6d9a29"
+  },
+  "meps_20261126T06Z_f045.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B45:1:45%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B45:1:45%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B45:1:45%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B45:1:45%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B45:1:45%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B45:1:45%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "b39f4bbf4a66a7289106f181fc275e17e69baf9e2109f0696bbe3ba3e9b4393e"
+  },
+  "meps_20261126T06Z_f046.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B46:1:46%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B46:1:46%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B46:1:46%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B46:1:46%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B46:1:46%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B46:1:46%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "644cade5b9299424ce55b32082f1129de9250b62818f5d7895a3267d56bbd8eb"
+  },
+  "meps_20261126T06Z_f047.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B47:1:47%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B47:1:47%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B47:1:47%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B47:1:47%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B47:1:47%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B47:1:47%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "805073e75a048dc7c01d419decde6695fbbfb8f938d70e903e7f3f9f55b97a62"
+  },
+  "meps_20261126T06Z_f048.dods": {
+   "target": "/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dods?forecast_reference_time,geopotential_pl%5B48:1:48%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,air_temperature_pl%5B48:1:48%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,x_wind_pl%5B48:1:48%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,y_wind_pl%5B48:1:48%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,low_type_cloud_area_fraction%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,medium_type_cloud_area_fraction%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,high_type_cloud_area_fraction%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_air_pressure%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,surface_geopotential%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,cloud_area_fraction_pl%5B48:1:48%5D%5B0:1:12%5D%5B374:1:378%5D%5B302:1:306%5D,fog_area_fraction%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D,visibility_in_air%5B48:1:48%5D%5B0:1:0%5D%5B374:1:378%5D%5B302:1:306%5D",
+   "bytes": 12225,
+   "sha256": "b1a0a3683b4e198900894940358941b176ab08f31450808bcd16cb1ec330328b"
+  }
+ }
+}

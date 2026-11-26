@@ -100,12 +100,16 @@ class World:
         return tick(
             now,
             self.settings,
-            {"gfs": self.gfs},
+            self.adapters(),
             self.manifest,
             self.paths,
             ephemeris=self.ephemeris,
             build=BUILD,
         )
+
+    def adapters(self) -> dict:
+        """The adapters each tick gets (a test world with more models adds to them)."""
+        return {"gfs": self.gfs}
 
     def latest(self) -> dict:
         return json.loads(self.paths.latest.read_text())

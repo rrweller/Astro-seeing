@@ -19,15 +19,17 @@ twice, raises :class:`FormatMismatch`.
 ``read`` decodes the GRIB2 messages by their WMO code numbers (discipline, category,
 parameter, surface type), not by eccodes' short names, and refuses anything other than
 the expected content with :class:`FormatMismatch`: a missing or duplicated field, an
-unknown one, another grid, run or step. A global 0.25° field (the AWS bucket's) is cut
-to the area's points as it is decoded; any other grid must be the area's own. The filter's cross product of variables and
+unknown one, another grid, run or step. The filter's cross product of variables and
 levels also returns two kinds of message we never read, and these are the only ones
 skipped, each counted in the log: the 6-hour (and shorter) average cloud covers (D48
 item 1: the instantaneous values are used) and the skin temperature ``TMP:surface``.
+A global 0.25° field (the AWS bucket's) is cut to the area's points as it is decoded;
+any other grid must be the area's own.
 """
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
 import hashlib
 import logging
@@ -35,15 +37,14 @@ import math
 import re
 import time
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlencode
 
 import numpy as np
 
-from astroseeing.forecast.http import HttpClient, HttpError
-from astroseeing.forecast.store import write_atomic
+from astroseeing.forecast.http import HttpClient, HttpError, RatePacer
 from astroseeing.forecast.settings import Area, Model
 from astroseeing.forecast.sources.interface import (
     FetchedFile,
@@ -52,6 +53,7 @@ from astroseeing.forecast.sources.interface import (
     RunFields,
     RunRef,
 )
+from astroseeing.forecast.store import write_atomic
 
 log = logging.getLogger(__name__)
 
@@ -105,6 +107,7 @@ FOG_FIELDS = {"visibility_m": ("VIS", "surface")}
 IGNORED_INSTANT = frozenset({("TMP", "surface", None)})
 IGNORED_AVERAGES = frozenset({(v, s, None) for v, s in LAYER_CLOUD.values()})
 
+
 @dataclass(frozen=True)
 class IdxRecord:
     """One message listed in an AWS ``.idx``: its number, byte range (``end`` None: to
@@ -120,27 +123,6 @@ class IdxRecord:
 
 _FILE_RE = re.compile(r"gfs\.t(\d\d)z\.(pgrb2b?)\.0p25\.f(\d{3})\.grb2$")
 _GRID_TOL = 1e-6
-
-
-class RatePacer:
-    """Spaces request starts at least ``1 / max_per_s`` seconds apart (D51 item 14)."""
-
-    def __init__(
-        self,
-        max_per_s: float | None,
-        monotonic: Callable[[], float] = time.monotonic,
-        sleep: Callable[[float], None] = time.sleep,
-    ):
-        self.interval = 0.0 if not max_per_s else 1.0 / max_per_s
-        self.monotonic, self.sleep = monotonic, sleep
-        self._last: float | None = None
-
-    def wait(self) -> None:
-        if self._last is not None:
-            gap = self._last + self.interval - self.monotonic()
-            if gap > 0:
-                self.sleep(gap)
-        self._last = self.monotonic()
 
 
 @dataclass(frozen=True)
@@ -248,8 +230,11 @@ class GfsAdapter:
         host = self.model.hosts.fallback
         if host is None:
             raise ValueError(f"{self.model.id} has no fallback host in the settings")
-        url = (self.fallback_url or host.url).rstrip("/")
-        return replace_host(self, host, url, RatePacer(host.max_requests_per_s))
+        other = copy.copy(self)
+        other.host = host
+        other.base_url = (self.fallback_url or host.url).rstrip("/")
+        other.pacer = RatePacer(host.max_requests_per_s)
+        return other
 
     @property
     def on_aws(self) -> bool:
@@ -549,14 +534,6 @@ class GfsAdapter:
             model_ground_m=ground[0],
             fog={name: single(*FOG_FIELDS[name]) for name in self.model.fog_signals},
         )
-
-
-def replace_host(adapter: GfsAdapter, host, base_url: str, pacer: RatePacer) -> GfsAdapter:
-    """A copy of ``adapter`` whose requests go to ``host`` at ``base_url``."""
-    other = object.__new__(GfsAdapter)
-    other.__dict__.update(adapter.__dict__)
-    other.host, other.base_url, other.pacer = host, base_url, pacer
-    return other
 
 
 def _idx_names(key: tuple) -> tuple[str, str]:

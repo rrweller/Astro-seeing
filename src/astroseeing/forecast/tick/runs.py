@@ -1,11 +1,11 @@
 """Working a run through the tick: steps fetched with retries, processing, abandoning
 and raw-file deletion (F1 spec Modules 2 and 8; D51 items 5 and 7; tickets #51, #58).
 
-A run is worked over as many ticks as it needs. Each tick fetches its steps one at a
-time from the host ``tick.hosts`` picked, only those the run rules say are ready
-(``verify.rules``: at most 5 tries per step, at least 1 min apart), and stops at the
-first step that fails, so a host that has just gone down costs one try, not one per
-step. Every try is recorded in ``forecast_step_tries``.
+A run is worked over as many ticks as it needs. Each tick asks the adapter, in one
+``fetch``, for the steps the run rules say are ready (``verify.rules``: at most 5 tries
+per step, at least 1 min apart), from the host ``tick.hosts`` picked; a host that
+didn't answer the tick's first check isn't asked at all, so an outage costs no tries.
+Every try of every step is recorded in ``forecast_step_tries``.
 
 A tick that fetched new steps reads, verifies and stores the run from **all** its
 fetched files, so a partial run counts for its verified steps at once and gains the
@@ -119,28 +119,26 @@ class RunWork:
                 rec.transition(run.id, ("seen",), "fetching", at=self.now, increment_attempts=True)
             else:
                 rec.count_attempt(run.id, at=self.now)
-        for step in ready:
+        if ready:
             tried = True
             try:
-                got = pick.adapter.fetch(ref, area, (step,), dest)
+                got = pick.adapter.fetch(ref, area, tuple(sorted(ready)), dest)
             except FormatMismatch as e:
                 return self._fail(run.id, ref, area, places, str(e))
             except Exception as e:  # recorded and logged, never left half-done
                 return self._fail(run.id, ref, area, places, f"fetch error: {e!r}")
-            if step in got.missing_steps:
-                why = got.missing_steps[step]
-                _delete_files(got.files, dest)  # a half-fetched step is fetched again whole
-                rec.add_try(run.id, step, pick.host, self.now, why)
-                n = len(rec.tries(run.id)[step])
-                log.info(  # the adapter has logged the error itself
-                    "%s %s %s step %d: try %d of %d on %s failed; no more fetching this tick",
-                    model.id, area.id, ref.label, step, n, rules.file_retries, pick.host,
-                )  # fmt: skip
-                break  # stop at the first failure: the next tick carries on
-            rec.add_try(run.id, step, pick.host, self.now, None)
-            for f in got.files:
+            for f in got.files:  # a failed step's other files too: fetched again whole
                 rec.add_file(run.id, f, at=self.now)
-            new.append(step)
+            for step in sorted(ready):
+                why = got.missing_steps.get(step)
+                rec.add_try(run.id, step, pick.host, self.now, why)
+                if why is None:
+                    new.append(step)
+            if got.missing_steps:
+                log.info(  # the adapter has logged each error itself
+                    "%s %s %s: %d of %d steps tried on %s failed this tick",
+                    model.id, area.id, ref.label, len(got.missing_steps), len(ready), pick.host,
+                )  # fmt: skip
 
         status = step_status(steps, rec.tries(run.id), rules)
         run = rec.get(run.id)

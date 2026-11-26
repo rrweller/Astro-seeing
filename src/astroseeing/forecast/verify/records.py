@@ -283,12 +283,15 @@ class ForecastRecords:
         ).fetchall()
 
     def raw_files(self, run_id: int) -> list[FetchedFile]:
-        """The run's recorded files whose raw copy has not been deleted."""
-        return [
-            FetchedFile(r["url"], r["host"], Path(r["path"]), r["bytes"], r["seconds"], r["sha256"])
-            for r in self.files(run_id)
-            if r["raw_deleted_at"] is None
-        ]
+        """The run's recorded files whose raw copy has not been deleted; a path fetched
+        again (a retried step) counts once, as its latest fetch."""
+        latest = {}
+        for r in self.files(run_id):
+            if r["raw_deleted_at"] is None:
+                latest[r["path"]] = FetchedFile(
+                    r["url"], r["host"], Path(r["path"]), r["bytes"], r["seconds"], r["sha256"]
+                )
+        return list(latest.values())
 
     def mark_files_verified(self, run_id: int) -> None:
         with self.manifest.tx() as c:

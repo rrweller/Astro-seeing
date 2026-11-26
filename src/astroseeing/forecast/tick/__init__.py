@@ -45,6 +45,7 @@ from astroseeing.forecast.settings import ForecastSettings, Place
 from astroseeing.forecast.sources.gfs import GfsAdapter
 from astroseeing.forecast.sources.ifs import IfsAdapter
 from astroseeing.forecast.sources.interface import RunRef, SourceAdapter
+from astroseeing.forecast.sources.meps import MepsAdapter
 from astroseeing.forecast.store import PlaceStore, utc_text
 from astroseeing.forecast.tick.hosts import pick_host
 from astroseeing.forecast.tick.runs import RunWork
@@ -147,10 +148,11 @@ def tick_lock(path: Path) -> Iterator[None]:
 
 
 def default_adapters(settings: ForecastSettings, http: HttpClient) -> dict[str, SourceAdapter]:
-    """The adapters that exist so far (ticket #51: GFS; ticket #56: IFS)."""
+    """The adapters that exist so far (ticket #51: GFS; ticket #56: IFS; ticket #57: MEPS)."""
     return {
         "gfs": GfsAdapter(settings.models["gfs"], http, settings.areas),
         "ifs": IfsAdapter(settings.models["ifs"], http, settings.areas),
+        "meps": MepsAdapter(settings.models["meps"], http, settings.areas),
     }
 
 
@@ -215,7 +217,7 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
         for model_id in area.models:
             adapter = adapters.get(model_id)
             if adapter is None:
-                continue  # no adapter yet (ICON-EU, MEPS: tickets #55 and #57)
+                continue  # no adapter yet (ICON-EU: ticket #55)
             model = settings.models[model_id]
             if model_id not in picks:  # one host check per model and tick
                 picks[model_id] = pick_host(model, adapter, records, settings.run_rules, now)

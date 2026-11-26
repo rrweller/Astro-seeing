@@ -82,7 +82,7 @@ def test_an_index_without_a_needed_message_is_a_format_mismatch(tmp_path, hosts)
     with pytest.raises(FormatMismatch, match="VIS:surface"):
         aws.aws_selection(no_vis, SAMPLE_RUN, "pgrb2", 12)
     twice = "\n".join([*lines, lines[9].replace("10:", "744:", 1)])
-    with pytest.raises(FormatMismatch, match="VIS:surface.*twice"):
+    with pytest.raises(FormatMismatch, match=r"VIS:surface.*twice"):
         aws.aws_selection(twice, SAMPLE_RUN, "pgrb2", 12)
 
 
@@ -102,8 +102,18 @@ def test_a_run_from_the_fallback_reads_the_same_as_from_nomads(tmp_path, hosts):
     assert not fetched.missing_steps and len(fetched.files) == 6
     assert all(f.host == "aws" and f.url.startswith(bucket.url + DAY_DIR) for f in fetched.files)
     got = aws.read(fetched)
-    for name in ("geopotential_height_m", "temperature_k", "u_ms", "v_ms", "level_cloud_pct",
-                 "total_cloud_pct", "low_cloud_pct", "surface_pressure_hpa", "model_ground_m"):  # fmt: skip
+    names = (
+        "geopotential_height_m",
+        "temperature_k",
+        "u_ms",
+        "v_ms",
+        "level_cloud_pct",
+        "total_cloud_pct",
+        "low_cloud_pct",
+        "surface_pressure_hpa",
+        "model_ground_m",
+    )
+    for name in names:
         np.testing.assert_array_equal(getattr(got, name), getattr(ref, name))
     np.testing.assert_array_equal(got.fog["visibility_m"], ref.fog["visibility_m"])
     # one index and ranged GETs per file; nothing else, nothing to NOMADS
@@ -140,13 +150,19 @@ def globalise(nomads_file: Path) -> bytes:
                 whole = np.full((721, 1440), 9999.0)
                 r0, c0 = round((90 - north) / 0.25), round(west / 0.25)
                 whole[r0 : r0 + nj, c0 : c0 + ni] = rows
-                for key, value in (("jScansPositively", 0), ("Ni", 1440), ("Nj", 721),
-                                   ("latitudeOfFirstGridPointInDegrees", 90.0),
-                                   ("latitudeOfLastGridPointInDegrees", -90.0),
-                                   ("longitudeOfFirstGridPointInDegrees", 0.0),
-                                   ("longitudeOfLastGridPointInDegrees", 359.75),
-                                   ("bitmapPresent", 1), ("missingValue", 9999.0),
-                                   ("packingType", "grid_ieee"), ("precision", 2)):  # fmt: skip
+                for key, value in (
+                    ("jScansPositively", 0),
+                    ("Ni", 1440),
+                    ("Nj", 721),
+                    ("latitudeOfFirstGridPointInDegrees", 90.0),
+                    ("latitudeOfLastGridPointInDegrees", -90.0),
+                    ("longitudeOfFirstGridPointInDegrees", 0.0),
+                    ("longitudeOfLastGridPointInDegrees", 359.75),
+                    ("bitmapPresent", 1),
+                    ("missingValue", 9999.0),
+                    ("packingType", "grid_ieee"),
+                    ("precision", 2),
+                ):
                     ec.codes_set(h, key, value)
                 ec.codes_set_values(h, whole.ravel())
                 out += ec.codes_get_message(h)
@@ -172,6 +188,12 @@ def test_global_fields_from_the_bucket_are_cut_to_the_area(tmp_path, hosts):
     assert got.grid_shape == ref.grid_shape == (5, 5)
     np.testing.assert_array_equal(got.lat, ref.lat)
     np.testing.assert_array_equal(got.lon, ref.lon)
-    for name in ("temperature_k", "geopotential_height_m", "u_ms", "total_cloud_pct",
-                 "surface_pressure_hpa", "model_ground_m"):  # fmt: skip
+    for name in (
+        "temperature_k",
+        "geopotential_height_m",
+        "u_ms",
+        "total_cloud_pct",
+        "surface_pressure_hpa",
+        "model_ground_m",
+    ):
         np.testing.assert_array_equal(getattr(got, name), getattr(ref, name))

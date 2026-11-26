@@ -118,9 +118,7 @@ def aws_file(nomads_file: Path, run: RunRef) -> tuple[bytes, str]:
     return body, "\n".join(lines) + "\n"
 
 
-def serve_aws_samples(
-    server, steps, folder: Path | None = None, run: RunRef = SAMPLE_RUN
-) -> None:
+def serve_aws_samples(server, steps, folder: Path | None = None, run: RunRef = SAMPLE_RUN) -> None:
     """Serve the samples where the AWS bucket keeps each step's two files and their
     ``.idx`` (``/gfs.YYYYMMDD/HH/atmos/gfs.tHHz.pgrb2.0p25.fNNN``, no area cut)."""
     folder = folder or SAMPLES / "box1deg"
