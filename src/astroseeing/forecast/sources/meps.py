@@ -43,6 +43,7 @@ from typing import Any
 
 import numpy as np
 
+from astroseeing.constants import G0
 from astroseeing.forecast.http import HttpClient, HttpError
 from astroseeing.forecast.settings import Area, Model
 from astroseeing.forecast.sources.dap2 import (
@@ -71,9 +72,6 @@ CREDIT = "MEPS: Based on data from MET Norway (CC BY 4.0, NLOD)"
 
 CATALOGUE = "/thredds/catalog/mepslatest/catalog.xml"
 DAP_DIR = "/thredds/dodsC/mepslatest/"
-
-#: Standard gravity (m s⁻²), turning geopotential into geopotential height (WMO).
-G0 = 9.80665
 
 #: RunFields name → (THREDDS variable, its expected units).
 LEVEL_VARS = {
