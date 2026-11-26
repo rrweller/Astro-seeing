@@ -78,13 +78,14 @@
     "tonight": {
       "description": "A direct serialisation of forecast.tonight's Tonight (D48).",
       "type": "object",
-      "required": ["night", "basis", "started", "counted_hours", "clear_hours",
+      "required": ["night", "basis", "started", "current_hour", "counted_hours", "clear_hours",
                    "incomplete_hours", "chips", "seeing", "meps", "nothing_to_count", "runs"],
       "additionalProperties": false,
       "properties": {
         "night": {"description": "The Night, named by the date of its evening.", "$ref": "#/$defs/date"},
         "basis": {"description": "Which hours are counted: dark time, else Sun below -12 deg, else Sun down (D48 item 2).", "enum": ["dark", "sun_below_12", "sun_down"]},
         "started": {"description": "Tonight has started, so the headline says 'left'.", "type": "boolean"},
+        "current_hour": {"description": "The hour containing now (a step at hh:00 counts until hh:30, D48 item 3), or null before Tonight begins.", "$ref": "#/$defs/utc_time_or_null"},
         "counted_hours": {"description": "n: counted hours from the current hour on.", "$ref": "#/$defs/count"},
         "clear_hours": {"description": "x: counted hours that are mostly clear.", "$ref": "#/$defs/count"},
         "incomplete_hours": {"description": "k: counted hours with fewer than two families.", "$ref": "#/$defs/count"},

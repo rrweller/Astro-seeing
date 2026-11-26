@@ -9,7 +9,7 @@ import re
 import pytest
 import yaml
 
-from astroseeing.forecast.settings import SettingsError, load_settings
+from astroseeing.forecast.settings import Grid, SettingsError, load_settings
 
 
 def test_committed_settings_hold_the_decided_values():
@@ -33,6 +33,8 @@ def test_committed_settings_hold_the_decided_values():
     assert s.models["gfs"].steps_h == tuple(range(49))
     assert s.models["meps"].regional and not s.models["gfs"].regional  # D45 item 3
     assert s.models["icon_eu"].family == "icon"
+    assert s.models["icon_eu"].grid == Grid("regular_latlon", 0.0625, "deg")  # D60 item 2
+    assert s.models["meps"].grid == Grid("lambert", 2.5, "km")
     assert s.models["ifs"].level_cloud is False  # no cloud fraction on IFS levels
     assert s.models["gfs"].hosts.main.max_requests_per_s == 1  # D51 item 14
     assert s.models["ifs"].hosts.fallback is not None
@@ -50,6 +52,15 @@ def _write(tmp_path, data, name="forecast.yaml"):
     path = tmp_path / name
     path.write_text(yaml.safe_dump(data, sort_keys=False))
     return path
+
+
+def _parent(raw, path):
+    """The mapping that holds the last key of a key path, and that key."""
+    *parents, key = path
+    node = raw
+    for p in parents:
+        node = node[p]
+    return node, key
 
 
 @pytest.fixture
@@ -77,10 +88,7 @@ def test_config_hash_is_stable_and_ignores_layout(tmp_path, raw):
     ],
 )
 def test_a_changed_value_changes_the_hash(tmp_path, raw, path, value):
-    *parents, key = path
-    node = raw
-    for p in parents:
-        node = node[p]
+    node, key = _parent(raw, path)
     node[key] = value
     assert load_settings(_write(tmp_path, raw)).config_hash != load_settings().config_hash
 
@@ -97,10 +105,7 @@ def test_a_changed_value_changes_the_hash(tmp_path, raw, path, value):
     ],
 )
 def test_a_missing_required_value_is_refused_by_name(tmp_path, raw, path):
-    *parents, key = path
-    node = raw
-    for p in parents:
-        node = node[p]
+    node, key = _parent(raw, path)
     del node[key]
     with pytest.raises(SettingsError, match=rf"missing required value {re.escape('.'.join(path))}"):
         load_settings(_write(tmp_path, raw))

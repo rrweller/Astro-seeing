@@ -46,6 +46,15 @@ class Hosts:
 
 
 @dataclass(frozen=True)
+class Grid:
+    """A model's native grid: regular lat-lon (spacing in degrees) or Lambert (km)."""
+
+    kind: str  # "regular_latlon" or "lambert"
+    spacing: float
+    units: str  # "deg" or "km"
+
+
+@dataclass(frozen=True)
 class Model:
     """One forecast model version and what its runs must contain (spec Module 1)."""
 
@@ -58,7 +67,7 @@ class Model:
     publish_delay_h: float
     online_window_h: float
     hosts: Hosts
-    grid: Mapping[str, Any]
+    grid: Grid
     pressure_levels_hpa: tuple[float, ...]  # bottom → top
     level_cloud: bool
     fog_signals: tuple[str, ...]
@@ -148,7 +157,7 @@ class ForecastSettings:
     alerts: Alerts
     eso: Eso
     config_hash: str
-    raw: Mapping[str, Any]  # the file's data, as hashed
+    raw: Mapping[str, Any]  # the file's data, as hashed: treat as read-only
 
 
 def default_settings_path() -> Path:
@@ -162,11 +171,11 @@ def load_settings(path: Path | None = None) -> ForecastSettings:
         raw = yaml.safe_load(path.read_text())
     except yaml.YAMLError as e:
         raise SettingsError(f"forecast settings {path}: not valid YAML: {e}") from e
-    return parse_settings(raw, source=str(path))
+    return _parse_settings(raw, source=str(path))
 
 
-def parse_settings(raw: Any, source: str = "forecast settings") -> ForecastSettings:
-    """Validate already-loaded settings data (``load_settings`` without the file)."""
+def _parse_settings(raw: Any, source: str) -> ForecastSettings:
+    """Validate loaded settings data; ``source`` names the file in error messages."""
     root = _Node(raw, "", source)
     root.text("schema", allowed=(SCHEMA,))
     models = {mid: _model(mid, node) for mid, node in root.map("models").items()}
@@ -230,13 +239,11 @@ def _model(mid: str, n: _Node) -> Model:
     hosts = Hosts(_host(hosts_n.node("main")), _host(fallback) if fallback else None)
     hosts_n.done()
     ex = n.node("expected")
-    grid = ex.node("grid")
-    kind = grid.text("kind", allowed=("regular_latlon", "lambert"))
-    if kind == "regular_latlon":
-        grid_d = {"kind": kind, "spacing_deg": grid.number("spacing_deg", positive=True)}
-    else:
-        grid_d = {"kind": kind, "spacing_km": grid.number("spacing_km", positive=True)}
-    grid.done()
+    g = ex.node("grid")
+    kind = g.text("kind", allowed=("regular_latlon", "lambert"))
+    units = "deg" if kind == "regular_latlon" else "km"
+    grid = Grid(kind, g.number(f"spacing_{units}", positive=True), units)
+    g.done()
     levels = ex.seq("pressure_levels_hpa", (int, float))
     if not levels or any(b <= a for a, b in zip(levels[1:], levels, strict=False)):
         raise ex.error("pressure_levels_hpa must be strictly decreasing (bottom → top)")
@@ -256,7 +263,7 @@ def _model(mid: str, n: _Node) -> Model:
         publish_delay_h=n.number("publish_delay_h", positive=True),
         online_window_h=n.number("online_window_h", positive=True),
         hosts=hosts,
-        grid=grid_d,
+        grid=grid,
         pressure_levels_hpa=tuple(float(p) for p in levels),
         level_cloud=level_cloud,
         fog_signals=fog,

@@ -5,6 +5,7 @@
   "night": "2026-11-26",
   "basis": "dark",
   "started": true,
+  "current_hour": "2026-11-26T18:00:00Z",
   "counted_hours": 12,
   "clear_hours": 5,
   "incomplete_hours": 0,

@@ -73,9 +73,9 @@ class Download:
 
 
 class HttpClient:
-    def __init__(self, timeout_s: float = 60.0, session: requests.Session | None = None):
+    def __init__(self, timeout_s: float = 60.0):
         self.timeout_s = timeout_s
-        self.session = session or requests.Session()
+        self.session = requests.Session()
         self.session.headers["User-Agent"] = user_agent()
 
     def get(self, url: str, *, headers: Mapping[str, str] | None = None,

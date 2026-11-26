@@ -75,7 +75,8 @@ def test_latest_missing_a_required_key_fails(latest, path):
 
 @pytest.mark.parametrize(
     "path",
-    ["tonight", "tonight.basis", "hours.5.models.gfs.cloud", "hours.0.agreement",
+    ["tonight", "tonight.basis", "tonight.current_hour", "hours.5.models.gfs.cloud",
+     "hours.0.agreement",
      "models.ifs.observer_height_m", "moon.rise", "provenance.run_ids", "place.time_zone"],
 )  # fmt: skip
 def test_place_missing_a_required_key_fails(place, path):
