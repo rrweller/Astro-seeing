@@ -69,15 +69,14 @@ def ready_steps(
     rules: RunRules,
     now: dt.datetime,
 ) -> list[int]:
-    """The steps to try now: tries left and the last try at least the spacing ago; the
-    least-tried first, so one failing step never holds up the others."""
+    """The steps to try now, in order: tries left, and the last try at least the
+    spacing ago."""
     spacing = dt.timedelta(minutes=rules.retry_spacing_min)
-    ready = [
+    return [
         s
-        for s in step_status(steps, tries, rules).pending
+        for s in sorted(step_status(steps, tries, rules).pending)
         if not tries.get(s) or now - tries[s][-1].at >= spacing
     ]
-    return sorted(ready, key=lambda s: (len(tries.get(s, ())), s))
 
 
 def window_end_abandon_at(run_time: dt.datetime, model: Model, rules: RunRules) -> dt.datetime:

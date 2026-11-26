@@ -122,14 +122,14 @@ class RunWork:
         if ready:
             tried = True
             try:
-                got = pick.adapter.fetch(ref, area, tuple(sorted(ready)), dest)
+                got = pick.adapter.fetch(ref, area, tuple(ready), dest)
             except FormatMismatch as e:
                 return self._fail(run.id, ref, area, places, str(e))
             except Exception as e:  # recorded and logged, never left half-done
                 return self._fail(run.id, ref, area, places, f"fetch error: {e!r}")
             for f in got.files:  # a failed step's other files too: fetched again whole
                 rec.add_file(run.id, f, at=self.now)
-            for step in sorted(ready):
+            for step in ready:
                 why = got.missing_steps.get(step)
                 rec.add_try(run.id, step, pick.host, self.now, why)
                 if why is None:
