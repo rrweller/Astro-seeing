@@ -1,0 +1,9 @@
+{
+  "name": "astro-seeing-page-tests",
+  "private": true,
+  "description": "Playwright for the forecast page's browser tests (ticket #52). Only CI installs it (npm ci); cloud sessions use the pre-installed Playwright. The page itself has no dependencies.",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

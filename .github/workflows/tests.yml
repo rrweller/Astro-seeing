@@ -32,5 +32,12 @@ jobs:
           cache: true
       - name: Lint (ruff check and format)
         run: pixi run lint
+      # The forecast page's browser tests drive the runner's own Google Chrome through
+      # Playwright for Node, pinned in tests/browser/package-lock.json; nothing else is
+      # downloaded. Under CI those tests fail rather than skip if this is missing (D73).
+      - name: Playwright for the page's browser tests
+        run: npm ci --prefix tests/browser --ignore-scripts
       - name: Tests (pytest, full suite)
         run: pixi run test
+        env:
+          PAGE_TEST_BROWSER_CHANNEL: chrome

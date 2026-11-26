@@ -1,0 +1,240 @@
+/* Tonight's sky: a calm night-blue page for reading at the telescope. The one bold
+   element is the row of hour headers, each coloured by the Sun's height, so the
+   table reads as a strip of sky from afternoon through the night to morning. */
+
+:root {
+  color-scheme: dark;
+  --night: #101a33;
+  --panel: #16223f;
+  --rule: #2a3a62;
+  --ink: #e3e8f2;
+  --muted: #9eabc6;
+  --lamp: #f0b860;          /* a dim lamp: cautions such as "uncalibrated" and "stale" */
+  --sky-day: #9cbbe0;
+  --sky-civil_twilight: #5d80b4;
+  --sky-nautical_twilight: #37558a;
+  --sky-astronomical_twilight: #233a69;
+  --sky-dark: #070d1f;
+  --label-w: 9.5rem;
+  --cell-w: 2.9rem;
+  --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, "URW Palladio L", P052, Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--ink);
+  font: 16px/1.5 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+
+main, .masthead { max-width: 84rem; margin: 0 auto; padding: 0 16px; }
+
+a { color: var(--sky-day); }
+a:focus-visible, summary:focus-visible, .table-wrap:focus-visible {
+  outline: 2px solid var(--lamp);
+  outline-offset: 2px;
+}
+
+/* -- header ----------------------------------------------------------------------- */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  padding-top: 1.75rem;
+  padding-bottom: 1.25rem;
+}
+
+h1 {
+  margin: 0;
+  font: 400 2.6rem/1.05 var(--serif);
+  letter-spacing: 0.01em;
+}
+
+.meta { margin: 0.4rem 0 0; color: var(--muted); max-width: 60ch; }
+
+.updated { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+.banner {
+  margin: 0;
+  padding: 0.7rem 16px;
+  background: var(--lamp);
+  color: #1d1406;
+  font-weight: 600;
+  text-align: center;
+}
+
+.status { color: var(--muted); }
+
+/* -- tonight ---------------------------------------------------------------------- */
+
+h2 {
+  margin: 0.5rem 0 0.25rem;
+  font: 400 1.6rem/1.2 var(--serif);
+}
+
+.note { margin: 0 0 1rem; max-width: 72ch; color: var(--muted); }
+.note strong { color: var(--lamp); font-weight: 600; }
+
+.runs { list-style: none; margin: 0 0 1rem; padding: 0; }
+.runs li { margin: 0.15rem 0; }
+.run-model { font-weight: 600; }
+.stale { color: var(--lamp); font-weight: 600; }
+
+/* The table scrolls sideways inside its box; the page itself never does. */
+.table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9rem;
+}
+
+th, td { padding: 0; }
+
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  width: var(--cell-w);
+  min-width: var(--cell-w);
+  height: 3.6rem;
+  vertical-align: bottom;
+  padding: 0.3rem 0 0.35rem;
+  text-align: center;
+  font-weight: 600;
+  border-bottom: 1px solid var(--rule);
+}
+thead th .hour { display: block; font-size: 1.05rem; }
+thead th .day { display: block; min-height: 1.1em; font-size: 0.72rem; font-weight: 500; }
+
+thead th.sun-day { background: var(--sky-day); color: #13213d; }
+thead th.sun-civil_twilight { background: var(--sky-civil_twilight); color: #f4f7fc; }
+thead th.sun-nautical_twilight { background: var(--sky-nautical_twilight); color: #e8eef9; }
+thead th.sun-astronomical_twilight { background: var(--sky-astronomical_twilight); color: #dde5f4; }
+thead th.sun-dark { background: var(--sky-dark); color: #cfd8ea; }
+
+thead th.corner, tbody th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  width: var(--label-w);
+  min-width: var(--label-w);
+  max-width: var(--label-w);
+  padding: 0.35rem 0.6rem;
+  text-align: left;
+  background: var(--panel);
+  border-right: 1px solid var(--rule);
+}
+thead th.corner { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+
+tbody th[scope="row"] { font-weight: 500; vertical-align: top; }
+.row-note { display: block; color: var(--muted); font-size: 0.74rem; font-weight: 400; line-height: 1.3; }
+
+tbody td {
+  width: var(--cell-w);
+  min-width: var(--cell-w);
+  padding: 0.35rem 0.2rem;
+  text-align: center;
+  vertical-align: middle;
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 45%, transparent);
+}
+
+/* A faint tint of each hour's sky down the whole column. */
+tbody td.sun-day { background: color-mix(in srgb, var(--sky-day) 14%, var(--panel)); }
+tbody td.sun-civil_twilight { background: color-mix(in srgb, var(--sky-civil_twilight) 16%, var(--panel)); }
+tbody td.sun-nautical_twilight { background: color-mix(in srgb, var(--sky-nautical_twilight) 18%, var(--panel)); }
+tbody td.sun-astronomical_twilight { background: color-mix(in srgb, var(--sky-astronomical_twilight) 22%, var(--panel)); }
+tbody td.sun-dark { background: color-mix(in srgb, var(--sky-dark) 55%, var(--panel)); }
+
+/* Cloud cells carry a white veil as thick as the cover. */
+tr.cloud td:not(.missing) {
+  background-image: linear-gradient(rgb(255 255 255 / calc(var(--cover, 0) * 0.3)), rgb(255 255 255 / calc(var(--cover, 0) * 0.3)));
+}
+
+td.missing { color: transparent; }
+
+.past { opacity: 0.38; }
+thead th.past { filter: grayscale(0.8); }
+
+tr.model-head th, tr.group-head th {
+  text-align: left;
+  font-weight: 400;
+  background: var(--panel);
+}
+tr.model-head th { padding: 0.9rem 0 0.15rem; border-top: 1px solid var(--rule); }
+tr.model-head:first-child th { border-top: 0; }
+tr.group-head th { padding: 0.55rem 0 0.2rem; }
+
+/* Captions stay in view while the hours scroll under them. */
+.cap {
+  position: sticky;
+  left: 0;
+  display: inline-block;
+  max-width: min(46rem, calc(100vw - 34px));
+  padding: 0 0.6rem;
+}
+.model-name { font: 400 1.25rem/1.2 var(--serif); }
+tr.group-head .cap { color: var(--muted); font-size: 0.85rem; }
+tr.seeing-head .cap { color: var(--ink); font-size: 0.85rem; }
+
+/* -- legend and credits ----------------------------------------------------------- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.legend li { display: flex; align-items: center; gap: 0.4rem; }
+.swatch { display: inline-block; width: 1.1rem; height: 0.8rem; border-radius: 2px; border: 1px solid var(--rule); }
+.swatch.sun-day { background: var(--sky-day); }
+.swatch.sun-civil_twilight { background: var(--sky-civil_twilight); }
+.swatch.sun-nautical_twilight { background: var(--sky-nautical_twilight); }
+.swatch.sun-astronomical_twilight { background: var(--sky-astronomical_twilight); }
+.swatch.sun-dark { background: var(--sky-dark); }
+.swatch.past { background: var(--sky-civil_twilight); opacity: 0.38; }
+
+.credits { margin: 0.8rem 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 0.85rem; }
+
+/* -- panels ----------------------------------------------------------------------- */
+
+.panel {
+  margin: 1.5rem 0 0;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.8rem;
+}
+.panel:last-of-type { margin-bottom: 3rem; }
+summary { cursor: pointer; font: 400 1.2rem/1.3 var(--serif); }
+.panel dl { display: grid; grid-template-columns: minmax(8rem, max-content) 1fr; gap: 0.3rem 1.2rem; margin: 0.8rem 0 0; }
+.panel dt { color: var(--muted); }
+.panel dd { margin: 0; overflow-wrap: anywhere; }
+.source { max-width: 72ch; }
+.source h3 { margin: 1rem 0 0.2rem; font-size: 1rem; }
+.source p { margin: 0.2rem 0; }
+.source-link { overflow-wrap: anywhere; font-size: 0.85rem; }
+
+@media (max-width: 520px) {
+  :root { --label-w: 7.4rem; --cell-w: 2.8rem; }
+  h1 { font-size: 2.1rem; }
+  .panel dl { grid-template-columns: 1fr; gap: 0 0; }
+  .panel dd { margin-bottom: 0.5rem; }
+}
