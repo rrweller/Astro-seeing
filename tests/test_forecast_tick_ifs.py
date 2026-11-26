@@ -11,7 +11,6 @@ import datetime as dt
 import json
 
 import pytest
-from forecast_ifs_samples import SAMPLE_RUN, serve_samples
 
 from astroseeing.forecast.http import HttpClient
 from astroseeing.forecast.schemas import validate
@@ -20,8 +19,10 @@ from astroseeing.forecast.sources.ifs import IfsAdapter
 from astroseeing.forecast.tick import default_adapters, tick
 
 from fake_http import FakeHttpServer
+from forecast_ifs_samples import serve_samples
+from forecast_samples import serve_samples as serve_gfs
 from forecast_samples import small_box_settings
-from forecast_world import BUILD, DAY, World
+from forecast_world import BUILD, DAY, PUBLISHED, World
 
 IFS_PUBLISHED = DAY + dt.timedelta(hours=12, minutes=27)
 
@@ -45,9 +46,6 @@ class IfsWorld(World):
         self.ifs_published = False
 
     def at(self, now: dt.datetime):
-        from forecast_samples import serve_samples as serve_gfs
-        from forecast_world import PUBLISHED
-
         if now >= PUBLISHED and not self.published:
             serve_gfs(self.server, self.gfs, self.area, self.gfs.model.steps_h, folder=self.folder)
             self.published = True
@@ -131,5 +129,5 @@ def test_the_tick_has_an_ifs_adapter_for_both_areas():
     assert isinstance(adapters["ifs"], IfsAdapter)
     assert "ifs" in settings.areas["kongsberg"].models
     assert "ifs" in settings.areas["paranal"].models
+    # both boxes have a saved place, so the tick fetches IFS for both (D72 item 8)
     assert {p.area for p in settings.places.values()} == {"kongsberg", "paranal"}
-    assert SAMPLE_RUN.model == "ifs"

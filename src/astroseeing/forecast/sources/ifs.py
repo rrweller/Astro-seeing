@@ -17,9 +17,9 @@ Steps are 0-48 every 3 h, all four runs a day: ``RunFields`` simply has 3-hourly
 times, and the hours between stay absent (D44, D48 item 4).
 
 The portal and its AWS mirror (``ecmwf-forecasts``, the fallback in the settings) lay
-the files out alike, the mirror without the ``/forecasts`` prefix; which host is used
-is the caller's choice (the switch itself is ticket #58, F1-9). Here every file is tried
-once, and a failed file leaves its step missing, with the reason.
+the files out alike, the mirror without the ``/forecasts`` prefix (``file_path``). The
+adapter fetches from the main host; switching to the mirror is ticket #58 (F1-9). Here
+every file is tried once, and a failed file leaves its step missing, with the reason.
 
 ``read`` identifies messages by ECMWF parameter id, level type and level, checks each
 one's units, run, step and grid, and refuses anything else with :class:`FormatMismatch`:
@@ -112,8 +112,8 @@ def file_path(run: RunRef, step: int, ext: str, host: Host) -> str:
 
 class IfsAdapter:
     """The IFS source (``SourceAdapter``). ``areas`` are the settings' areas (``read``
-    cuts each to its box); ``host`` is the configured host to fetch from (default the
-    main one); ``base_url`` replaces its URL (tests point it at a fake server)."""
+    cuts each to its box); ``base_url`` replaces the configured main host's URL (tests
+    point it at a fake server)."""
 
     credit = CREDIT
 
@@ -123,7 +123,6 @@ class IfsAdapter:
         http: HttpClient | None,
         areas: Mapping[str, Area],
         base_url: str | None = None,
-        host: Host | None = None,
     ):
         if model.grid.kind != "regular_latlon":
             raise ValueError(f"IFS needs a regular lat-lon grid, settings say {model.grid.kind}")
@@ -139,7 +138,7 @@ class IfsAdapter:
         self.model = model
         self.http = http
         self.areas = areas
-        self.host = host or model.hosts.main
+        self.host = model.hosts.main
         self.base_url = (base_url or self.host.url).rstrip("/")
 
     # -- what is needed ------------------------------------------------------------------

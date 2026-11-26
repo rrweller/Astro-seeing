@@ -7,6 +7,13 @@ import json
 
 import numpy as np
 import pytest
+
+from astroseeing.forecast.http import HttpClient
+from astroseeing.forecast.settings import load_settings
+from astroseeing.forecast.sources import FetchedFile, FetchResult, FormatMismatch
+from astroseeing.forecast.sources.ifs import IfsAdapter, file_name, file_path
+
+from fake_http import FakeHttpServer
 from forecast_ifs_samples import (
     PORTAL_DIR,
     SAMPLE_RUN,
@@ -16,13 +23,6 @@ from forecast_ifs_samples import (
     rewrite_step,
     serve_samples,
 )
-
-from astroseeing.forecast.http import HttpClient
-from astroseeing.forecast.settings import load_settings
-from astroseeing.forecast.sources import FetchedFile, FetchResult, FormatMismatch
-from astroseeing.forecast.sources.ifs import IfsAdapter, file_name, file_path
-
-from fake_http import FakeHttpServer
 
 SETTINGS = load_settings()
 IFS = SETTINGS.models["ifs"]
@@ -123,11 +123,38 @@ def portal():
         yield s
 
 
+def assert_only_needed_ranges_asked(portal, steps, folder):
+    """On the fake portal's request log: per step one index GET, then ranged GETs that
+    together cover exactly the sample's needed fields (60 at step 0 with the ground,
+    59 after) and no byte of a field never read (the samples' filler)."""
+    for step in steps:
+        grib = f"{PORTAL_DIR}/{file_name(RUN, step, 'grib2')}"
+        index = f"{PORTAL_DIR}/{file_name(RUN, step, 'index')}"
+        assert sum(r.path == index for r in portal.requests) == 1
+        asked = set()
+        for r in portal.requests:
+            if r.path == grib:
+                a, b = map(int, r.headers["Range"].removeprefix("bytes=").split("-"))
+                asked |= set(range(a, b + 1))
+        data = (folder / file_name(RUN, step, "grib2")).read_bytes()
+        needed = set()
+        for row in read_index(folder / file_name(RUN, step, "index")):
+            start = row["_offset"]
+            if data[start : start + 4] == b"GRIB":
+                needed |= set(range(start, start + row["_length"]))
+        assert asked == needed and len(needed) > 0
+        assert sum(data[r["_offset"] : r["_offset"] + 4] == b"GRIB"
+                   for r in read_index(folder / file_name(RUN, step, "index"))) == (
+            60 if step == 0 else 59
+        )  # fmt: skip
+
+
 def test_reads_the_whole_kongsberg_box_with_13_levels_and_3_hourly_steps(portal, tmp_path):
     ifs = adapter_for(portal)
     serve_samples(portal, (0, 3), "kongsberg")
     fetched = ifs.fetch(SAMPLE_RUN, KONGSBERG, (0, 3), tmp_path / "raw")
     assert not fetched.missing_steps and len(fetched.files) == 2
+    assert_only_needed_ranges_asked(portal, (0, 3), SAMPLES / "kongsberg")
 
     f = ifs.read(fetched)
     assert f.grid_shape == (40, 40)  # 54.75-64.5° N × 4.75-14.5° E, as GFS's
