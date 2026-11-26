@@ -36,7 +36,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · this run: F1-1, then F1-2, F1-4, F1-5, then F1-3 · ticket: none
 
-- `F1-1` · **ready** · cloud · Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas · [#50](https://github.com/rrweller/Astro-seeing/issues/50)
+- `F1-1` · **in-progress** · cloud · Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas · [#50](https://github.com/rrweller/Astro-seeing/issues/50)
 
 - `F1-2` · **blocked** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
 
@@ -251,7 +251,7 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_1 ready
+  class F1_1 inprogress
   %% ---
   class F1_2 blocked
   %% ---
