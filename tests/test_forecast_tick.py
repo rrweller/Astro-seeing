@@ -255,7 +255,7 @@ def test_icon_eu_hours_show_in_the_kongsberg_place_file(tmp_path, ephemeris):
         for h in place["hours"]:  # Tonight is 12 UTC on the 26th to 11 UTC on the 27th
             i = h["models"]["icon_eu"]
             assert i["run_id"] == icon["id"]
-            assert 0 <= i["cloud"]["total_pct"] <= 100.5
+            assert 0 <= i["cloud"]["total_pct"] <= 100
             assert i["seeing"]["osborn_sarazin"]["free_atmosphere_arcsec"] > 0
             assert i["fog"]["visibility_m"] != "absent" and i["fog"]["weather_code"] != "absent"
             assert i["fog"]["fog_fraction_pct"] == "absent"

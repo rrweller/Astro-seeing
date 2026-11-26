@@ -175,7 +175,7 @@ def test_reads_every_step_0_to_48_with_the_20_levels(tmp_path, box_settings, mes
     assert f.surface_pressure_hpa.min() > 800 and f.surface_pressure_hpa.max() < 1060
     for c in (f.total_cloud_pct, f.low_cloud_pct, f.mid_cloud_pct, f.high_cloud_pct,
               f.level_cloud_pct):  # fmt: skip
-        assert c.min() >= 0 and c.max() <= 100.5
+        assert c.min() >= 0 and c.max() <= 100  # the cloud range rule (D95)
     assert f.fog["visibility_m"].min() > 0
     assert set(np.unique(f.fog["weather_code"])) <= set(range(100))  # WMO 4677 codes
     assert f.fog["fog_fraction_pct"] is None and f.fog["dewpoint_depression_2m_k"] is None
