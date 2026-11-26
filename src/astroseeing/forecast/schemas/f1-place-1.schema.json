@@ -124,16 +124,18 @@
           ]
         },
         "meps": {
-          "description": "D48 item 9: the regional-only line, or null where MEPS does not cover the place.",
+          "description": "D48 item 9: the regional-only line, or null where MEPS does not cover the place. counted_hours is Tonight's n; missing_hours are counted hours MEPS has no value for; a stale MEPS run counts every hour as missing (D74 item 10, Riley's choice).",
           "anyOf": [
             {"type": "null"},
             {
               "type": "object",
-              "required": ["clear_hours", "counted_hours"],
+              "required": ["clear_hours", "counted_hours", "missing_hours", "stale"],
               "additionalProperties": false,
               "properties": {
                 "clear_hours": {"$ref": "#/$defs/count"},
-                "counted_hours": {"$ref": "#/$defs/count"}
+                "counted_hours": {"$ref": "#/$defs/count"},
+                "missing_hours": {"$ref": "#/$defs/count"},
+                "stale": {"type": "boolean"}
               }
             }
           ]
@@ -150,10 +152,10 @@
                 "reason": {"enum": ["dark_time_ended", "not_enough_models"]},
                 "dark_time_ended_at": {"$ref": "#/$defs/utc_time_or_null"},
                 "families": {
-                  "description": "Each counting family's state, for 'Not enough models for a verdict: ...'.",
+                  "description": "Each global family's state over the counted hours left, for 'Not enough models for a verdict: ...': ok (has a value), stale, missing (no run), partial (its run lacks these steps), off_step (no step at these hours, IFS). Empty for dark_time_ended.",
                   "type": "object",
                   "propertyNames": {"$ref": "#/$defs/id"},
-                  "additionalProperties": {"enum": ["ok", "stale", "missing", "partial"]}
+                  "additionalProperties": {"enum": ["ok", "stale", "missing", "partial", "off_step"]}
                 }
               }
             }
