@@ -42,7 +42,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-4` · **needs-you** · cloud · Tonight: the verdict rules and the Moon · needs you: two questions on the tonight rules (asked in the C13 chat and on #53) · [#53](https://github.com/rrweller/Astro-seeing/issues/53) · draft PR [#76](https://github.com/rrweller/Astro-seeing/pull/76)
 
-- `F1-5` · **in-progress** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54)
+- `F1-5` · **review** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54) · PR [#77](https://github.com/rrweller/Astro-seeing/pull/77)
 
 - `F1-6` · **blocked** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
@@ -250,7 +250,7 @@ flowchart LR
   %% ---
   class F1_4 needsyou
   %% ---
-  class F1_5 inprogress
+  class F1_5 review
   %% ---
   class F1_6 blocked
   %% ---
