@@ -140,6 +140,7 @@ def run_document(
         "missing_steps": {str(s): why for s, why in sorted(missing_steps.items())},
         "steps": steps,
         "qc": {
+            "cloud_range": fields.qc.as_dict(),
             "column": products.qc.as_dict(),
             **{name: c.qc.as_dict() for name, c in products.models.items()},
         },

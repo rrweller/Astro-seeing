@@ -16,7 +16,7 @@ import pytest
 from astroseeing.forecast.schemas import validate
 from astroseeing.forecast.tick import tick_lock
 
-from forecast_samples import copy_samples, drop_messages, small_box_settings
+from forecast_samples import copy_samples, drop_messages, edit_values, small_box_settings
 from forecast_world import DAY, PUBLISHED, World
 
 
@@ -221,3 +221,71 @@ def test_astro_forecast_tick_refuses_a_hand_entered_height_before_any_fetch(
     assert "refused" in err and "astro forecast place-height kongsberg" in err
     assert not (tmp_path / "state" / "manifest.sqlite").exists()
     assert not (tmp_path / "staging").exists()
+
+
+def test_cloud_a_hair_over_100_is_published_as_100_and_counted(world):
+    """Ticket #80: GRIB packing decodes a full layer as 100.00000610351563 %. At 10:00 UTC
+    on 27 November, Tonight (27th-28th) holds four such hours at Kongsberg's GFS point
+    (steps 37 and 39 high cloud, 43 and 48 mid cloud, read straight from the samples)."""
+    world.at(DAY + dt.timedelta(hours=10))  # the 06z run is fetched and stored
+    report = world.at(DAY + dt.timedelta(days=1, hours=10))
+    assert report.skipped is None
+
+    place = world.place_file()
+    validate(place, "f1-place/1")
+    gfs = {h["time"]: h["models"]["gfs"] for h in place["hours"]}
+    cloud = {t: g["cloud"] for t, g in gfs.items() if "cloud" in g}
+    assert len(cloud) == 19  # the run ends at 06 UTC on the 28th (step 48)
+    assert cloud["2026-11-27T19:00:00Z"]["high_pct"] == 100.0  # step 37
+    assert cloud["2026-11-27T21:00:00Z"]["high_pct"] == 100.0  # step 39
+    assert cloud["2026-11-28T01:00:00Z"]["mid_pct"] == 100.0  # step 43
+    assert cloud["2026-11-28T06:00:00Z"]["mid_pct"] == 100.0  # step 48
+    assert all(0 <= v <= 100 for c in cloud.values() for v in c.values())
+
+    # the run's QC counts: values set to 100, per field, over the 5 × 5 points × 49 steps
+    # the run read, as counted straight from the samples with eccodes; none set to 0
+    (run,) = world.runs()
+    assert run["state"] == "processed"
+    stored = json.loads(
+        (world.paths.places / "kongsberg" / "2026-11-26" / "gfs-20261126T06Z.json").read_text()
+    )
+    qc = stored["qc"]["cloud_range"]
+    n = 49 * 5 * 5
+    assert qc["high_cloud_pct_set_to_100"] == {"count": 38, "total": n}
+    assert qc["mid_cloud_pct_set_to_100"] == {"count": 39, "total": n}
+    assert qc["low_cloud_pct_set_to_100"] == {"count": 28, "total": n}
+    assert qc["total_cloud_pct_set_to_100"] == {"count": 0, "total": n}
+    assert qc["level_cloud_pct_set_to_100"] == {"count": 219, "total": n * 39}
+    for name in ("total", "low", "mid", "high", "level"):
+        assert qc[f"{name}_cloud_pct_set_to_0"] == {
+            "count": 0,
+            "total": n * (39 if name == "level" else 1),
+        }
+
+
+def test_cloud_far_over_100_fails_the_run_naming_field_step_and_value(tmp_path, ephemeris):
+    """Ticket #80: a cloud value further above 100 % than the tolerance is a data error,
+    failed loudly like a format mismatch, never set to 100."""
+    folder = copy_samples(tmp_path / "broken")
+
+    def raise_one(values):
+        values[7] = 101.0
+        return values
+
+    def instant_mid(keys):
+        return keys["shortName"] == "mcc" and keys["stepType"] == "instant"
+
+    assert edit_values(folder / "gfs.t06z.pgrb2.0p25.f020.grb2", instant_mid, raise_one) == 1
+    w = World(tmp_path / "w", ephemeris, sample_folder=folder)
+    try:
+        report = w.at(DAY + dt.timedelta(hours=10))
+        (run,) = w.runs()
+        assert run["state"] == "failed"
+        assert "format mismatch" in run["last_error"]
+        assert "mid_cloud_pct at step 20 is 101.0" in run["last_error"]
+        assert report.runs[0]["state"] == "failed"
+        place = w.place_file()  # the page still gets its files, with GFS missing
+        validate(place, "f1-place/1")
+        assert all(h["models"]["gfs"] == {"missing": "no_run"} for h in place["hours"])
+    finally:
+        w.close()

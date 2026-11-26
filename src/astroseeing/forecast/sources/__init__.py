@@ -2,6 +2,7 @@
 ICON-EU, MEPS, IFS), all behind the interface in :mod:`.interface`."""
 
 from astroseeing.forecast.sources.interface import (
+    CLOUD_TOLERANCE_PCT,
     JET_LEVEL_HPA,
     FetchedFile,
     FetchResult,
@@ -12,6 +13,7 @@ from astroseeing.forecast.sources.interface import (
 )
 
 __all__ = [
+    "CLOUD_TOLERANCE_PCT",
     "JET_LEVEL_HPA",
     "FetchResult",
     "FetchedFile",
