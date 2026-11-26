@@ -57,9 +57,9 @@ def test_place_inside_a_tile_reads_its_nearest_posting(bucket, tmp_path):
                            work_dir=tmp_path / "work")  # fmt: skip
     assert found.metres == 12016.0
     assert found.tile == tile_name(59, 9) == "Copernicus_DSM_COG_10_N59_00_E009_00_DEM"
-    assert (found.row, found.col) == (12, 16)
-    assert found.pixel_lat == pytest.approx(60 - 12 / 36)
-    assert found.pixel_lon == pytest.approx(9 + 16 / 24)
+    assert (found.posting.row, found.posting.col) == (12, 16)
+    assert found.posting.lat == pytest.approx(60 - 12 / 36)
+    assert found.posting.lon == pytest.approx(9 + 16 / 24)
 
 
 def _look_up(bucket, tmp_path, lat, lon):
@@ -73,9 +73,9 @@ def test_place_whose_nearest_posting_is_on_the_south_edge_reads_the_tile_below(b
     # row (60 - 59.01) * 36 = 35.64 -> 36: one past N59's last row, i.e. N58's row 0
     found = _look_up(bucket, tmp_path, 59.01, 9.652)
     assert found.tile == tile_name(58, 9)
-    assert (found.row, found.col) == (0, 16)
+    assert (found.posting.row, found.posting.col) == (0, 16)
     assert found.metres == 500_016.0
-    assert found.pixel_lat == pytest.approx(59.0)
+    assert found.posting.lat == pytest.approx(59.0)
 
 
 def test_place_whose_nearest_posting_is_on_the_east_edge_reads_the_tile_east(bucket, tmp_path):
@@ -84,23 +84,28 @@ def test_place_whose_nearest_posting_is_on_the_east_edge_reads_the_tile_east(buc
     # col (9.99 - 9) * 24 = 23.76 -> 24: one past E009's last column, i.e. E010's column 0
     found = _look_up(bucket, tmp_path, 59.669, 9.99)
     assert found.tile == tile_name(59, 10)
-    assert (found.row, found.col) == (12, 0)
+    assert (found.posting.row, found.posting.col) == (12, 0)
     assert found.metres == 712_000.0
-    assert found.pixel_lon == pytest.approx(10.0)
+    assert found.posting.lon == pytest.approx(10.0)
 
 
 def test_place_just_inside_the_north_and_west_edges_stays_in_its_tile(bucket, tmp_path):
     bucket.put(59, 9)
     # row (60 - 59.99) * 36 = 0.36 -> 0; col (9.01 - 9) * 24 = 0.24 -> 0
     found = _look_up(bucket, tmp_path, 59.99, 9.01)
-    assert (found.tile, found.row, found.col, found.metres) == (tile_name(59, 9), 0, 0, 0.0)
+    assert (found.tile, found.posting.row, found.posting.col, found.metres) == (
+        tile_name(59, 9),
+        0,
+        0,
+        0.0,
+    )
 
 
 def test_place_exactly_halfway_between_postings_takes_the_south_west_one(bucket, tmp_path):
     bucket.put(59, 9)
     # row (60 - 59.875) * 36 = 4.5 -> 5 (south); col (9.0625 - 9) * 24 = 1.5 -> 1 (west)
     found = _look_up(bucket, tmp_path, 59.875, 9.0625)
-    assert (found.row, found.col, found.metres) == (5, 1, 5001.0)
+    assert (found.posting.row, found.posting.col, found.metres) == (5, 1, 5001.0)
 
 
 def test_place_in_the_southern_and_western_hemispheres(bucket, tmp_path):
@@ -109,7 +114,7 @@ def test_place_in_the_southern_and_western_hemispheres(bucket, tmp_path):
     # = 21.427 -> 21
     found = _look_up(bucket, tmp_path, -24.6279483, -70.40479659)
     assert found.tile == "Copernicus_DSM_COG_10_S25_00_W071_00_DEM"
-    assert (found.row, found.col, found.metres) == (23, 21, 23021.0)
+    assert (found.posting.row, found.posting.col, found.metres) == (23, 21, 23021.0)
 
 
 def test_checksum_of_the_tile_read_is_recorded(bucket, tmp_path):
@@ -179,7 +184,7 @@ def test_spacing_stored_a_rounding_step_off_is_read_as_meant(bucket, tmp_path):
     write_tile(bucket.root / tile_path(59, 9).lstrip("/"), _heights(36, 24), north=60.0,
                west=9.0, scale=(dlon, 1 / 36))  # fmt: skip
     found = _look_up(bucket, tmp_path, 59.669, 9.652)
-    assert (found.row, found.col) == (12, 16)
+    assert (found.posting.row, found.posting.col) == (12, 16)
 
 
 # -- writing the height into the settings file ---------------------------------------
@@ -231,6 +236,20 @@ def test_a_second_lookup_rewrites_the_entry_in_place(bucket, tmp_path, settings_
     first = settings_file.read_text()
     _set(bucket, tmp_path, settings_file, "kongsberg")
     assert settings_file.read_text() == first  # idempotent
+
+
+def test_a_newly_added_place_with_no_height_gets_one(bucket, tmp_path, settings_file):
+    # A new place is added with `height: null` on one line (the committed places now
+    # hold multi-line entries, which the tests above rewrite).
+    text = settings_file.read_text()
+    start = text.index("    height:  # looked up by `astro forecast place-height kongsberg`")
+    end = text.index("  paranal:", start)
+    settings_file.write_text(text[:start] + "    height: null\n" + text[end:])
+    assert load_settings(settings_file).places["kongsberg"].height is None
+    bucket.put(59, 9)
+    _set(bucket, tmp_path, settings_file, "kongsberg")
+    assert load_settings(settings_file).places["kongsberg"].height.metres == 12016.0
+    assert load_settings(settings_file).places["paranal"] == load_settings().places["paranal"]
 
 
 @pytest.mark.parametrize("problem", ["missing tile", "bad checksum"])

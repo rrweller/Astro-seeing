@@ -12,6 +12,7 @@ ticket #54; D47 item 1, D54 item 3, D60 item 1; choices in D75).
 from __future__ import annotations
 
 import copy
+import dataclasses
 import hashlib
 import json
 import logging
@@ -28,7 +29,12 @@ import yaml
 
 from astroseeing.forecast.http import HttpClient, HttpError
 from astroseeing.forecast.places.glo30 import Tile, TileFormatError, TileId
-from astroseeing.forecast.settings import ForecastSettings, SettingsError, load_settings
+from astroseeing.forecast.settings import (
+    ForecastSettings,
+    Posting,
+    SettingsError,
+    load_settings,
+)
 from astroseeing.provenance import DEM_ATTRIBUTION
 
 log = logging.getLogger(__name__)
@@ -69,10 +75,7 @@ class HeightLookup:
     metres: float  # above the EGM2008 geoid; GLO-30 is a surface model
     tile: str  # the tile's name, e.g. Copernicus_DSM_COG_10_N59_00_E009_00_DEM
     sha256: str  # of the whole tile file as downloaded
-    row: int
-    col: int
-    pixel_lat: float  # the posting's position
-    pixel_lon: float
+    posting: Posting  # the posting read: row and column in the tile, and its position
 
 
 def look_up_height(lat: float, lon: float, *, http: HttpClient, dem_url: str,
@@ -80,7 +83,7 @@ def look_up_height(lat: float, lon: float, *, http: HttpClient, dem_url: str,
     """Fetch the GLO-30 tile holding (lat, lon) from ``dem_url`` and read the height at
     the nearest posting. The tile goes to a temporary folder under ``work_dir`` and is
     deleted afterwards."""
-    plat, plon = _exact(lat), _exact(lon)
+    plat, plon = _decimal(lat), _decimal(lon)
     tile = TileId.containing(plat, plon)
     work_dir = Path(work_dir)
     work_dir.mkdir(parents=True, exist_ok=True)
@@ -105,8 +108,8 @@ def look_up_height(lat: float, lon: float, *, http: HttpClient, dem_url: str,
             path.unlink()
         else:  # unreachable: after one step south and one east the posting is inside
             raise PlaceHeightError(f"no tile holds the posting nearest ({lat}, {lon})")
-        pixel_lat, pixel_lon = t.grid.centre(row, col)
-    return HeightLookup(metres, tile.name, sha256, row, col, pixel_lat, pixel_lon)
+        posting = Posting(row, col, *t.grid.centre(row, col))
+    return HeightLookup(metres, tile.name, sha256, posting)
 
 
 def _fetch_verified(http: HttpClient, dem_url: str, tile: TileId, folder: Path):
@@ -139,7 +142,7 @@ def _fetch_verified(http: HttpClient, dem_url: str, tile: TileId, folder: Path):
     return dl.path, dl.sha256
 
 
-def _exact(x: float) -> Fraction:
+def _decimal(x: float) -> Fraction:
     """A coordinate as the decimal written in the settings file, exactly (59.669 is
     59669/1000, not the nearest binary float), so halfway cases are decided exactly."""
     return Fraction(repr(float(x)))
@@ -174,9 +177,10 @@ def set_place_height(settings_path: Path, place_id: str, *, http: HttpClient, wo
     found = look_up_height(place.lat, place.lon, http=http, work_dir=work_dir,
                            dem_url=dem_url or settings.place_heights.dem.url)  # fmt: skip
     _write_height(settings_path, place_id, found)
+    p = found.posting
     log.info("%s: GLO-30 height %.2f m at posting (%d, %d) of %s, %.5f, %.5f (sha256 %s)",
-             place_id, found.metres, found.row, found.col, found.tile, found.pixel_lat,
-             found.pixel_lon, found.sha256)  # fmt: skip
+             place_id, found.metres, p.row, p.col, found.tile, p.lat, p.lon,
+             found.sha256)  # fmt: skip
     diff, flagged = None, False
     if place.published_height_m is not None:
         diff = found.metres - place.published_height_m
@@ -195,12 +199,7 @@ def _height_entry(found: HeightLookup) -> dict:
         "source": "glo30",
         "tile": found.tile,
         "sha256": found.sha256,
-        "posting": {
-            "row": found.row,
-            "col": found.col,
-            "lat": found.pixel_lat,
-            "lon": found.pixel_lon,
-        },
+        "posting": dataclasses.asdict(found.posting),
         "attribution": DEM_ATTRIBUTION,
     }
 

@@ -189,8 +189,8 @@ class Tile:
         if not scale or not tie or len(tie) != 6 or tie[:3] != (0.0, 0.0, 0.0):
             raise TileFormatError(f"{name}: no single tiepoint at pixel (0, 0) and scale")
         rows, cols = self._one(257), self._one(256)
-        dlon, dlat = _exact(scale[0], name), _exact(scale[1], name)
-        west, north = _exact(tie[3], name), _exact(tie[4], name)
+        dlon, dlat = _header_fraction(scale[0], name), _header_fraction(scale[1], name)
+        west, north = _header_fraction(tie[3], name), _header_fraction(tie[4], name)
         if (north, west) != (tile.south + 1, tile.west):
             raise TileFormatError(f"{name}: pixel (0, 0) is at ({float(north)}, {float(west)}), "
                                   f"not the tile's north-west corner")  # fmt: skip
@@ -209,7 +209,7 @@ class Tile:
         return None
 
 
-def _exact(value: float, name: str) -> Fraction:
+def _header_fraction(value: float, name: str) -> Fraction:
     """A header number as the fraction it stands for (1/3600, 1/2400, 60, …).
 
     Real tiles don't always hold the nearest double: N59 E009's column spacing is

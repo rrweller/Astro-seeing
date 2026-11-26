@@ -532,9 +532,9 @@ def cmd_forecast_place_height(args, paths: Paths) -> int:
     except PlaceHeightError as e:
         print(f"place-height {args.place}: FAILED, nothing written: {e}", file=sys.stderr)
         return 1
-    f = r.lookup
-    print(f"{r.place}: {f.metres:.2f} m (GLO-30, posting row {f.row} col {f.col} at "
-          f"{f.pixel_lat:.6f}, {f.pixel_lon:.6f} in {f.tile}, sha256 {f.sha256})")  # fmt: skip
+    f, p = r.lookup, r.lookup.posting
+    print(f"{r.place}: {f.metres:.2f} m (GLO-30, posting row {p.row} col {p.col} at "
+          f"{p.lat:.6f}, {p.lon:.6f} in {f.tile}, sha256 {f.sha256})")  # fmt: skip
     if r.published_difference_m is not None:
         print(f"{r.place}: minus the published {r.published_height_m:g} m = "
               f"{r.published_difference_m:+.1f} m{'  FLAG' if r.flagged else ''}")  # fmt: skip
