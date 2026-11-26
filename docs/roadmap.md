@@ -34,6 +34,8 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C12` · **blocked** · cloud · Experiment spec and CT tickets (needs your approval) · ticket: none yet
 
+- `C13` · **ready** · cloud · Coordinator for the first F1 batch (F1-1 to F1-5; you answer questions) · ticket: none
+
 - `F1-1` · **ready** · cloud · Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas · [#50](https://github.com/rrweller/Astro-seeing/issues/50)
 
 - `F1-2` · **blocked** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
@@ -115,6 +117,7 @@ flowchart LR
     C10["C10 · Reproduction spec"]
     C11["C11 · Calibration spec"]
     C12["C12 · Experiment spec"]
+    C13["C13 · F1 coordinator, batch 1"]
     F1_1["F1-1 · Groundwork #50"]
     F1_2["F1-2 · GFS to place file #51"]
     F1_3["F1-3 · Page: place table #52"]
@@ -246,6 +249,8 @@ flowchart LR
   %% ---
   class C12 blocked
   %% ---
+  class C13 ready
+  %% ---
   class F1_1 ready
   %% ---
   class F1_2 blocked
@@ -336,6 +341,7 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 | 3 | C10 | yes: approve | issues, this file |
 | 3 | C11 | yes: approve | issues, this file |
 | 3 | C12 | yes: approve | issues, this file |
+| 4 | C13 | yes: answer the helpers' questions | runs F1-1 to F1-5 (see their rows) |
 | 4 | F1-1 | no | new `forecast/` package, new forecast config, schemas |
 | 5 | F1-2 | no | `forecast/` sources (GFS), verify, column, store, publish, tick; `manifest.py`, `cli.py` |
 | 6 | F1-3 | no | `web/forecast/` |
@@ -398,9 +404,10 @@ Parallel sessions would otherwise take the same number.
 | D66 | C9 |
 | D68 | C11 |
 | D69 | C12 |
+| D94 | C13 |
 | D71–D92 | F1-1 to F1-22, in order (F1-n takes D70+n) |
 
-- D67 is this roadmap process; D70 is deleting finished items.
+- D67 is this roadmap process; D70 is deleting finished items; D93 is agents merging into `dev` and the coordinator.
 - When an item is deleted, its row here goes too: its number is then on `dev`.
 - A session needing more than one number adds letters (D62a, D62b, …).
 - New items take the next free number after the highest on `dev`, in open PRs, and in this table, and add it to this table in their PR.
@@ -606,9 +613,37 @@ Show Riley the outline and ticket list for approval (C12 to needs-you while you 
 The Blocked by line in each ticket body is the source of truth (docs/agents/issue-tracker.md). Don't close or change map #6 except to add the spec and tickets as sub-issues.
 ```
 
+### C13. Coordinator for the first F1 batch
+
+Paste this prompt yourself; it runs F1-1, then F1-2, F1-4 and F1-5 together, then F1-3, each with its own helper agent. You answer the helpers' questions here, in this one chat. It merges each PR itself under D93 and stops after the batch to report. It has no slash command, because a coordinator can't pass one on (D93); each helper loads the tdd and code-review skills itself.
+
+```text
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C13.
+
+Skills: you coordinate and write no feature code yourself. Each helper agent loads mattpocock-skills:tdd and mattpocock-skills:code-review with its own Skill tool (the helper brief below says so). The implement skill can't be loaded by an agent; tdd, then code-review, then commit is the same work.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access), coordinating the first F1 batch: F1-1, F1-2, F1-3, F1-4 and F1-5 (tickets #50, #51, #52, #53, #54). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/roadmap.md (the five items' sections), the F1 spec #47, and D93 in docs/decisions.md. If pixi is missing, install it (curl -fsSL https://pixi.sh/install.sh | sh), then run pixi install --locked.
+
+The frontier: F1-1 alone. Once it's merged, F1-2, F1-4 and F1-5 together. Once F1-2 is merged, F1-3. At most 3 helpers at once, and nothing outside this batch.
+
+For each ticket as it becomes ready:
+1. Claim it: the roadmap status commit (<ID> ready → in-progress) and the ticket claim in docs/agents/issue-tracker.md.
+2. Start one helper with the Agent tool: subagent_type general-purpose, run_in_background true, isolation "worktree", with the helper brief below filled in.
+3. A helper that returns a question for Riley: put it to Riley here in plain language (CLAUDE.md, "Asking Riley questions"), naming the ticket, and pass his answer back with SendMessage. Riley answers; you relay.
+4. A helper that returns a PR: status commit <ID> in-progress → review with the PR link, and subscribe to the PR. Merge it yourself (you're authorized under D93) once every condition in docs/agents/session-handoff.md "Merging into dev" holds. A red check or a serious review finding goes back to that helper with SendMessage; once fixed, re-check.
+5. After each merge: close the ticket with a comment linking the PR, delete the item from the roadmap and sweep (the handoff), tell Riley in one line what merged, then start whatever the merge unblocked.
+
+Helper brief (fill in <ID>, <N>, <D>; F1-n's D-number is D70+n):
+"You implement roadmap item <ID>, ticket #<N>, on rrweller/Astro-seeing, in your own worktree on a new branch from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, ticket #<N> with its comments, the F1 spec #47, and the decisions and research notes the ticket names. First load mattpocock-skills:tdd with your Skill tool and build test-first at the ticket's seams. Run single test files as you go, and pixi run lint and pixi run test at the end. Then load mattpocock-skills:code-review, review your branch against origin/dev, and fix what it finds. Log non-trivial choices as <D>. Commit, push the branch, and open a PR into dev: the description says it completes <ID> and closes #<N>, marks each acceptance criterion met or not (with why), and lists the review's findings and what you did about each. Leave docs/roadmap.md, the ticket's state and the merge to the coordinator. A choice that belongs to Riley (an ambiguous rule, an [ASK] in AGENTS.md, anything the ticket says to ask) ends your turn: return the question with the options and your recommendation. Return: the PR number, the lint and test results, review findings fixed and left open, and any question."
+
+Pacing: helpers notify you when they finish, and PR events (the check, reviews) wake you. While a helper runs and nothing else is pending, keep one send_later check-in about every 30 min.
+
+Done when F1-1 to F1-5 are merged, their tickets closed and their items gone from the roadmap, or when a blocker only Riley can clear is stated. Then report to Riley here: each PR and what it delivered, anything left open, and F1-3's screenshots. Finish C13 per the handoff (no PR of its own: delete it with "roadmap: remove C13 (finished: batch 1 merged)"), and clean up the helpers' worktrees.
+```
+
 ### F1-1. Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas
 
-Ticket [#50](https://github.com/rrweller/Astro-seeing/issues/50). Depends on nothing; it can start now.
+Ticket [#50](https://github.com/rrweller/Astro-seeing/issues/50). Depends on nothing; it can start now. The coordinator (C13) runs this ticket; paste this prompt yourself only if you aren't using it.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-1.
@@ -617,12 +652,12 @@ Skills: this message starts implement, and ticket #50 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #50 names.
 
-Task: work ticket #50. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D71 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #50.
+Task: work ticket #50. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D71 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #50. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #50 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-2. Tracer slice, back end: one GFS run at Kongsberg to the page's data files
 
-Ticket [#51](https://github.com/rrweller/Astro-seeing/issues/51). Depends on F1-1.
+Ticket [#51](https://github.com/rrweller/Astro-seeing/issues/51). Depends on F1-1. The coordinator (C13) runs this ticket; paste this prompt yourself only if you aren't using it.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-2.
@@ -631,12 +666,12 @@ Skills: this message starts implement, and ticket #51 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #51 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources.
 
-Task: work ticket #51. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D72 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #51.
+Task: work ticket #51. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D72 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #51. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #51 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-3. Tracer slice, page: Kongsberg's hourly table, freshness, About and credits
 
-Ticket [#52](https://github.com/rrweller/Astro-seeing/issues/52). Depends on F1-1, F1-2.
+Ticket [#52](https://github.com/rrweller/Astro-seeing/issues/52). Depends on F1-1, F1-2. The coordinator (C13) runs this ticket; paste this prompt yourself only if you aren't using it.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-3.
@@ -645,12 +680,12 @@ Skills: this message starts implement, and ticket #52 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #52 names.
 
-Task: work ticket #52. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D73 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #52.
+Task: work ticket #52. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D73 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #52. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #52 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-4. Tonight: the verdict rules and the Moon
 
-Ticket [#53](https://github.com/rrweller/Astro-seeing/issues/53). Depends on F1-1.
+Ticket [#53](https://github.com/rrweller/Astro-seeing/issues/53). Depends on F1-1. The coordinator (C13) runs this ticket; paste this prompt yourself only if you aren't using it.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-4.
@@ -659,12 +694,12 @@ Skills: this message starts implement, and ticket #53 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #53 names.
 
-Task: work ticket #53. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D74 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #53.
+Task: work ticket #53. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D74 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #53. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #53 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-5. Saved places: automatic GLO-30 ground height, and Paranal
 
-Ticket [#54](https://github.com/rrweller/Astro-seeing/issues/54). Depends on F1-1.
+Ticket [#54](https://github.com/rrweller/Astro-seeing/issues/54). Depends on F1-1. The coordinator (C13) runs this ticket; paste this prompt yourself only if you aren't using it.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-5.
@@ -673,7 +708,7 @@ Skills: this message starts implement, and ticket #54 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #54 names.
 
-Task: work ticket #54. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D75 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #54.
+Task: work ticket #54. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D75 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #54. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #54 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-6. ICON-EU source adapter
@@ -687,7 +722,7 @@ Skills: this message starts implement, and ticket #55 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #55 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources and docs/research/valley-fog.md §3 on branch research/valley-fog.
 
-Task: work ticket #55. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D76 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #55.
+Task: work ticket #55. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D76 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #55. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #55 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-7. IFS source adapter (3-hourly)
@@ -701,7 +736,7 @@ Skills: this message starts implement, and ticket #56 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #56 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources.
 
-Task: work ticket #56. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D77 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #56.
+Task: work ticket #56. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D77 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #56. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #56 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-8. MEPS source adapter (regional, not counted)
@@ -715,7 +750,7 @@ Skills: this message starts implement, and ticket #57 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #57 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources and docs/research/valley-fog.md §3 on branch research/valley-fog.
 
-Task: work ticket #57. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D78 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #57.
+Task: work ticket #57. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D78 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #57. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #57 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-9. Run rules: retries, backup hosts, late, partial and abandoned runs
@@ -729,7 +764,7 @@ Skills: this message starts implement, and ticket #58 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #58 names.
 
-Task: work ticket #58. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D79 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #58.
+Task: work ticket #58. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D79 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #58. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #58 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-10. Per-place daily stores on the NAS
@@ -743,7 +778,7 @@ Skills: this message starts implement, and ticket #59 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #59 names.
 
-Task: work ticket #59. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D80 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #59.
+Task: work ticket #59. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D80 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #59. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #59 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-11. `astro forecast status` and the 7-day size report
@@ -757,7 +792,7 @@ Skills: this message starts implement, and ticket #60 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #60 names.
 
-Task: work ticket #60. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D81 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #60.
+Task: work ticket #60. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D81 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #60. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #60 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-12. Forecast phone alerts and the daily health line
@@ -771,7 +806,7 @@ Skills: this message starts implement, and ticket #61 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #61 names. Also read src/astroseeing/notify.py and tests/test_notify.py.
 
-Task: work ticket #61. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D82 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #61.
+Task: work ticket #61. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D82 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #61. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #61 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-13. Web server and timer setup files, one-command deploy
@@ -785,7 +820,7 @@ Skills: this message starts implement, and ticket #62 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #62 names.
 
-Task: work ticket #62. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D83 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #62.
+Task: work ticket #62. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D83 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #62. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #62 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-14. The verdict on the place view
@@ -799,7 +834,7 @@ Skills: this message starts implement, and ticket #63 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #63 names.
 
-Task: work ticket #63. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D84 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #63.
+Task: work ticket #63. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D84 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #63. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #63 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-15. Fog-signals row, terrain warning, missing-column depth
@@ -813,7 +848,7 @@ Skills: this message starts implement, and ticket #64 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #64 names.
 
-Task: work ticket #64. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D85 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #64.
+Task: work ticket #64. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D85 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #64. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #64 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-16. Map data: ICON-EU map grid and map layers
@@ -827,7 +862,7 @@ Skills: this message starts implement, and ticket #65 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #65 names.
 
-Task: work ticket #65. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D86 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #65.
+Task: work ticket #65. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D86 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #65. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #65 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-17. The map page: layers, hour slider, cell card
@@ -841,7 +876,7 @@ Skills: this message starts implement, and ticket #66 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #66 names. Also read web/prototype-globe-library/ on branch prototype/globe-library (throwaway; for the addProtocol nearest-block technique).
 
-Task: work ticket #66. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D87 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #66.
+Task: work ticket #66. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D87 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #66. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #66 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-18. Sunset maps for the last 7 nights
@@ -855,7 +890,7 @@ Skills: this message starts implement, and ticket #67 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #67 names.
 
-Task: work ticket #67. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D88 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #67.
+Task: work ticket #67. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D88 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #67. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #67 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-19. Paranal scoring: hourly ESO values, matched hours, statistics
@@ -869,7 +904,7 @@ Skills: this message starts implement, and ticket #68 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #68 names. Also read the merged ESO fetcher from roadmap item C8.
 
-Task: work ticket #68. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D89 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #68.
+Task: work ticket #68. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D89 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #68. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #68 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-20. Paranal check end to end: ESO fetch, nights, panel, weekly report
@@ -883,7 +918,7 @@ Skills: this message starts implement, and ticket #69 is its spec. Build test-fi
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #69 names. Also read the merged ESO fetcher from roadmap item C8.
 
-Task: work ticket #69. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D90 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #69.
+Task: work ticket #69. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D90 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #69. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #69 with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-21. CT: install the service and page, live trials, alerts once

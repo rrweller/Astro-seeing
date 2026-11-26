@@ -935,3 +935,27 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   4. **Plain-language questions.** Riley asked that every question to him, in every session from now on, uses plain language: no project jargon, no bare decision or ticket numbers he would have to look up, and a short explanation of any scientific or meteorological term. Written into `CLAUDE.md`, and as a standing preference in `AGENTS.md` at Riley's request (2026-11-26).
 - **Glossary:** saved place, cell card, map grid and sunset map added to `CONTEXT.md`.
 - **Who:** Riley (all four, 2026-11-26); the agent proposed items 1–3 and drafted the wording.
+
+## 2026-11-26 — Cloud session: agents merge into `dev`, and a coordinator for F1 (roadmap C4 follow-up)
+
+### D93. Agents merge their own PRs into `dev` behind an automatic test check; a coordinator session runs the first F1 batch with helper agents
+- **Context:** Riley asked whether a coordinator chat could work through the F1 tickets so he doesn't open a chat and paste a prompt per ticket, and why he has to merge every PR himself (2026-11-26).
+- **Evidence (tested 2026-11-26 in the C4 session):**
+  - Merging wasn't blocked by a missing permission: this repo's process (D67, D70, the session handoff) assumed Riley merges, and Claude Code merges only when the user's own message asks for it, never because a file or a GitHub comment says so.
+  - The repo had no automatic checks on PRs, so "the tests pass" rested only on the agent's word. Locally, `pixi run lint` and `pixi run test` passed (196 tests, about 3.5 min).
+  - A separate cloud session started by another session (`create_session`) can't start with a slash command (the tool refuses a prompt opening with `/`). It also doesn't have the account's Matt Pocock skills: its Skill tool answered "Unknown skill" for `tdd` and `implement`, and it has no tool to message the session that started it.
+  - A helper agent inside the same session (the Agent tool) loaded `mattpocock-skills:tdd` and `mattpocock-skills:code-review` and has the GitHub tools. It can't load `mattpocock-skills:implement`, which only the user can start. That skill's whole text is: use tdd at the agreed seams, run single test files often and the full suite at the end, then code-review, then commit. So a helper that loads tdd and code-review does the same work.
+  - PRs into `dev` don't close their issues automatically, because `main` is the repo's default branch.
+- **Options (merging):** (a) Riley keeps merging; (b) agents merge into `dev` when an automatic test check is green and code review left nothing serious; (c) agents merge with no automatic check.
+- **Choice (Riley, 2026-11-26): (b), and a coordinator for a first batch.**
+  1. **The `tests` check:** a GitHub Actions workflow (`.github/workflows/tests.yml`) runs `pixi run lint` and `pixi run test` on every PR into `dev` and on every push to `dev`. Actions are pinned to commit SHAs, and pixi to a fixed version.
+  2. **An agent may squash-merge a PR into `dev` itself when every condition holds:**
+     - the prompt Riley started the session with authorizes it (the F1 cloud prompts and the coordinator prompt say so);
+     - the item doesn't need Riley's approval: its roadmap section doesn't say "Needs your approval", and the PR carries no [ASK] from AGENTS.md, no choice the ticket leaves to Riley, and no change to `AGENTS.md`;
+     - the `tests` check is green on the PR's current head commit;
+     - `mattpocock-skills:code-review` ran on the branch against `origin/dev`, and every finding is fixed or answered in the PR description, with nothing serious left open;
+     - GitHub shows no merge conflict.
+     Never into `main`, never a force-push. After the merge, the agent closes the ticket with a comment linking the PR, deletes the item from the roadmap and sweeps (D70), and tells Riley what merged. Riley can revert any merge.
+  3. **The coordinator (roadmap item C13)** is a cloud session Riley starts with a pasted prompt. It runs one batch of tickets: F1-1, then F1-2, F1-4 and F1-5 together, then F1-3. For each ticket it starts one background helper agent in its own git worktree, which loads `tdd` and then `code-review` itself. At most 3 helpers run at once. It relays helpers' questions to Riley in plain language and passes his answers back. It merges under item 2, then closes, cleans up and starts what the merge unblocked. It stops after the batch and reports, and Riley decides on the next batch.
+- **Not chosen:** one cloud session per ticket started by the coordinator (no skills, no way to send questions back up); one coordinator over every ticket (the CT tickets and the review load).
+- **Who:** Riley (option (b), adding the check, the coordinator and its first batch); agent (the merge conditions, the helper design from the tests, the batch's order).

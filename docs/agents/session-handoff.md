@@ -106,11 +106,25 @@ Cloud sessions without `git push` rights to `dev` can make the same edit with th
    - **Don't delete your own item in the PR.** It stays on the board as `review` until the merge.
    - If your PR adds new items or edits other parts of the roadmap, that's fine.
 2. Status commit `<ID> in-progress → review`, with the PR link on the board line.
-3. Subscribe to the PR's activity (cloud sessions), so the merge wakes you.
-4. **When the PR merges:**
-   1. delete your item, in one direct commit to `dev`: `roadmap: remove <ID> (#<PR> merged)`;
-   2. sweep. Items whose last incoming arrow was yours become `ready`.
-5. If the session ends before the merge, that's fine: the next session's sweep deletes the item.
+3. Subscribe to the PR's activity (cloud sessions), so the check result and the merge wake you.
+4. **Merge it yourself** if your prompt authorizes it and every condition under "Merging into `dev`" below holds. Otherwise Riley merges: set your item to `needs-you` ("needs you: merge PR #N").
+5. **When the PR merges:**
+   1. close the ticket, if your item has one, with a comment linking the PR (PRs into `dev` don't close issues, because `main` is the default branch);
+   2. delete your item, in one direct commit to `dev`: `roadmap: remove <ID> (#<PR> merged)`;
+   3. sweep. Items whose last incoming arrow was yours become `ready`.
+6. If the session ends before the merge, that's fine: the next session's sweep deletes the item.
+
+### Merging into `dev` (D93)
+
+An agent may squash-merge a PR into `dev` itself only when **every** condition holds:
+
+1. **Authorized:** the prompt Riley started the session with says it may (the F1 cloud prompts and the coordinator prompt do). Claude Code merges only on the user's own ask, so this file alone isn't enough.
+2. **Nothing for Riley:** the item's roadmap section doesn't say "Needs your approval", and the PR carries no [ASK] from AGENTS.md, no choice its ticket leaves to Riley, and no change to `AGENTS.md`.
+3. **Green:** the `tests` check (`.github/workflows/tests.yml`: lint plus the full test suite) has passed on the PR's current head commit.
+4. **Reviewed:** `mattpocock-skills:code-review` ran on the branch against `origin/dev`, and every finding is fixed or answered in the PR description, with nothing serious left open.
+5. **Clean:** GitHub shows no merge conflict.
+
+Never merge into `main`, and never force-push. After the merge, tell Riley which PR merged. Riley can revert any merge.
 
 ### 4. CT-only items (K items)
 
@@ -118,5 +132,5 @@ These follow the same steps, using `gh` and `git` on the CT. A long job (a downl
 
 ### 5. Things that need Riley
 
-- When you're waiting on Riley (approval, a merge, a login), set your item to `needs-you`. Put what you're waiting for on the board line after the title, for example "needs you: merge PR #45".
+- When you're waiting on Riley (approval, a merge you may not do yourself, a login), set your item to `needs-you`. Put what you're waiting for on the board line after the title, for example "needs you: merge PR #45".
 - Status commits and deletions never decide anything. Anything that is an [ASK] in AGENTS.md still goes to Riley.
