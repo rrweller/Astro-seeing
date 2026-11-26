@@ -1,0 +1,134 @@
+# Forecast settings (F1 spec, GitHub issue #47, "Config"; ticket #50).
+#
+# Read by astroseeing.forecast.settings.load_settings(), which refuses a missing or
+# unknown key and hashes this whole file (as data, so comments and key order don't
+# count) into every forecast product's provenance. Every value is required: no
+# defaults hide in the code.
+#
+# Sources of the values: D44, D45, D47, D48, D51, D54, D60 in docs/decisions.md, and
+# docs/research/forecast-sources.md (branch research/forecast-sources). Choices the
+# decisions leave open are logged in D71.
+schema: forecast-settings/1
+
+# Forecast models (one entry per model version; `family` groups a regional version
+# with its global parent, D45 item 2). `regional: true` = a regional-only model,
+# shown but never counted (D45 item 3).
+models:
+  gfs:
+    name: GFS 0.25°
+    family: gfs
+    regional: false
+    runs_utc: [0, 6, 12, 18]  # D51 item 2
+    steps: {first_h: 0, last_h: 48, every_h: 1}  # D51 item 3
+    publish_delay_h: 3.6  # D51 evidence (observed 2026-11-05)
+    online_window_h: 240  # NOMADS keeps 10 days (forecast-sources.md)
+    hosts:  # D51 item 14
+      main: {name: nomads, url: "https://nomads.ncep.noaa.gov", max_requests_per_s: 1}
+      fallback: {name: aws, url: "https://noaa-gfs-bdp-pds.s3.amazonaws.com", max_requests_per_s: null}
+    expected:
+      grid: {kind: regular_latlon, spacing_deg: 0.25}
+      # 39 levels: 1000 to 100 every 25 hPa, then 70 and 50 (pgrb2 + pgrb2b)
+      pressure_levels_hpa: [1000, 975, 950, 925, 900, 875, 850, 825, 800, 775, 750, 725,
+                            700, 675, 650, 625, 600, 575, 550, 525, 500, 475, 450, 425,
+                            400, 375, 350, 325, 300, 275, 250, 225, 200, 175, 150, 125,
+                            100, 70, 50]
+      level_cloud: true  # TCDC on all 39 levels
+      fog_signals: [visibility_m]  # VIS:surface (D49 item 3; low cloud is a field of its own)
+  icon_eu:
+    name: ICON-EU
+    family: icon
+    regional: false  # the regional version of the global ICON family (D45 items 1-2)
+    runs_utc: [0, 6, 12, 18]
+    steps: {first_h: 0, last_h: 48, every_h: 1}
+    publish_delay_h: 3.0
+    online_window_h: 24  # latest run per cycle only (observed, not documented)
+    hosts:
+      main: {name: dwd-opendata, url: "https://opendata.dwd.de", max_requests_per_s: null}
+      fallback: null
+    expected:
+      grid: {kind: regular_latlon, spacing_deg: 0.0625}
+      pressure_levels_hpa: [1000, 950, 925, 900, 875, 850, 825, 800, 775, 700, 600, 500,
+                            400, 300, 250, 200, 150, 100, 70, 50]
+      level_cloud: true  # clc on all 20 levels
+      fog_signals: [visibility_m, weather_code]  # VIS; WW (45/48 = fog)
+  meps:
+    name: MEPS
+    family: meps
+    regional: true
+    runs_utc: [0, 6, 12, 18]
+    steps: {first_h: 0, last_h: 48, every_h: 1}
+    publish_delay_h: 4.1  # observed 2.3-4.1 h; the upper end, so "late" isn't premature
+    online_window_h: 72  # "a few days" (MEPS wiki); 3 days taken as the lower reading
+    hosts:
+      main: {name: thredds, url: "https://thredds.met.no", max_requests_per_s: null}
+      fallback: null
+    expected:
+      grid: {kind: lambert, spacing_km: 2.5}
+      pressure_levels_hpa: [1000, 925, 850, 800, 700, 500, 400, 300, 250, 200, 150, 100, 50]
+      level_cloud: true  # cloud_area_fraction_pl
+      fog_signals: [fog_fraction_pct, visibility_m]  # fog_area_fraction, visibility_in_air
+  ifs:
+    name: ECMWF IFS 0.25°
+    family: ifs
+    regional: false
+    runs_utc: [0, 6, 12, 18]
+    steps: {first_h: 0, last_h: 48, every_h: 3}  # 3-hourly; in-between hours stay blank
+    publish_delay_h: 7.6
+    online_window_h: 48  # "the most recent 12 forecast runs, roughly 2-3 days"; lower bound
+    hosts:
+      main: {name: ecmwf-opendata, url: "https://data.ecmwf.int", max_requests_per_s: null}
+      fallback: {name: aws, url: "https://ecmwf-forecasts.s3.eu-central-1.amazonaws.com", max_requests_per_s: null}
+    expected:
+      grid: {kind: regular_latlon, spacing_deg: 0.25}
+      pressure_levels_hpa: [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50]
+      level_cloud: false  # IFS open data has no cloud fraction on levels
+      fog_signals: [dewpoint_depression_2m_k]  # from 2t and 2d (lcc is the low-cloud field)
+
+# Computed areas. `map_grid_model`: the finest global family's grid (D60 item 2).
+areas:
+  kongsberg:
+    box: {west: 4.65, east: 14.65, south: 54.67, north: 64.67}  # D44 item 3
+    models: [gfs, icon_eu, meps, ifs]
+    map_grid_model: icon_eu
+  paranal:
+    # Box size: D71 (a 1° box round the place; the decisions name no size).
+    box: {west: -70.90, east: -69.90, south: -25.13, north: -24.13}
+    models: [gfs, ifs]
+    map_grid_model: gfs
+
+# Saved places (D60 item 1). `height` is the GLO-30 ground height; until the lookup
+# (`astro forecast place-height`, roadmap F1-5) fills it, it is entered by hand and
+# marked so.
+default_place: kongsberg
+places:
+  kongsberg:
+    name: Kongsberg
+    lat: 59.669
+    lon: 9.652
+    time_zone: Europe/Oslo
+    area: kongsberg
+    height: {metres: 162.0, source: hand-entered, tile: null, sha256: null}  # D47 evidence
+
+# Cloud classes on the unrounded total cloud (D48 item 6): clear <= 10 %,
+# some cloud 10-50 %, cloudy > 50 %.
+cloud_classes: {clear_max_pct: 10, some_cloud_max_pct: 50}
+
+# Run rules (D48 item 5, D51 items 7 and 14).
+run_rules:
+  stale_after_h: 24
+  late_after_delay_h: 3  # late from the expected publish delay + 3 h (logged only)
+  abandon_before_window_end_h: 4  # ICON-EU: 24 h window - 4 h = D51's ~20 h; D71
+  file_retries: 5
+  retry_spacing_min: 1
+  fallback_after_main_failed_h: 1
+
+# Alerts (D51 item 9, D52 item 10), all high priority.
+alerts:
+  no_complete_run_h: 24
+  no_tick_h: 1
+  staging_min_free_gb: 20
+
+# ESO fetch for the Paranal check (D54 item 8).
+eso:
+  fetch_time_utc: "17:00"
+  refetch_after_days: 3
