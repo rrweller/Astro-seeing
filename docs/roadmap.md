@@ -52,9 +52,9 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-13` · **ready** · cloud · Web server and timer setup files, one-command deploy · [#62](https://github.com/rrweller/Astro-seeing/issues/62)
 
-- `F1-14` · **blocked** · cloud · The verdict on the place view · [#63](https://github.com/rrweller/Astro-seeing/issues/63)
+- `F1-14` · **ready** · cloud · The verdict on the place view · [#63](https://github.com/rrweller/Astro-seeing/issues/63)
 
-- `F1-15` · **blocked** · cloud · Fog-signals row, terrain warning, missing-column depth · [#64](https://github.com/rrweller/Astro-seeing/issues/64)
+- `F1-15` · **ready** · cloud · Fog-signals row, terrain warning, missing-column depth · [#64](https://github.com/rrweller/Astro-seeing/issues/64)
 
 - `F1-16` · **blocked** · cloud · Map data: ICON-EU map grid and map layers · [#65](https://github.com/rrweller/Astro-seeing/issues/65)
 
@@ -229,9 +229,9 @@ flowchart LR
   %% ---
   class F1_13 ready
   %% ---
-  class F1_14 blocked
+  class F1_14 ready
   %% ---
-  class F1_15 blocked
+  class F1_15 ready
   %% ---
   class F1_16 blocked
   %% ---
