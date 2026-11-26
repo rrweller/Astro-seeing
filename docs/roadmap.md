@@ -40,7 +40,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-7` · **in-progress** · cloud · IFS source adapter (3-hourly) · [#56](https://github.com/rrweller/Astro-seeing/issues/56)
 
-- `F1-8` · **ready** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57)
+- `F1-8` · **in-progress** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57)
 
 - `F1-9` · **ready** · cloud · Run rules: retries, backup hosts, late, partial and abandoned runs · [#58](https://github.com/rrweller/Astro-seeing/issues/58)
 
@@ -70,7 +70,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-22` · **blocked** · CT · CT: the 28-night run, size report and reports/f1.md · [#71](https://github.com/rrweller/Astro-seeing/issues/71)
 
-- `F1-23` · **in-progress** · cloud · Cloud cover a hair over 100 % (GRIB packing) crashes the tick · [#80](https://github.com/rrweller/Astro-seeing/issues/80)
+- `F1-23` · **review** · cloud · Cloud cover a hair over 100 % (GRIB packing) crashes the tick · [#80](https://github.com/rrweller/Astro-seeing/issues/80) · PR [#82](https://github.com/rrweller/Astro-seeing/pull/82)
 
 - `K1` · **needs-you** · CT · Recover the ntfy URL; pull `dev` and restart the notify watcher · needs you: be at home
 
@@ -221,7 +221,7 @@ flowchart LR
   %% ---
   class F1_7 inprogress
   %% ---
-  class F1_8 ready
+  class F1_8 inprogress
   %% ---
   class F1_9 ready
   %% ---
@@ -251,7 +251,7 @@ flowchart LR
   %% ---
   class F1_22 blocked
   %% ---
-  class F1_23 inprogress
+  class F1_23 review
   %% ---
   class K1 needsyou
   %% ---
