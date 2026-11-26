@@ -58,8 +58,10 @@ def world(tmp_path, ephemeris):
 
 
 def test_the_tick_shows_meps_hours_in_the_kongsberg_place_file_flagged_regional(world):
-    for hour in (8, 10, 23):
-        report = world.at(DAY + dt.timedelta(hours=hour))
+    # steps 0-15 and 20-48 answer 404 (not in the samples): tried 5 times, from 10:00
+    # every 15 min (ticket #58), then the run is final
+    for t in (8, 10, 10.25, 10.5, 10.75, 11, 23):
+        report = world.at(DAY + dt.timedelta(hours=t))
         assert report.skipped is None
     latest, place = world.latest(), world.place_file()
     validate(latest, "f1-latest/1")
@@ -69,10 +71,10 @@ def test_the_tick_shows_meps_hours_in_the_kongsberg_place_file_flagged_regional(
     assert runs["gfs"]["state"] == "processed"
     # MEPS's 06z run: listed and complete at THREDDS; only steps 16-19 are in the samples
     meps_run = runs["meps"]
-    assert meps_run["state"] == "partial" and meps_run["attempts"] == 1
+    assert meps_run["state"] == "partial" and meps_run["attempts"] == 5
     verified = json.loads(meps_run["steps_verified"])
     assert [s for s, why in verified.items() if why == "ok"] == ["16", "17", "18", "19"]
-    assert "404" in verified["0"]
+    assert verified["0"].startswith("not fetched: 5 tries failed") and "404" in verified["0"]
     assert latest["runs"]["meps"]["run_time"] == "2026-11-26T06:00:00Z"
     assert not any(world.paths.root.rglob("*.dods"))  # raw files gone once stored
 

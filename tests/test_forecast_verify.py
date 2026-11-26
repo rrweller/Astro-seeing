@@ -114,7 +114,12 @@ def test_an_old_manifest_gains_the_two_forecast_tables_and_nothing_else_changes(
     con = sqlite3.connect(path)
     after_schema, after_rows = snapshot(con)
     con.close()
-    assert set(after_schema) - set(before_schema) == {"forecast_runs", "forecast_files"}
+    assert set(after_schema) - set(before_schema) == {
+        "forecast_runs",
+        "forecast_files",
+        "forecast_step_tries",
+        "forecast_hosts",
+    }
     assert {k: after_schema[k] for k in before_schema} == before_schema
     assert after_rows == before_rows
     Manifest(path).close()  # opening again changes nothing

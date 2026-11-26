@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from forecast_world import DAY, World
+from icon_eu_samples import IconWorld
 from page_browser import Browser, PageSite, require_browser
 
 PAGE = "/forecast/"
@@ -446,7 +447,7 @@ def test_past_hours_are_greyed_only_where_the_place_file_says_so(case_b):
 def test_icon_eu_shows_in_the_table_beside_gfs_with_no_page_change(tmp_path, ephemeris):
     """Ticket #55: the tick's files with ICON-EU added (a fake DWD beside the fake NOMADS)."""
     require_browser()
-    world = World(tmp_path / "world", ephemeris, icon_eu=True)
+    world = IconWorld(tmp_path / "world", ephemeris)
     products = {}
     try:
         for name, hour in (("a", 9), ("b", 10)):

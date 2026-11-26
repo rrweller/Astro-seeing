@@ -4,9 +4,17 @@ NOMADS cuts each file to the area on the server (D51 item 14), so a step is two 
 requests: ``pgrb2`` (the "most commonly used" file) and ``pgrb2b`` (the in-between
 25 hPa levels). Together they hold the 39 pressure levels from 1000 to 50 hPa
 (``docs/research/forecast-sources.md``). Requests are paced to the host's limit in the
-settings (NOMADS: at most 1 a second). The AWS fallback and the retry rules are
-ticket #58 (F1-9); here every file is tried once, and a failed file leaves its step
-missing, with the reason.
+settings (NOMADS: at most 1 a second). Every file is tried once per call, and a failed
+file leaves its step missing, with the reason; the tick's run rules retry (ticket #58).
+
+**The fallback host** (``on_fallback()``, ticket #58, D79) is NOAA's AWS bucket
+``noaa-gfs-bdp-pds``, which keeps the same files whole: global, every field, with an
+``.idx`` beside each (``n:offset:d=YYYYMMDDHH:VAR:level:forecast:``). There a file is
+one GET of its ``.idx`` and one ranged GET per run of adjacent needed messages, the
+instantaneous ones only (``anl`` at step 0, ``N hour fcst`` after), written together
+under the same name as NOMADS's file of that step, so ``read`` takes files from either
+host, even mixed within a run. A needed message missing from the ``.idx``, or listed
+twice, raises :class:`FormatMismatch`.
 
 ``read`` decodes the GRIB2 messages by their WMO code numbers (discipline, category,
 parameter, surface type), not by eccodes' short names, and refuses anything other than
@@ -15,24 +23,28 @@ unknown one, another grid, run or step. The filter's cross product of variables 
 levels also returns two kinds of message we never read, and these are the only ones
 skipped, each counted in the log: the 6-hour (and shorter) average cloud covers (D48
 item 1: the instantaneous values are used) and the skin temperature ``TMP:surface``.
+A global 0.25° field (the AWS bucket's) is cut to the area's points as it is decoded;
+any other grid must be the area's own.
 """
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
+import hashlib
 import logging
 import math
 import re
 import time
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlencode
 
 import numpy as np
 
-from astroseeing.forecast.http import HttpClient, HttpError
+from astroseeing.forecast.http import HttpClient, HttpError, RatePacer
 from astroseeing.forecast.settings import Area, Model
 from astroseeing.forecast.sources.interface import (
     FetchedFile,
@@ -41,6 +53,7 @@ from astroseeing.forecast.sources.interface import (
     RunFields,
     RunRef,
 )
+from astroseeing.forecast.store import write_atomic
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +63,8 @@ log = logging.getLogger(__name__)
 CREDIT = "GFS: NOAA/NCEP (US government open data); not endorsed by NOAA"
 
 DATA_DIR = "/pub/data/nccf/com/gfs/prod"
+#: The fallback host's name in the settings: NOAA's AWS bucket, files at the top level.
+AWS_HOST = "aws"
 FILTERS = {"pgrb2": "/cgi-bin/filter_gfs_0p25_1hr.pl", "pgrb2b": "/cgi-bin/filter_gfs_0p25b.pl"}
 
 #: The levels only ``pgrb2b`` has: 125 to 875 hPa every 50 hPa (``.idx`` files of the
@@ -92,29 +107,22 @@ FOG_FIELDS = {"visibility_m": ("VIS", "surface")}
 IGNORED_INSTANT = frozenset({("TMP", "surface", None)})
 IGNORED_AVERAGES = frozenset({(v, s, None) for v, s in LAYER_CLOUD.values()})
 
+
+@dataclass(frozen=True)
+class IdxRecord:
+    """One message listed in an AWS ``.idx``: its number, byte range (``end`` None: to
+    the end of the file), and NOAA's names for it."""
+
+    n: int
+    start: int
+    end: int | None
+    var: str
+    level: str
+    forecast: str
+
+
 _FILE_RE = re.compile(r"gfs\.t(\d\d)z\.(pgrb2b?)\.0p25\.f(\d{3})\.grb2$")
 _GRID_TOL = 1e-6
-
-
-class RatePacer:
-    """Spaces request starts at least ``1 / max_per_s`` seconds apart (D51 item 14)."""
-
-    def __init__(
-        self,
-        max_per_s: float | None,
-        monotonic: Callable[[], float] = time.monotonic,
-        sleep: Callable[[float], None] = time.sleep,
-    ):
-        self.interval = 0.0 if not max_per_s else 1.0 / max_per_s
-        self.monotonic, self.sleep = monotonic, sleep
-        self._last: float | None = None
-
-    def wait(self) -> None:
-        if self._last is not None:
-            gap = self._last + self.interval - self.monotonic()
-            if gap > 0:
-                self.sleep(gap)
-        self._last = self.monotonic()
 
 
 @dataclass(frozen=True)
@@ -136,7 +144,8 @@ class FilterRequest:
 class GfsAdapter:
     """The GFS source (``SourceAdapter``). ``areas`` are the settings' areas (``read``
     checks the grid against the fetched area's box); ``base_url`` replaces the configured
-    main host (tests point it at a fake server); ``pacer`` paces every request to it."""
+    main host (tests point it at a fake server); ``pacer`` paces every request to it;
+    ``fallback_url`` replaces the configured fallback host's URL."""
 
     credit = CREDIT
 
@@ -147,6 +156,7 @@ class GfsAdapter:
         areas: Mapping[str, Area],
         base_url: str | None = None,
         pacer: RatePacer | None = None,
+        fallback_url: str | None = None,
     ):
         if model.grid.kind != "regular_latlon":
             raise ValueError(f"GFS needs a regular lat-lon grid, settings say {model.grid.kind}")
@@ -159,6 +169,10 @@ class GfsAdapter:
         self.host = model.hosts.main
         self.base_url = (base_url or self.host.url).rstrip("/")
         self.pacer = pacer or RatePacer(self.host.max_requests_per_s)
+        self.fallback_url = fallback_url
+        fallback = model.hosts.fallback
+        if fallback is not None and fallback.name != AWS_HOST:
+            raise ValueError(f"no GFS file layout known for the fallback host {fallback.name!r}")
         levels = set(model.pressure_levels_hpa)
         self._levels = {
             "pgrb2": sorted(levels - PGRB2B_LEVELS, reverse=True),
@@ -211,6 +225,83 @@ class GfsAdapter:
                 plan.append(FilterRequest(step, part, FILTERS[part], params, f"{name}.grb2"))
         return plan
 
+    def on_fallback(self) -> GfsAdapter:
+        """The same source with every request to the fallback host (the AWS bucket)."""
+        host = self.model.hosts.fallback
+        if host is None:
+            raise ValueError(f"{self.model.id} has no fallback host in the settings")
+        other = copy.copy(self)
+        other.host = host
+        other.base_url = (self.fallback_url or host.url).rstrip("/")
+        other.pacer = RatePacer(host.max_requests_per_s)
+        return other
+
+    @property
+    def on_aws(self) -> bool:
+        return self.host.name == AWS_HOST
+
+    def aws_path(self, run: RunRef, part: str, step: int) -> str:
+        """Where the bucket keeps one file (``/gfs.YYYYMMDD/HH/atmos/gfs.tHHz....fNNN``)."""
+        day, hh = run.run_time.strftime("%Y%m%d"), run.run_time.strftime("%H")
+        return f"/gfs.{day}/{hh}/atmos/gfs.t{hh}z.{part}.0p25.f{step:03d}"
+
+    def aws_selection(self, idx: str, run: RunRef, part: str, step: int) -> list[IdxRecord]:
+        """The needed messages of one file, from its ``.idx``: the instantaneous value of
+        every field ``read`` expects of that part. A needed message missing, listed twice
+        or listed for another run raises ``FormatMismatch``."""
+        forecast = "anl" if step == 0 else f"{step} hour fcst"
+        want = {_idx_names(key): key for key in self._expected(part)}
+        where = f"{self.aws_path(run, part, step).rsplit('/', 1)[-1]}.idx"
+        rows = []
+        for line in idx.splitlines():
+            if not line.strip():
+                continue
+            fields = line.split(":")
+            if len(fields) < 7:
+                raise FormatMismatch(self.model.id, f"{where}: unreadable line {line!r}")
+            rows.append((int(fields[0]), int(fields[1]), fields[2], fields[3], fields[4],
+                         fields[5]))  # fmt: skip
+        found: dict[tuple, IdxRecord] = {}
+        for k, (n, start, date, var, level, fc) in enumerate(rows):
+            if (var, level) not in want or fc != forecast:
+                continue
+            if date != f"d={run.run_time:%Y%m%d%H}":
+                raise FormatMismatch(self.model.id, f"{where}: {var}:{level} is for {date}")
+            if (var, level) in found:
+                raise FormatMismatch(self.model.id, f"{where}: {var}:{level} listed twice")
+            end = rows[k + 1][1] - 1 if k + 1 < len(rows) else None
+            found[(var, level)] = IdxRecord(n, start, end, var, level, fc)
+        absent = [want[k] for k in want if k not in found]
+        if absent:
+            raise FormatMismatch(
+                self.model.id, f"{where}: missing {_names(sorted(absent, key=str))} ({forecast})"
+            )
+        return sorted(found.values(), key=lambda r: r.start)
+
+    def _aws_fetch_file(self, run: RunRef, part: str, step: int, dest: Path) -> FetchedFile:
+        t0 = time.monotonic()
+        url = self.base_url + self.aws_path(run, part, step)
+        self.pacer.wait()
+        idx = self.http.get(url + ".idx").body.decode()
+        ranges: list[tuple[int, int | None]] = []
+        for r in self.aws_selection(idx, run, part, step):
+            if ranges and ranges[-1][1] is not None and ranges[-1][1] + 1 == r.start:
+                ranges[-1] = (ranges[-1][0], r.end)
+            else:
+                ranges.append((r.start, r.end))
+        body = []
+        for a, b in ranges:
+            self.pacer.wait()
+            got = self.http.get(url, headers={"Range": f"bytes={a}-{'' if b is None else b}"})
+            if got.status != 206 or (b is not None and len(got.body) != b - a + 1):
+                raise HttpError(url, got.status, f"asked bytes {a}-{b}, got {len(got.body)} "
+                                f"bytes with HTTP {got.status}")  # fmt: skip
+            body.append(got.body)
+        data = b"".join(body)
+        write_atomic(dest, data)
+        return FetchedFile(url, self.host.name, dest, len(data), time.monotonic() - t0,
+                           hashlib.sha256(data).hexdigest())  # fmt: skip
+
     # -- SourceAdapter --------------------------------------------------------------------
     def latest_published(self, now: dt.datetime) -> RunRef | None:
         """The newest run of the last day whose last step is listed in both files' index
@@ -231,6 +322,8 @@ class GfsAdapter:
         url = (
             f"{self.base_url}{DATA_DIR}/gfs.{day}/{hh}/atmos/gfs.t{hh}z.{part}.0p25.f{step:03d}.idx"
         )
+        if self.on_aws:
+            url = f"{self.base_url}{self.aws_path(run, part, step)}.idx"
         self.pacer.wait()
         try:
             self.http.head(url)
@@ -243,6 +336,8 @@ class GfsAdapter:
     def fetch(
         self, run: RunRef, area: Area, steps_h: tuple[int, ...], dest_dir: Path
     ) -> FetchResult:
+        if self.on_aws:
+            return self._aws_fetch(run, area, steps_h, Path(dest_dir))
         files, missing = [], {}
         for req in self.request_plan(run, area, steps_h):
             if req.step in missing:
@@ -256,6 +351,22 @@ class GfsAdapter:
                 continue
             files.append(FetchedFile(d.url, self.host.name, d.path, d.bytes, d.seconds, d.sha256))
         return FetchResult(run, area.id, Path(dest_dir), tuple(files), tuple(steps_h), missing)
+
+    def _aws_fetch(
+        self, run: RunRef, area: Area, steps_h: tuple[int, ...], dest_dir: Path
+    ) -> FetchResult:
+        files, missing = [], {}
+        hh = run.run_time.strftime("%H")
+        for step in steps_h:
+            for part in ("pgrb2", "pgrb2b"):
+                dest = dest_dir / f"gfs.t{hh}z.{part}.0p25.f{step:03d}.grb2"
+                try:
+                    files.append(self._aws_fetch_file(run, part, step, dest))
+                except HttpError as e:
+                    missing[step] = f"{part}: {e}"
+                    log.warning("GFS %s step %d %s (AWS): %s", run.label, step, part, e)
+                    break  # the step is missing anyway
+        return FetchResult(run, area.id, dest_dir, tuple(files), tuple(steps_h), missing)
 
     def read(self, fetched: FetchResult) -> RunFields:
         run, area = fetched.run, fetched.area
@@ -343,7 +454,8 @@ class GfsAdapter:
                     if key in fields:
                         raise FormatMismatch(model, f"{where}: {_names([key])} twice")
                     _check_time(h, run, step, model, where)
-                    this_grid = _grid(h)
+                    source_grid = _grid(h)
+                    this_grid, cut = self._area_cut(source_grid, area)
                     if grid is None:
                         self._check_area_grid(this_grid, area)
                         grid = this_grid
@@ -351,12 +463,26 @@ class GfsAdapter:
                         raise FormatMismatch(
                             model, f"{where}: grid {this_grid} differs from {grid}"
                         )
-                    fields[key] = _values(h, this_grid)
+                    values = _values(h, source_grid)
+                    fields[key] = values if cut is None else values[np.ix_(*cut)]
                 finally:
                     ec.codes_release(h)
         if n == 0:
             raise FormatMismatch(model, f"step {step}: {path.name} holds no GRIB message")
         return grid
+
+    def _area_cut(self, grid: tuple, area_id: str) -> tuple[tuple, tuple | None]:
+        """A global field's grid → the area's grid and the (rows, columns) inside the box;
+        any other grid is returned as it is, with no cut (it must be the area's own)."""
+        spacing = self.model.grid.spacing
+        whole = (round(180 / spacing) + 1, round(360 / spacing), 90.0, 0.0, spacing, spacing)
+        if area_id not in self.areas or not _same_grid(grid, whole):
+            return grid, None
+        want = expected_grid(spacing, self.areas[area_id])
+        nj, ni, north, west = want[:4]
+        rows = round((90.0 - north) / spacing) + np.arange(nj)
+        cols = (round(west / spacing) + np.arange(ni)) % whole[1]
+        return want, (rows, cols)
 
     def _check_area_grid(self, grid: tuple, area_id: str) -> None:
         if area_id not in self.areas:
@@ -408,6 +534,12 @@ class GfsAdapter:
             model_ground_m=ground[0],
             fog={name: single(*FOG_FIELDS[name]) for name in self.model.fog_signals},
         )
+
+
+def _idx_names(key: tuple) -> tuple[str, str]:
+    """NOAA's (variable, level) names of a field, as an AWS ``.idx`` lists them."""
+    var, surface, level = key
+    return (var, f"{level:g} mb") if surface == "mb" else (var, surface)
 
 
 def _deg(x: float) -> str:

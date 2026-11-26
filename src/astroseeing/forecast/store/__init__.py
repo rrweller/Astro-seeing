@@ -179,6 +179,15 @@ class PlaceStore:
         write_atomic(path, data)
         return StoredFile(path, len(data), hashlib.sha256(data).hexdigest())
 
+    def remove_run(self, place_id: str, model_id: str, run_time: dt.datetime) -> bool:
+        """Remove one run's stored values (an SSD file, never ``/data``), when the run
+        has failed after storing some steps; True if there was a file."""
+        path = self.path_for(place_id, model_id, run_time)
+        if not path.exists():
+            return False
+        path.unlink()
+        return True
+
     @staticmethod
     def read_run(path: Path) -> dict:
         doc = json.loads(Path(path).read_text())

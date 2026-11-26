@@ -18,6 +18,7 @@ from astroseeing.forecast.tick import tick_lock
 
 from forecast_samples import copy_samples, drop_messages, edit_values, small_box_settings
 from forecast_world import DAY, PUBLISHED, World
+from icon_eu_samples import IconWorld
 
 
 @pytest.fixture
@@ -226,7 +227,7 @@ def test_astro_forecast_tick_refuses_a_hand_entered_height_before_any_fetch(
 @pytest.mark.slow  # ~40 s: 5244 files from the fake DWD
 def test_icon_eu_hours_show_in_the_kongsberg_place_file(tmp_path, ephemeris):
     """Ticket #55: a second forecast model behind the same interface, from a fake DWD."""
-    w = World(tmp_path, ephemeris, icon_eu=True)
+    w = IconWorld(tmp_path, ephemeris)
     try:
         for hour in (9, 10, 11):
             assert w.at(DAY + dt.timedelta(hours=hour)).skipped is None

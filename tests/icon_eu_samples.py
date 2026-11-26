@@ -18,8 +18,13 @@ import datetime as dt
 import json
 from pathlib import Path
 
+from astroseeing.forecast.http import HttpClient
 from astroseeing.forecast.sources import RunRef
-from astroseeing.forecast.sources.icon_eu import DATA_DIR
+from astroseeing.forecast.sources.gfs import RatePacer
+from astroseeing.forecast.sources.icon_eu import DATA_DIR, IconEuAdapter
+
+from fake_http import FakeHttpServer
+from forecast_world import PUBLISHED, World
 
 ICON_SAMPLES = (
     Path(__file__).resolve().parent / "fixtures" / "forecast" / "icon_eu" / "20261126T06Z"
@@ -106,3 +111,42 @@ def edit_message(message: bytes, **keys) -> bytes:
         return ec.codes_get_message(h)
     finally:
         ec.codes_release(h)
+
+
+class IconWorld(World):
+    """The tick test's CT in miniature with ICON-EU beside GFS in the Kongsberg area: a
+    fake DWD opendata publishes the ICON-EU samples (the same 06z run) when the fake
+    NOMADS publishes GFS's. ICON-EU's grid is the map grid, the finest global family."""
+
+    def __init__(self, tmp_path, ephemeris):
+        super().__init__(
+            tmp_path,
+            ephemeris,
+            settings_edits={
+                "areas.kongsberg.models": ["gfs", "icon_eu"],
+                "areas.kongsberg.map_grid_model": "icon_eu",
+            },
+        )
+        self.dwd = FakeHttpServer()
+        self.dwd.__enter__()
+        self.icon_eu = IconEuAdapter(
+            self.settings.models["icon_eu"],
+            HttpClient(timeout_s=5),
+            self.settings.areas,
+            base_url=self.dwd.url,
+            pacer=RatePacer(None),
+        )
+        self.icon_published = False
+
+    def at(self, now: dt.datetime):
+        if now >= PUBLISHED and not self.icon_published:
+            serve_icon_samples(self.dwd, sample_messages())
+            self.icon_published = True
+        return super().at(now)
+
+    def adapters(self) -> dict:
+        return {**super().adapters(), "icon_eu": self.icon_eu}
+
+    def close(self):
+        super().close()
+        self.dwd.__exit__(None, None, None)

@@ -289,7 +289,12 @@ def _check_shape(name: str, values: np.ndarray, expected: tuple[int, ...]) -> No
 
 class SourceAdapter(Protocol):
     """One forecast model's source (spec Module 1). All HTTP goes through the
-    injected ``forecast.http.HttpClient``, so tests swap in a fake server."""
+    injected ``forecast.http.HttpClient``, so tests swap in a fake server.
+
+    An adapter whose model has a fallback host in the settings also provides
+    ``on_fallback() -> SourceAdapter``: the same source, every request to that host
+    (``tick.hosts`` switches to it after the main host has failed for 1 h, D51 item 14).
+    """
 
     model: Model
     credit: str  # the short credit beside the model's rows (D44 item 8)
@@ -302,7 +307,9 @@ class SourceAdapter(Protocol):
     def fetch(self, run: RunRef, area: Area, steps_h: tuple[int, ...],
               dest_dir: Path) -> FetchResult:  # fmt: skip
         """Download only the needed fields for the area and steps into ``dest_dir``,
-        recording every file; retries and host fallback per D51 items 7 and 14."""
+        recording every file; one try per file, a failed file leaving its step missing
+        with the reason (the tick's run rules retry, D51 item 7). Any subset of the
+        model's steps may be asked for: the tick asks for those still missing."""
         ...
 
     def read(self, fetched: FetchResult) -> RunFields:

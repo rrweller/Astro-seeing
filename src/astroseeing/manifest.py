@@ -121,7 +121,9 @@ CREATE TABLE IF NOT EXISTS events (
 #: The forecast track's records (F1 spec Module 2, D51 item 6; ticket #51), kept apart
 #: from the CDS tables: the CDS gate, ``run_boxes.sh`` and the download watcher never
 #: read them. ``forecast.verify.ForecastRecords`` writes them. Created on every open, so
-#: an older manifest gains these two tables and nothing else changes.
+#: an older manifest gains these tables and nothing else changes. ``forecast_step_tries``
+#: holds every try to fetch a run's step, ``forecast_hosts`` each model's host choice
+#: (the run rules, ticket #58).
 FORECAST_SCHEMA = """
 CREATE TABLE IF NOT EXISTS forecast_runs (
     id                 INTEGER PRIMARY KEY,
@@ -153,6 +155,21 @@ CREATE TABLE IF NOT EXISTS forecast_files (
     fetched_at     TEXT NOT NULL,
     verified       INTEGER NOT NULL DEFAULT 0,
     raw_deleted_at TEXT
+);
+CREATE TABLE IF NOT EXISTS forecast_step_tries (
+    id     INTEGER PRIMARY KEY,
+    run_id INTEGER NOT NULL REFERENCES forecast_runs(id),
+    step   INTEGER NOT NULL,
+    host   TEXT NOT NULL,
+    at     TEXT NOT NULL,
+    error  TEXT
+);
+CREATE TABLE IF NOT EXISTS forecast_hosts (
+    model              TEXT PRIMARY KEY,
+    current            TEXT NOT NULL,
+    main_failing_since TEXT,
+    switched_at        TEXT,
+    updated_at         TEXT NOT NULL
 );
 """
 

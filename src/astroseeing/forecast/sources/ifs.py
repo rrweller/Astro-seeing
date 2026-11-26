@@ -18,8 +18,10 @@ times, and the hours between stay absent (D44, D48 item 4).
 
 The portal and its AWS mirror (``ecmwf-forecasts``, the fallback in the settings) lay
 the files out alike, the mirror without the ``/forecasts`` prefix (``file_path``). The
-adapter fetches from the main host; switching to the mirror is ticket #58 (F1-9). Here
-every file is tried once, and a failed file leaves its step missing, with the reason.
+adapter fetches from the main host; ``on_fallback()`` gives the same adapter on the
+mirror, which the tick uses once the portal has failed for 1 h (ticket #58). Every
+file is tried once per call, and a failed file leaves its step missing, with the
+reason; the tick's run rules retry.
 
 ``read`` identifies messages by ECMWF parameter id, level type and level, checks each
 one's units, run, step and grid, and refuses anything else with :class:`FormatMismatch`:
@@ -28,6 +30,7 @@ a missing, duplicated or unexpected field, other units, another run, step or gri
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
 import hashlib
 import json
@@ -112,8 +115,8 @@ def file_path(run: RunRef, step: int, ext: str, host: Host) -> str:
 
 class IfsAdapter:
     """The IFS source (``SourceAdapter``). ``areas`` are the settings' areas (``read``
-    cuts each to its box); ``base_url`` replaces the configured main host's URL (tests
-    point it at a fake server)."""
+    cuts each to its box); ``base_url`` replaces the configured main host's URL and
+    ``fallback_url`` the fallback's (tests point them at fake servers)."""
 
     credit = CREDIT
 
@@ -123,6 +126,7 @@ class IfsAdapter:
         http: HttpClient | None,
         areas: Mapping[str, Area],
         base_url: str | None = None,
+        fallback_url: str | None = None,
     ):
         if model.grid.kind != "regular_latlon":
             raise ValueError(f"IFS needs a regular lat-lon grid, settings say {model.grid.kind}")
@@ -140,6 +144,17 @@ class IfsAdapter:
         self.areas = areas
         self.host = model.hosts.main
         self.base_url = (base_url or self.host.url).rstrip("/")
+        self.fallback_url = fallback_url
+
+    def on_fallback(self) -> IfsAdapter:
+        """The same source with every request to the fallback host (the AWS mirror)."""
+        host = self.model.hosts.fallback
+        if host is None:
+            raise ValueError(f"{self.model.id} has no fallback host in the settings")
+        other = copy.copy(self)
+        other.host = host
+        other.base_url = (self.fallback_url or host.url).rstrip("/")
+        return other
 
     # -- what is needed ------------------------------------------------------------------
     def wanted(self, step: int) -> set[tuple[str, float | None]]:
@@ -179,8 +194,8 @@ class IfsAdapter:
     def fetch(
         self, run: RunRef, area: Area, steps_h: tuple[int, ...], dest_dir: Path
     ) -> FetchResult:
-        if GROUND_STEP not in steps_h:
-            raise ValueError(f"IFS steps must include {GROUND_STEP}, which alone has the ground")
+        # Any steps may be asked for (the tick fetches a run one step at a time over as
+        # many ticks as it needs, ticket #58); ``read`` refuses a run without step 0.
         files, missing = [], {}
         for step in steps_h:
             try:
