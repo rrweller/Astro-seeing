@@ -19,3 +19,18 @@ second with the generic `astro-seeing/<version>` User-Agent. Each folder's
 Each step is two files: `pgrb2` (23 pressure levels, the cloud layers, surface pressure,
 model ground, visibility) and `pgrb2b` (the 16 in-between levels, and cloud cover at
 70 hPa).
+
+## `aws-idx/`: the fallback host's index files
+
+Two `.idx` files of the same run from NOAA's AWS bucket `noaa-gfs-bdp-pds`
+(https://noaa-gfs-bdp-pds.s3.amazonaws.com/, the GFS fallback host, D51 item 14),
+fetched unaltered on 2026-11-26 with the generic User-Agent (ticket #58):
+
+| File | Lines | SHA-256 |
+|---|---|---|
+| `gfs.t06z.pgrb2.0p25.f012.idx` | 743 | `dd9f28727516b8ef5f6ed8acaf6a87376ce8485b8cc6f6f9f683159e1926d8a2` |
+| `gfs.t06z.pgrb2b.0p25.f012.idx` | 349 | `33db4e69c569b71e59bd31254cadf779118c0bd78f62f0442be07ef806c0fa52` |
+
+They check which byte ranges the fallback asks for. The GRIB files they index are
+global (`pgrb2` steps 1-4 of this run are 533-537 MB each in the bucket listing), so the fake bucket in the tests serves the NOMADS
+samples' messages laid out as the bucket's files instead (`forecast_samples.aws_file`).

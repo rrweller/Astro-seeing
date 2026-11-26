@@ -346,6 +346,31 @@ def test_the_aws_mirror_has_the_same_files_without_the_forecasts_prefix():
     assert file_path(RUN, 48, "index", fallback) == "/" + name
 
 
+def test_the_fallback_fetches_the_same_run_from_the_aws_mirror(tmp_path):
+    """Ticket #58: ``on_fallback()`` sends every request to the mirror, at its paths
+    (no ``/forecasts``), and the run reads the same as from the portal."""
+    with FakeHttpServer() as portal, FakeHttpServer() as mirror:
+        ifs = IfsAdapter(IFS, HttpClient(timeout_s=5), SETTINGS.areas, base_url=portal.url,
+                         fallback_url=mirror.url)  # fmt: skip
+        serve_samples(portal, (0, 3), "kongsberg")
+        ref = ifs.read(ifs.fetch(RUN, KONGSBERG, (0, 3), tmp_path / "portal"))
+        asked_portal = len(portal.requests)
+        aws = ifs.on_fallback()
+        for step in (0, 3, 48):
+            for ext in ("grib2", "index"):  # step 48: only its index is asked (HEAD)
+                src = SAMPLES / "kongsberg" / file_name(RUN, min(step, 3), ext)
+                mirror.route(file_path(RUN, step, ext, IFS.hosts.fallback), src)
+        assert aws.latest_published(dt.datetime(2026, 11, 26, 13, tzinfo=dt.UTC)) == RUN
+        fetched = aws.fetch(RUN, KONGSBERG, (0, 3), tmp_path / "aws")
+        assert not fetched.missing_steps
+        assert all(f.host == "aws" and f.url.startswith(mirror.url + "/20261126/")
+                   for f in fetched.files)  # fmt: skip
+        got = aws.read(fetched)
+        assert len(portal.requests) == asked_portal  # nothing more asked of the portal
+    for name in ("temperature_k", "geopotential_height_m", "total_cloud_pct", "model_ground_m"):
+        np.testing.assert_array_equal(getattr(got, name), getattr(ref, name))
+
+
 def test_the_samples_index_their_own_files():
     """The saved index of each step points at whole messages of its own file."""
     for folder in SAMPLES.iterdir():
