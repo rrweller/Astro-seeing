@@ -34,7 +34,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C12` · **blocked** · cloud · Experiment spec and CT tickets (needs your approval) · ticket: none yet
 
-- `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · this run: F1-1, then F1-2, F1-4, F1-5, then F1-3 · ticket: none
+- `C13` · **ready** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · next run: F1-23 first (once PR #81 adds it), then F1-6, F1-7, F1-8, F1-9; also ready: F1-10 to F1-15 · ticket: none
 
 - `F1-6` · **ready** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
@@ -211,7 +211,7 @@ flowchart LR
   %% ---
   class C12 blocked
   %% ---
-  class C13 inprogress
+  class C13 ready
   %% ---
   class F1_6 ready
   %% ---
