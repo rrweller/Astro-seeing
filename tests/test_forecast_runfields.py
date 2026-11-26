@@ -10,6 +10,7 @@ import pytest
 
 from astroseeing.forecast.settings import load_settings
 from astroseeing.forecast.sources import (
+    CLOUD_TOLERANCE_PCT,
     FetchedFile,
     FetchResult,
     FormatMismatch,
@@ -140,3 +141,73 @@ def test_fetch_result_records_each_file(tmp_path):
     with pytest.raises(ValueError, match="step 2"):
         FetchResult(run=RUN, area="kongsberg", dest_dir=tmp_path, files=(f,),
                     steps_h=(0, 1), missing_steps={2: "?"})  # fmt: skip
+
+
+# -- the cloud range rule (ticket #80, D95) ---------------------------------------------
+CLOUD = ("total_cloud_pct", "low_cloud_pct", "mid_cloud_pct", "high_cloud_pct", "level_cloud_pct")
+
+
+def with_cloud_value(name: str, value: float, step: int = 1) -> dict:
+    """Synthetic fields whose cloud ``name`` holds ``value`` at one point of ``step``."""
+    kw = synthetic()
+    values = kw[name].copy()
+    values[step, 1, 2, ...] = value
+    kw[name] = values
+    return kw
+
+
+@pytest.mark.parametrize("name", CLOUD)
+def test_cloud_a_hair_over_100_is_set_to_100_and_counted(name):
+    kw = with_cloud_value(name, 100 + CLOUD_TOLERANCE_PCT / 2)
+    given = kw[name].copy()
+    f = RunFields(**kw)
+    values = getattr(f, name)
+    assert np.all(values[1, 1, 2, ...] == 100.0)
+    assert f.qc[f"{name}_set_to_100"] == (5 if name == "level_cloud_pct" else 1)
+    assert sum(f.qc.counts.values()) == f.qc[f"{name}_set_to_100"]  # nothing else counted
+    np.testing.assert_array_equal(kw[name], given)  # the adapter's array is not edited
+
+
+@pytest.mark.parametrize("name", CLOUD)
+def test_cloud_a_hair_below_0_is_set_to_0_and_counted(name):
+    f = RunFields(**with_cloud_value(name, -CLOUD_TOLERANCE_PCT / 2))
+    assert np.all(getattr(f, name)[1, 1, 2, ...] == 0.0)
+    assert f.qc[f"{name}_set_to_0"] == (5 if name == "level_cloud_pct" else 1)
+    assert sum(f.qc.counts.values()) == f.qc[f"{name}_set_to_0"]
+
+
+@pytest.mark.parametrize("name", CLOUD)
+@pytest.mark.parametrize("value", [100 + 10 * CLOUD_TOLERANCE_PCT, -10 * CLOUD_TOLERANCE_PCT])
+def test_cloud_further_out_of_range_fails_naming_field_step_and_value(name, value):
+    with pytest.raises(FormatMismatch) as e:
+        RunFields(**with_cloud_value(name, value, step=2))
+    assert e.value.model == "gfs"
+    assert name in e.value.difference and "step 2" in e.value.difference
+    assert repr(value) in e.value.difference
+
+
+@pytest.mark.parametrize("value", [0.0, 100.0])
+def test_exact_0_and_100_are_unchanged_and_not_counted(value):
+    kw = synthetic()
+    for name in CLOUD:
+        kw[name] = np.full_like(kw[name], value)
+    f = RunFields(**kw)
+    for name in CLOUD:
+        assert getattr(f, name) is kw[name]  # the very same array: nothing set
+        assert f.qc[f"{name}_set_to_0"] == f.qc[f"{name}_set_to_100"] == 0
+    assert f.qc.totals["level_cloud_pct_set_to_100"] == 3 * 2 * 3 * 5  # every value checked
+
+
+def test_nan_cloud_is_left_for_verification_to_count():
+    f = RunFields(**with_cloud_value("total_cloud_pct", np.nan))
+    assert np.isnan(f.total_cloud_pct[1, 1, 2])
+    assert sum(f.qc.counts.values()) == 0
+
+
+def test_fields_cut_from_a_run_keep_the_run_counts():
+    run = RunFields(**with_cloud_value("high_cloud_pct", 100 + CLOUD_TOLERANCE_PCT / 2))
+    kw = synthetic(grid=(1, 1), high_cloud_pct=run.high_cloud_pct[:, 1:2, 2:3])
+    cut = RunFields(**kw, qc=run.qc)
+    assert cut.qc is run.qc and cut.qc["high_cloud_pct_set_to_100"] == 1
+    with pytest.raises(ValueError, match="still had cloud values to set"):
+        RunFields(**with_cloud_value("high_cloud_pct", 100.001), qc=run.qc)

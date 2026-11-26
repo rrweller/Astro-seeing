@@ -7,14 +7,17 @@ the forecast code sees. ``read`` raises :class:`FormatMismatch` on any differenc
 the model's expected content (``configs/forecast.yaml``); nothing is dropped, filled
 or regridded silently (D51 item 8).
 
-``RunFields`` checks only that its arrays fit together (shapes, level order, times).
-Whether the content is what the model *should* deliver is verification's job
-(``forecast.verify``).
+``RunFields`` checks that its arrays fit together (shapes, level order, times) and
+applies the one cloud range rule every source shares (ticket #80, D95): cloud a hair
+outside 0-100 % is set to 0 or 100 and counted, further out it raises
+``FormatMismatch``. Whether the content is otherwise what the model *should* deliver
+is verification's job (``forecast.verify``).
 """
 
 from __future__ import annotations
 
 import datetime as dt
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,9 +27,25 @@ from typing import Protocol
 import numpy as np
 
 from astroseeing.forecast.settings import FOG_SIGNALS, Area, Model
+from astroseeing.qc import QCCounts
+
+log = logging.getLogger(__name__)
 
 #: The pressure level whose wind is the classic jet-stream indicator (RESEARCH §3.9).
 JET_LEVEL_HPA = 200.0
+
+#: The cloud-fraction fields the cloud range rule applies to (ticket #80).
+CLOUD_FIELDS = (
+    "total_cloud_pct",
+    "low_cloud_pct",
+    "mid_cloud_pct",
+    "high_cloud_pct",
+    "level_cloud_pct",
+)
+#: How far (percentage points) a cloud fraction may lie outside 0-100 % and still be
+#: set to exactly 0 or 100 (counted); further out, the run fails (D95). GRIB packing
+#: decodes a full layer as up to 100.0000061 % in the GFS samples.
+CLOUD_TOLERANCE_PCT = 0.01
 
 
 class FormatMismatch(Exception):
@@ -113,6 +132,14 @@ class RunFields:
 
     ``fog`` holds every name in ``FOG_SIGNALS``: an array where the model has the
     signal, ``None`` (absent) where it doesn't, so missing never reads as "no fog".
+
+    Every cloud fraction passes the **cloud range rule** (``RunFields._apply_cloud_range_rule``)
+    here, so every adapter's values do: a value outside 0-100 % by at most
+    ``CLOUD_TOLERANCE_PCT`` is set to exactly 0 or 100 and counted in ``qc``; one
+    further out raises :class:`FormatMismatch`. ``qc`` holds those counts over the
+    arrays as the source delivered them. Fields cut from another ``RunFields`` (one
+    grid point, say) pass the parent's ``qc`` on, since their values have passed the
+    rule already.
     """
 
     run: RunRef
@@ -134,6 +161,7 @@ class RunFields:
     model_ground_m: np.ndarray
     fog: Mapping[str, np.ndarray | None]
     run_id: int | None = None  # the manifest's run id, once recorded
+    qc: QCCounts | None = None  # the cloud range rule's counts (set here when None)
 
     def __post_init__(self) -> None:
         if self.run.model != self.model.id:
@@ -176,6 +204,54 @@ class RunFields:
             if values is not None:
                 _check_shape(f"fog signal {name}", values, surface_shape)
         object.__setattr__(self, "fog", MappingProxyType(fog))
+        qc = self._apply_cloud_range_rule()
+        if self.qc is None:
+            object.__setattr__(self, "qc", qc)
+        elif any(qc.counts.values()):
+            raise ValueError("qc was passed on, but these fields still had cloud values to set")
+
+    def _apply_cloud_range_rule(self) -> QCCounts:
+        """The cloud range rule (ticket #80, D95), for every cloud fraction here.
+
+        A value below 0 or above 100 % by at most ``CLOUD_TOLERANCE_PCT`` (GRIB packing)
+        is set to exactly 0 or 100, counted per field and logged. A value further out is a
+        data error: :class:`FormatMismatch` names the field, step and value. NaN is left
+        for verification to count. Arrays needing a change are copied, never edited in place.
+        """
+        qc = QCCounts()
+        run_t0 = np.datetime64(self.run.run_time.replace(tzinfo=None), "s")
+        steps = (np.asarray(self.valid_times) - run_t0) // np.timedelta64(1, "h")
+        for name in CLOUD_FIELDS:
+            values = getattr(self, name)
+            if values is None:
+                continue
+            values = np.asarray(values, dtype=np.float64)
+            low, high = values < 0.0, values > 100.0
+            bad = (values < -CLOUD_TOLERANCE_PCT) | (values > 100.0 + CLOUD_TOLERANCE_PCT)
+            if bad.any():
+                k = tuple(np.argwhere(bad)[0])
+                raise FormatMismatch(
+                    self.model.id,
+                    f"{name} at step {int(steps[k[0]])} is {float(values[k])!r} %, outside "
+                    f"0-100 % by more than {CLOUD_TOLERANCE_PCT} ({int(bad.sum())} such value(s))",
+                )
+            qc.add_mask(f"{name}_set_to_0", low)
+            qc.add_mask(f"{name}_set_to_100", high)
+            if low.any() or high.any():
+                log.info(
+                    "%s %s: %s set to 0 for %d value(s) down to %r, to 100 for %d up to %r "
+                    "(cloud range rule, tolerance %s)",
+                    self.model.id,
+                    self.run.label,
+                    name,
+                    int(low.sum()),
+                    float(values[low].min()) if low.any() else None,
+                    int(high.sum()),
+                    float(values[high].max()) if high.any() else None,
+                    CLOUD_TOLERANCE_PCT,
+                )
+                object.__setattr__(self, name, np.clip(values, 0.0, 100.0))
+        return qc
 
     @property
     def grid_shape(self) -> tuple[int, ...]:

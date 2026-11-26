@@ -420,6 +420,7 @@ def _at_point(f: RunFields, i: int, j: int) -> RunFields:
         model_ground_m=f.model_ground_m[i : i + 1, j : j + 1],
         fog={k: cut(v) for k, v in f.fog.items()},
         run_id=f.run_id,
+        qc=f.qc,  # the cloud range rule's counts over the whole run, as read
     )
 
 
