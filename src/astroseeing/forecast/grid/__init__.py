@@ -49,10 +49,19 @@ def map_grid(area: Area, model: Model) -> MapGrid:
 def nearest_point(
     lat: np.ndarray, lon: np.ndarray, at_lat: float, at_lon: float
 ) -> tuple[int, int]:
-    """Index (row, column) of the grid point nearest to (``at_lat``, ``at_lon``) on a
-    regular grid (2-D ``lat``, ``lon``). Exactly halfway between points, the point to the
-    south-west wins (spec Module 4's tie rule)."""
-    lats, lons = np.asarray(lat)[:, 0], np.asarray(lon)[0, :]
+    """Index (row, column) of the grid point nearest to (``at_lat``, ``at_lon``) (2-D
+    ``lat``, ``lon``). Exactly halfway between points, the point to the south-west wins
+    (spec Module 4's tie rule).
+
+    On a regular grid (rows of one latitude, columns of one longitude) each axis is
+    taken on its own. On a projected grid (MEPS's Lambert) it is the point nearest on
+    the sphere (smallest chord), ties going to the southernmost, then westernmost point.
+    """
+    lat, lon = np.asarray(lat, dtype=float), np.asarray(lon, dtype=float)
+    regular = np.all(lat == lat[:, :1]) and np.all(lon == lon[:1, :])
+    if not regular:
+        return _nearest_on_sphere(lat, lon, at_lat, at_lon)
+    lats, lons = lat[:, 0], lon[0, :]
     dlat = np.abs(lats - at_lat)
     dlon = np.abs((lons - at_lon + 180.0) % 360.0 - 180.0)
     # among equally near points take the southernmost row and the westernmost column
@@ -61,4 +70,15 @@ def nearest_point(
         np.flatnonzero(np.isclose(dlon, dlon.min(), rtol=0, atol=1e-9)),
         key=lambda k: (lons[k] - at_lon + 180.0) % 360.0 - 180.0,
     )
+    return int(i), int(j)
+
+
+def _nearest_on_sphere(lat, lon, at_lat: float, at_lon: float) -> tuple[int, int]:
+    def unit(la, lo):
+        la, lo = np.radians(la), np.radians(lo)
+        return np.stack([np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)], -1)
+
+    chord = np.linalg.norm(unit(lat, lon) - unit(at_lat, at_lon), axis=-1)
+    ties = np.argwhere(np.isclose(chord, chord.min(), rtol=0, atol=1e-12))
+    i, j = min(ties, key=lambda ij: (lat[tuple(ij)], (lon[tuple(ij)] - at_lon + 180.0) % 360.0))
     return int(i), int(j)
