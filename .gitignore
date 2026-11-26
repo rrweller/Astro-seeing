@@ -35,6 +35,7 @@ cache/
 # ...except the small saved forecast samples, which are test fixtures with their
 # provider's credit (ticket #51; tests/fixtures/forecast/*/README.md)
 !tests/fixtures/forecast/**/*.grb2
+!tests/fixtures/forecast/**/*.grib2
 
 # --- Logs and run state ---
 logs/*
