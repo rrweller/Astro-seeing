@@ -53,6 +53,7 @@ dist/
 .ipynb_checkpoints/
 .venv/
 .DS_Store
+node_modules/
 
 # Claude Code agent worktrees (local only)
 .claude/worktrees/

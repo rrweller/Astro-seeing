@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tonight's sky</title>
+  <!-- Where the forecast tick's products are served, relative to this page (D73). -->
+  <meta name="forecast-data" content="../data/">
+  <!-- The file `astro web deploy` writes with the page's own commit (D73). -->
+  <meta name="page-version" content="../version.json">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body data-state="loading">
+  <div id="banner" class="banner" role="alert" hidden></div>
+  <header class="masthead">
+    <div class="place">
+      <h1 id="place-name">Tonight's sky</h1>
+      <p id="place-meta" class="meta"></p>
+    </div>
+    <p id="updated" class="updated" aria-live="polite"></p>
+  </header>
+
+  <main>
+    <p id="status" class="status">Loading the forecast…</p>
+
+    <section id="tonight" class="tonight" hidden>
+      <h2 id="night-title"></h2>
+      <p class="note">Seeing is how much the air blurs a star, in arcseconds (″); smaller is
+        sharper. Every seeing value here is <strong>uncalibrated</strong>: computed straight from
+        the forecast model's temperature and wind with a published research formula, not yet
+        checked against measurements for this place.</p>
+      <ul id="runs" class="runs"></ul>
+      <div class="table-wrap" tabindex="0" role="region" aria-labelledby="night-title">
+        <table id="hours"></table>
+      </div>
+      <ul class="legend" aria-label="Hour shading">
+        <li><span class="swatch sun-day"></span>Day</li>
+        <li><span class="swatch sun-civil_twilight"></span>Civil twilight (Sun 0.8–6° down)</li>
+        <li><span class="swatch sun-nautical_twilight"></span>Nautical twilight (6–12° down)</li>
+        <li><span class="swatch sun-astronomical_twilight"></span>Astronomical twilight (12–18° down)</li>
+        <li><span class="swatch sun-dark"></span>Dark time (Sun more than 18° down)</li>
+        <li><span class="swatch past"></span>Past hour</li>
+      </ul>
+      <ul id="credits" class="credits"></ul>
+    </section>
+
+    <details id="about" class="panel">
+      <summary>About this data</summary>
+      <dl id="about-list"></dl>
+    </details>
+
+    <details id="sources" class="panel">
+      <summary>Data sources</summary>
+      <div id="sources-list"></div>
+    </details>
+  </main>
+</body>
+</html>

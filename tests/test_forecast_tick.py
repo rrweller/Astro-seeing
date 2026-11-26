@@ -9,85 +9,15 @@ from __future__ import annotations
 
 import datetime as dt
 import json
-import sqlite3
 import stat
 
 import pytest
 
-from astroseeing.forecast.http import HttpClient
 from astroseeing.forecast.schemas import validate
-from astroseeing.forecast.sources.gfs import GfsAdapter, RatePacer
-from astroseeing.forecast.tick import BuildInfo, ForecastPaths, tick, tick_lock
-from astroseeing.manifest import Manifest
-from astroseeing.paths import Paths
+from astroseeing.forecast.tick import tick_lock
 
-from fake_http import FakeHttpServer
-from forecast_samples import SAMPLES, copy_samples, drop_messages, serve_samples, small_box_settings
-
-DAY = dt.datetime(2026, 11, 26, tzinfo=dt.UTC)
-PUBLISHED = DAY + dt.timedelta(hours=9, minutes=40)  # the 06z run appears on NOMADS
-BUILD = BuildInfo(commit="a" * 40, software={"astroseeing": "0.1.0"})
-
-
-class World:
-    """Settings, a fake NOMADS, a temp manifest and temp folders: one CT in miniature."""
-
-    def __init__(self, tmp_path, ephemeris, sample_folder=None):
-        self.settings = small_box_settings(tmp_path / "config")
-        self.paths = ForecastPaths.from_paths(
-            Paths(
-                data_root=tmp_path / "data",
-                staging=tmp_path / "staging",
-                state_dir=tmp_path / "state",
-            )
-        )
-        self.manifest = Manifest(tmp_path / "state" / "manifest.sqlite")
-        self.ephemeris = ephemeris
-        self.server = FakeHttpServer()
-        self.server.__enter__()
-        model = self.settings.models["gfs"]
-        self.gfs = GfsAdapter(
-            model,
-            HttpClient(timeout_s=5),
-            self.settings.areas,
-            base_url=self.server.url,
-            pacer=RatePacer(None),
-        )
-        self.area = self.settings.areas["kongsberg"]
-        self.folder = sample_folder or SAMPLES / "box1deg"
-        self.published = False
-
-    def at(self, now: dt.datetime):
-        if now >= PUBLISHED and not self.published:
-            serve_samples(
-                self.server, self.gfs, self.area, self.gfs.model.steps_h, folder=self.folder
-            )
-            self.published = True
-        return tick(
-            now,
-            self.settings,
-            {"gfs": self.gfs},
-            self.manifest,
-            self.paths,
-            ephemeris=self.ephemeris,
-            build=BUILD,
-        )
-
-    def latest(self) -> dict:
-        return json.loads(self.paths.latest.read_text())
-
-    def place_file(self) -> dict:
-        latest = self.latest()
-        return json.loads(
-            (self.paths.products / latest["set_path"] / "place-kongsberg.json").read_text()
-        )
-
-    def runs(self) -> list[sqlite3.Row]:
-        return self.manifest.conn.execute("SELECT * FROM forecast_runs").fetchall()
-
-    def close(self):
-        self.manifest.close()
-        self.server.__exit__(None, None, None)
+from forecast_samples import copy_samples, drop_messages, small_box_settings
+from forecast_world import DAY, PUBLISHED, World
 
 
 @pytest.fixture
