@@ -36,7 +36,49 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C12` · **blocked** · cloud · Experiment spec and CT tickets (needs your approval) · ticket: none yet
 
-- `F1` · **blocked** · cloud + CT · F1 build tickets (C4 lists them here) · ticket: none yet
+- `F1-1` · **ready** · cloud · Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas · [#50](https://github.com/rrweller/Astro-seeing/issues/50)
+
+- `F1-2` · **blocked** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
+
+- `F1-3` · **blocked** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
+
+- `F1-4` · **blocked** · cloud · Tonight: the verdict rules and the Moon · [#53](https://github.com/rrweller/Astro-seeing/issues/53)
+
+- `F1-5` · **blocked** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54)
+
+- `F1-6` · **blocked** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
+
+- `F1-7` · **blocked** · cloud · IFS source adapter (3-hourly) · [#56](https://github.com/rrweller/Astro-seeing/issues/56)
+
+- `F1-8` · **blocked** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57)
+
+- `F1-9` · **blocked** · cloud · Run rules: retries, backup hosts, late, partial and abandoned runs · [#58](https://github.com/rrweller/Astro-seeing/issues/58)
+
+- `F1-10` · **blocked** · cloud · Per-place daily stores on the NAS · [#59](https://github.com/rrweller/Astro-seeing/issues/59)
+
+- `F1-11` · **blocked** · cloud · `astro forecast status` and the 7-day size report · [#60](https://github.com/rrweller/Astro-seeing/issues/60)
+
+- `F1-12` · **blocked** · cloud · Forecast phone alerts and the daily health line · [#61](https://github.com/rrweller/Astro-seeing/issues/61)
+
+- `F1-13` · **blocked** · cloud · Web server and timer setup files, one-command deploy · [#62](https://github.com/rrweller/Astro-seeing/issues/62)
+
+- `F1-14` · **blocked** · cloud · The verdict on the place view · [#63](https://github.com/rrweller/Astro-seeing/issues/63)
+
+- `F1-15` · **blocked** · cloud · Fog-signals row, terrain warning, missing-column depth · [#64](https://github.com/rrweller/Astro-seeing/issues/64)
+
+- `F1-16` · **blocked** · cloud · Map data: ICON-EU map grid and map layers · [#65](https://github.com/rrweller/Astro-seeing/issues/65)
+
+- `F1-17` · **blocked** · cloud · The map page: layers, hour slider, cell card · [#66](https://github.com/rrweller/Astro-seeing/issues/66)
+
+- `F1-18` · **blocked** · cloud · Sunset maps for the last 7 nights · [#67](https://github.com/rrweller/Astro-seeing/issues/67)
+
+- `F1-19` · **blocked** · cloud · Paranal scoring: hourly ESO values, matched hours, statistics · waits also for C8's ticket · [#68](https://github.com/rrweller/Astro-seeing/issues/68)
+
+- `F1-20` · **blocked** · cloud · Paranal check end to end: ESO fetch, nights, panel, weekly report · [#69](https://github.com/rrweller/Astro-seeing/issues/69)
+
+- `F1-21` · **blocked** · CT · CT: install the service and page, live trials, alerts once · [#70](https://github.com/rrweller/Astro-seeing/issues/70)
+
+- `F1-22` · **blocked** · CT · CT: the 28-night run, size report and reports/f1.md · [#71](https://github.com/rrweller/Astro-seeing/issues/71)
 
 - `K1` · **needs-you** · CT · Recover the ntfy URL; pull `dev` and restart the notify watcher · needs you: be at home
 
@@ -76,7 +118,26 @@ flowchart LR
     C10["C10 · Reproduction spec"]
     C11["C11 · Calibration spec"]
     C12["C12 · Experiment spec"]
-    F1["F1 · F1 build tickets"]
+    F1_1["F1-1 · Groundwork #50"]
+    F1_2["F1-2 · GFS to place file #51"]
+    F1_3["F1-3 · Page: place table #52"]
+    F1_4["F1-4 · Tonight rules, Moon #53"]
+    F1_5["F1-5 · Place heights, Paranal #54"]
+    F1_6["F1-6 · ICON-EU #55"]
+    F1_7["F1-7 · IFS #56"]
+    F1_8["F1-8 · MEPS #57"]
+    F1_9["F1-9 · Run rules #58"]
+    F1_10["F1-10 · Daily NAS stores #59"]
+    F1_11["F1-11 · Status, size report #60"]
+    F1_12["F1-12 · Alerts #61"]
+    F1_13["F1-13 · Deploy and serve files #62"]
+    F1_14["F1-14 · Verdict on page #63"]
+    F1_15["F1-15 · Fog row, terrain warning #64"]
+    F1_16["F1-16 · Map data #65"]
+    F1_17["F1-17 · Map page #66"]
+    F1_18["F1-18 · Sunset maps #67"]
+    F1_19["F1-19 · Paranal scoring #68"]
+    F1_20["F1-20 · Paranal check #69"]
   end
   subgraph ct["CT, at home"]
     K1["K1 · ntfy URL, restart watcher"]
@@ -90,9 +151,55 @@ flowchart LR
     K9["K9 · Reproduction notebooks"]
     K10["K10 · Experiment notebooks"]
     K11["K11 · Model-level download"]
+    F1_21["F1-21 · CT install, live trials #70"]
+    F1_22["F1-22 · 28-night run, F1 report #71"]
   end
-  C4 --> F1
-  C8 --> F1
+  F1_1 --> F1_2
+  F1_1 --> F1_3
+  F1_2 --> F1_3
+  F1_1 --> F1_4
+  F1_1 --> F1_5
+  F1_2 --> F1_6
+  F1_2 --> F1_7
+  F1_2 --> F1_8
+  F1_2 --> F1_9
+  F1_2 --> F1_10
+  F1_2 --> F1_11
+  F1_2 --> F1_12
+  F1_2 --> F1_13
+  F1_3 --> F1_14
+  F1_4 --> F1_14
+  F1_3 --> F1_15
+  F1_4 --> F1_16
+  F1_6 --> F1_16
+  F1_3 --> F1_17
+  F1_16 --> F1_17
+  F1_16 --> F1_18
+  F1_17 --> F1_18
+  C8 --> F1_19
+  F1_3 --> F1_20
+  F1_5 --> F1_20
+  F1_7 --> F1_20
+  F1_19 --> F1_20
+  F1_3 --> F1_21
+  F1_4 --> F1_21
+  F1_5 --> F1_21
+  F1_6 --> F1_21
+  F1_7 --> F1_21
+  F1_8 --> F1_21
+  F1_9 --> F1_21
+  F1_10 --> F1_21
+  F1_11 --> F1_21
+  F1_12 --> F1_21
+  F1_13 --> F1_21
+  F1_14 --> F1_21
+  F1_15 --> F1_21
+  F1_16 --> F1_21
+  F1_17 --> F1_21
+  F1_18 --> F1_21
+  F1_19 --> F1_21
+  F1_20 --> F1_21
+  F1_21 --> F1_22
   C9 --> C10
   C8 --> C11
   C9 --> C11
@@ -144,7 +251,49 @@ flowchart LR
   %% ---
   class C12 blocked
   %% ---
-  class F1 blocked
+  class F1_1 ready
+  %% ---
+  class F1_2 blocked
+  %% ---
+  class F1_3 blocked
+  %% ---
+  class F1_4 blocked
+  %% ---
+  class F1_5 blocked
+  %% ---
+  class F1_6 blocked
+  %% ---
+  class F1_7 blocked
+  %% ---
+  class F1_8 blocked
+  %% ---
+  class F1_9 blocked
+  %% ---
+  class F1_10 blocked
+  %% ---
+  class F1_11 blocked
+  %% ---
+  class F1_12 blocked
+  %% ---
+  class F1_13 blocked
+  %% ---
+  class F1_14 blocked
+  %% ---
+  class F1_15 blocked
+  %% ---
+  class F1_16 blocked
+  %% ---
+  class F1_17 blocked
+  %% ---
+  class F1_18 blocked
+  %% ---
+  class F1_19 blocked
+  %% ---
+  class F1_20 blocked
+  %% ---
+  class F1_21 blocked
+  %% ---
+  class F1_22 blocked
   %% ---
   class K1 needsyou
   %% ---
@@ -170,13 +319,15 @@ flowchart LR
   %% ---
 ```
 
-In the diagram, the class names are `review`, `inprogress`, `ready`, `needsyou` and `blocked`. There's no `done`: finished items are deleted. Mermaid class names can't contain hyphens, so `in-progress` is written `inprogress` and `needs-you` is written `needsyou`.
+In the diagram, the class names are `review`, `inprogress`, `ready`, `needsyou` and `blocked`. There's no `done`: finished items are deleted. Mermaid class names can't contain hyphens, so `in-progress` is written `inprogress` and `needs-you` is written `needsyou`. Node IDs can't either, so item `F1-7` is the node `F1_7` (its edges and its `class F1_7 …` line).
 
 ## Work order
 
 ### Cloud waves
 
 Items in a wave can run at the same time. A later wave usually depends on an earlier one, or is simply lower priority.
+
+**F1 tickets (waves 4–9):** their "Touches" column and each ticket's "Can run alongside:" line show which can run at the same time; one-line additions to `cli.py` and the forecast config don't count as overlap. F1-1 to F1-3 are the first working slice (one forecast model, one place, the page shows data).
 
 **Practical limit:** you can answer only one grilling session at a time. Coding sessions run on their own, but keep to about three at once so their PRs don't conflict much. The "Touches" column shows which ones overlap.
 
@@ -191,7 +342,26 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 | 3 | C10 | yes: approve | issues, this file |
 | 3 | C11 | yes: approve | issues, this file |
 | 3 | C12 | yes: approve | issues, this file |
-| 3 | F1 | per ticket | per ticket |
+| 4 | F1-1 | no | new `forecast/` package, new forecast config, schemas |
+| 5 | F1-2 | no | `forecast/` sources (GFS), verify, column, store, publish, tick; `manifest.py`, `cli.py` |
+| 6 | F1-3 | no | `web/forecast/` |
+| 5 | F1-4 | no | `forecast/` tonight and moon |
+| 5 | F1-5 | no | `forecast/` places, forecast config, `cli.py` |
+| 6 | F1-6 | no | `forecast/` sources (ICON-EU), forecast config |
+| 6 | F1-7 | no | `forecast/` sources (IFS), forecast config |
+| 6 | F1-8 | no | `forecast/` sources (MEPS), forecast config |
+| 6 | F1-9 | no | `forecast/` run rules, HTTP client, tick |
+| 6 | F1-10 | no | `forecast/` store |
+| 6 | F1-11 | no | `forecast/` report, `cli.py` |
+| 6 | F1-12 | no | `forecast/` alerts, tick, `notify.py` |
+| 6 | F1-13 | no | `scripts/systemd/`, nginx config, `forecast/` deploy, `cli.py`, `docs/ct_runbook.md` |
+| 7 | F1-14 | no | `forecast/` publish (place file), tick, `web/forecast/` place view |
+| 7 | F1-15 | no | `web/forecast/` place view, `forecast/` publish (place file models) |
+| 7 | F1-16 | no | `forecast/` grid, publish (layers), tick |
+| 8 | F1-17 | no | `web/forecast/` map, vendored MapLibre |
+| 9 | F1-18 | no | `forecast/` publish (sunset), tick, `web/forecast/` map |
+| 5 | F1-19 | no | `forecast/` paranal scoring |
+| 8 | F1-20 | no | `forecast/` paranal, column (relocation), tick, `web/forecast/` Paranal panel, `cli.py` |
 
 ### CT order
 
@@ -202,7 +372,7 @@ Copernicus allows **one job at a time per account** (D39). So the items that use
 3. K7;
 4. K11 (only after your [ASK] on K4's numbers, D59).
 
-Items that don't use that slot can run alongside them: K5 uses its own time-series slot, and K6's cost estimates submit nothing. K10's small fetches (the time-series product, GLO-30 tiles from AWS, ESO rows) don't use it either.
+F1-21 and F1-22 (the forecast's live trials and its 28-night run) don't use it either. Items that don't use that slot can run alongside them: K5 uses its own time-series slot, and K6's cost estimates submit nothing. K10's small fetches (the time-series product, GLO-30 tiles from AWS, ESO rows) don't use it either.
 
 | ID | Depends on | Uses the CDS slot? |
 |---|---|---|
@@ -217,6 +387,8 @@ Items that don't use that slot can run alongside them: K5 uses its own time-seri
 | K9 | C10, C9 | no |
 | K10 | C12, C11 (stage 1, for the ground-layer part) | no (time-series slot, AWS, ESO only) |
 | K11 | K4, K7, and your [ASK] on the size | **yes** |
+| F1-21 | F1-3 to F1-20 | no |
+| F1-22 | F1-21 | no |
 
 ## Reserved D-numbers
 
@@ -232,6 +404,7 @@ Parallel sessions would otherwise take the same number.
 | D66 | C9 |
 | D68 | C11 |
 | D69 | C12 |
+| D71–D92 | F1-1 to F1-22, in order (F1-n takes D70+n) |
 
 - D67 is this roadmap process; D70 is deleting finished items.
 - When an item is deleted, its row here goes too: its number is then on `dev`.
@@ -349,7 +522,7 @@ Skills: this message starts implement, and this prompt is its spec. Build test-f
 
 You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §6.5, decisions D28, D44 and D54 item 8 (if D54 isn't on dev, read it from branch planning/paranal-comparison-d54, PR #38), and docs/research/seeing-measurements.md on branch research/seeing-measurements (ESO query details).
 
-Task: one fetcher for ESO's ambient-conditions archive, shared by the forecast track (nightly, D54 item 8) and the historical calibration (2021–2025 bulk). First create a ticket under map #20 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
+Task: one fetcher for ESO's ambient-conditions archive, shared by the forecast track (nightly, D54 item 8) and the historical calibration (2021–2025 bulk). First create a ticket under map #20 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line. Then edit F1 ticket #68 (Paranal scoring) so its Blocked by line names your ticket number instead of "roadmap item C8".
 
 Requirements:
 - Data: Paranal DIMM and MASS (including free-atmosphere seeing, turbulence altitude and ground fraction), and La Silla DIMM.
@@ -466,6 +639,324 @@ Put D59 item 8's order into the Blocked by lines.
 Show Riley the outline and ticket list for approval (C12 to needs-you while you wait). Record any decisions as D69. In a PR into dev, replace roadmap item K10 with one item per CT ticket (K10a, K10b, …), each with a board line, diagram node, edges, a class line followed by a %% --- spacer, and a short prompt starting with "/mattpocock-skills:implement" followed on the same line by this prompt's standard first sentence (with the new ID), then a "Skills:" line. Add the cloud tickets as cloud roadmap items (next free C numbers) the same way.
 
 The Blocked by line in each ticket body is the source of truth (docs/agents/issue-tracker.md). Don't close or change map #6 except to add the spec and tickets as sub-issues.
+```
+
+### F1-1. Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas
+
+Ticket [#50](https://github.com/rrweller/Astro-seeing/issues/50). Depends on nothing; it can start now.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-1.
+
+Skills: this message starts implement, and ticket #50 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #50 names.
+
+Task: work ticket #50. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D71 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #50.
+```
+
+### F1-2. Tracer slice, back end: one GFS run at Kongsberg to the page's data files
+
+Ticket [#51](https://github.com/rrweller/Astro-seeing/issues/51). Depends on F1-1.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-2.
+
+Skills: this message starts implement, and ticket #51 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #51 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources.
+
+Task: work ticket #51. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D72 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #51.
+```
+
+### F1-3. Tracer slice, page: Kongsberg's hourly table, freshness, About and credits
+
+Ticket [#52](https://github.com/rrweller/Astro-seeing/issues/52). Depends on F1-1, F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-3.
+
+Skills: this message starts implement, and ticket #52 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #52 names.
+
+Task: work ticket #52. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D73 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #52.
+```
+
+### F1-4. Tonight: the verdict rules and the Moon
+
+Ticket [#53](https://github.com/rrweller/Astro-seeing/issues/53). Depends on F1-1.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-4.
+
+Skills: this message starts implement, and ticket #53 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #53 names.
+
+Task: work ticket #53. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D74 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #53.
+```
+
+### F1-5. Saved places: automatic GLO-30 ground height, and Paranal
+
+Ticket [#54](https://github.com/rrweller/Astro-seeing/issues/54). Depends on F1-1.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-5.
+
+Skills: this message starts implement, and ticket #54 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #54 names.
+
+Task: work ticket #54. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D75 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #54.
+```
+
+### F1-6. ICON-EU source adapter
+
+Ticket [#55](https://github.com/rrweller/Astro-seeing/issues/55). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-6.
+
+Skills: this message starts implement, and ticket #55 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #55 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources and docs/research/valley-fog.md §3 on branch research/valley-fog.
+
+Task: work ticket #55. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D76 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #55.
+```
+
+### F1-7. IFS source adapter (3-hourly)
+
+Ticket [#56](https://github.com/rrweller/Astro-seeing/issues/56). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-7.
+
+Skills: this message starts implement, and ticket #56 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #56 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources.
+
+Task: work ticket #56. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D77 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #56.
+```
+
+### F1-8. MEPS source adapter (regional, not counted)
+
+Ticket [#57](https://github.com/rrweller/Astro-seeing/issues/57). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-8.
+
+Skills: this message starts implement, and ticket #57 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #57 names. Also read docs/research/forecast-sources.md on branch research/forecast-sources and docs/research/valley-fog.md §3 on branch research/valley-fog.
+
+Task: work ticket #57. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D78 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #57.
+```
+
+### F1-9. Run rules: retries, backup hosts, late, partial and abandoned runs
+
+Ticket [#58](https://github.com/rrweller/Astro-seeing/issues/58). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-9.
+
+Skills: this message starts implement, and ticket #58 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #58 names.
+
+Task: work ticket #58. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D79 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #58.
+```
+
+### F1-10. Per-place daily stores on the NAS
+
+Ticket [#59](https://github.com/rrweller/Astro-seeing/issues/59). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-10.
+
+Skills: this message starts implement, and ticket #59 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #59 names.
+
+Task: work ticket #59. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D80 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #59.
+```
+
+### F1-11. `astro forecast status` and the 7-day size report
+
+Ticket [#60](https://github.com/rrweller/Astro-seeing/issues/60). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-11.
+
+Skills: this message starts implement, and ticket #60 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #60 names.
+
+Task: work ticket #60. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D81 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #60.
+```
+
+### F1-12. Forecast phone alerts and the daily health line
+
+Ticket [#61](https://github.com/rrweller/Astro-seeing/issues/61). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-12.
+
+Skills: this message starts implement, and ticket #61 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #61 names. Also read src/astroseeing/notify.py and tests/test_notify.py.
+
+Task: work ticket #61. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D82 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #61.
+```
+
+### F1-13. Web server and timer setup files, one-command deploy
+
+Ticket [#62](https://github.com/rrweller/Astro-seeing/issues/62). Depends on F1-2.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-13.
+
+Skills: this message starts implement, and ticket #62 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #62 names.
+
+Task: work ticket #62. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D83 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #62.
+```
+
+### F1-14. The verdict on the place view
+
+Ticket [#63](https://github.com/rrweller/Astro-seeing/issues/63). Depends on F1-3, F1-4.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-14.
+
+Skills: this message starts implement, and ticket #63 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #63 names.
+
+Task: work ticket #63. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D84 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #63.
+```
+
+### F1-15. Fog-signals row, terrain warning, missing-column depth
+
+Ticket [#64](https://github.com/rrweller/Astro-seeing/issues/64). Depends on F1-3.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-15.
+
+Skills: this message starts implement, and ticket #64 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #64 names.
+
+Task: work ticket #64. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D85 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #64.
+```
+
+### F1-16. Map data: ICON-EU map grid and map layers
+
+Ticket [#65](https://github.com/rrweller/Astro-seeing/issues/65). Depends on F1-4, F1-6.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-16.
+
+Skills: this message starts implement, and ticket #65 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #65 names.
+
+Task: work ticket #65. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D86 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #65.
+```
+
+### F1-17. The map page: layers, hour slider, cell card
+
+Ticket [#66](https://github.com/rrweller/Astro-seeing/issues/66). Depends on F1-3, F1-16.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-17.
+
+Skills: this message starts implement, and ticket #66 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #66 names. Also read web/prototype-globe-library/ on branch prototype/globe-library (throwaway; for the addProtocol nearest-block technique).
+
+Task: work ticket #66. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D87 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #66.
+```
+
+### F1-18. Sunset maps for the last 7 nights
+
+Ticket [#67](https://github.com/rrweller/Astro-seeing/issues/67). Depends on F1-16, F1-17.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-18.
+
+Skills: this message starts implement, and ticket #67 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #67 names.
+
+Task: work ticket #67. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D88 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #67.
+```
+
+### F1-19. Paranal scoring: hourly ESO values, matched hours, statistics
+
+Ticket [#68](https://github.com/rrweller/Astro-seeing/issues/68). Depends on C8. C8's ticket isn't created yet; the ticket's Blocked by line names C8 until it is.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-19.
+
+Skills: this message starts implement, and ticket #68 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #68 names. Also read the merged ESO fetcher from roadmap item C8.
+
+Task: work ticket #68. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D89 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #68.
+```
+
+### F1-20. Paranal check end to end: ESO fetch, nights, panel, weekly report
+
+Ticket [#69](https://github.com/rrweller/Astro-seeing/issues/69). Depends on F1-3, F1-5, F1-7, F1-19.
+
+```text
+/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-20.
+
+Skills: this message starts implement, and ticket #69 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #69 names. Also read the merged ESO fetcher from roadmap item C8.
+
+Task: work ticket #69. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D90 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #69.
+```
+
+### F1-21. CT: install the service and page, live trials, alerts once
+
+Ticket [#70](https://github.com/rrweller/Astro-seeing/issues/70). Depends on F1-3, F1-4, F1-5, F1-6, F1-7, F1-8, F1-9, F1-10, F1-11, F1-12, F1-13, F1-14, F1-15, F1-16, F1-17, F1-18, F1-19, F1-20.
+
+```text
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-21.
+
+You are a Claude Code session on CT 350 (/home/astro-seeing), with /data, /staging, the manifest and CDS access. Read AGENTS.md, CLAUDE.md, docs/ct_runbook.md, docs/agents/issue-tracker.md and the F1 spec #47. Run git fetch origin and check out dev at origin/dev. Check `pixi run astro status` and `systemctl status astro-boxes`: the historical downloads keep running, at most 5 worker processes in total, and nothing may bypass the one-CDS-job gate (D39).
+
+Skills: mattpocock-skills:wizard for Riley's Nginx Proxy Manager step; mattpocock-skills:diagnosing-bugs if a live trial fails.
+
+Task: work ticket #70. Claim it as docs/agents/issue-tracker.md describes. Follow its acceptance criteria. Data-safety rules apply in full:
+- never overwrite or delete under /data without asking Riley;
+- verify before deleting raw files;
+- write the reports the ticket names, with the numbers and what is uncertain;
+- log non-trivial decisions as D91 (reserved for this item).
+Set this item to needs-you while Riley sets up the proxy host. Open a PR into dev when done.
+```
+
+### F1-22. CT: the 28-night run, size report and reports/f1.md
+
+Ticket [#71](https://github.com/rrweller/Astro-seeing/issues/71). Depends on F1-21.
+
+```text
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-22.
+
+You are a Claude Code session on CT 350 (/home/astro-seeing), with /data, /staging, the manifest and CDS access. Read AGENTS.md, CLAUDE.md, docs/ct_runbook.md, docs/agents/issue-tracker.md and the F1 spec #47. Run git fetch origin and check out dev at origin/dev. Check `pixi run astro status` and `systemctl status astro-boxes`: the historical downloads keep running, at most 5 worker processes in total, and nothing may bypass the one-CDS-job gate (D39).
+
+Skills: mattpocock-skills:research for writing up the measured numbers; mattpocock-skills:diagnosing-bugs if a statistic looks wrong.
+
+Task: work ticket #71. Claim it as docs/agents/issue-tracker.md describes. Follow its acceptance criteria. Data-safety rules apply in full:
+- never overwrite or delete under /data without asking Riley;
+- verify before deleting raw files;
+- write the reports the ticket names, with the numbers and what is uncertain;
+- log non-trivial decisions as D92 (reserved for this item).
+This item stays in-progress for the whole run (about 4 weeks). Open a PR into dev when done.
 ```
 
 ### CT prompt template (K2, K4–K11)
