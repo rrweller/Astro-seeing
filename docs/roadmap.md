@@ -40,7 +40,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-3` · **blocked** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
 
-- `F1-4` · **ready** · cloud · Tonight: the verdict rules and the Moon · [#53](https://github.com/rrweller/Astro-seeing/issues/53)
+- `F1-4` · **in-progress** · cloud · Tonight: the verdict rules and the Moon · [#53](https://github.com/rrweller/Astro-seeing/issues/53)
 
 - `F1-5` · **ready** · cloud · Saved places: automatic GLO-30 ground height, and Paranal · [#54](https://github.com/rrweller/Astro-seeing/issues/54)
 
@@ -248,7 +248,7 @@ flowchart LR
   %% ---
   class F1_3 blocked
   %% ---
-  class F1_4 ready
+  class F1_4 inprogress
   %% ---
   class F1_5 ready
   %% ---
