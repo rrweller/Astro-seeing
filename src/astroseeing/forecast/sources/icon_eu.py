@@ -9,7 +9,8 @@ points inside the box are kept as they are, never averaged, interpolated or
 regridded (D51 items 3 and 8). DWD's opendata has no fallback host (D51 item 14).
 
 ``read`` identifies every message by its GRIB2 code numbers (discipline, category,
-parameter, type of surface, level), not by eccodes' short names, and refuses anything
+parameter) and both fixed surfaces with their values, not by eccodes' short names (DWD
+codes low, mid and high cloud as one parameter between surfaces), and refuses anything
 other than the expected content with :class:`FormatMismatch`: a missing or unexpected
 file, another field, level, run, step or grid, a non-instantaneous value, or a grid
 that is off ICON-EU's 0.0625° lattice or doesn't cover the area's box.
