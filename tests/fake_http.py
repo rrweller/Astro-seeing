@@ -11,11 +11,14 @@
 A URL path maps to the file at the same relative path under the root. A request with
 a query string (a NOMADS grib-filter call, say) is served from an explicit
 ``route(target, file_or_bytes)``. GET, HEAD and single byte ranges are supported.
+Like S3, every answer with content carries ``ETag: "<MD5 of the whole file>"``;
+``header(path, name, value)`` overrides a header for one path (``None`` leaves it out).
 Run two servers for a main host and its fallback.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
 import threading
 import time
@@ -49,6 +52,7 @@ class FakeHttpServer:
     def __init__(self, root: Path | None = None):
         self.root = Path(root) if root is not None else None
         self.routes: dict[str, bytes | Path] = {}
+        self.header_overrides: dict[str, dict[str, str | None]] = {}
         self.requests: list[RecordedRequest] = []
         self._behaviours: list[_Behaviour] = []
         self._lock = threading.Lock()
@@ -76,6 +80,11 @@ class FakeHttpServer:
     def route(self, target: str, content: bytes | Path) -> None:
         """Serve ``content`` for the exact request target (path plus query string)."""
         self.routes[target] = content
+
+    def header(self, path: str, name: str, value: str | None) -> None:
+        """Send ``name: value`` for requests to ``path`` instead of the default (``None``:
+        leave the header out), e.g. a wrong ``ETag`` to test checksum checks."""
+        self.header_overrides.setdefault(path, {})[name] = value
 
     def fail(self, prefix: str = "/", status: int = 503, times: int | None = None) -> None:
         """Answer requests under ``prefix`` with ``status`` (the next ``times`` of them)."""
@@ -152,6 +161,7 @@ def _handler_for(server: FakeHttpServer) -> type[BaseHTTPRequestHandler]:
                 status, content = 404, b"not found\n"
             else:
                 status, content, extra = _apply_range(self.headers.get("Range"), found)
+                extra = _with_headers(extra, found, server.header_overrides.get(parts.path, {}))
             # Recorded before answering, so a client that has its answer sees the record.
             server._record(RecordedRequest(
                 self.command, parts.path, parse_qs(parts.query), dict(self.headers.items()),
@@ -184,6 +194,12 @@ def _handler_for(server: FakeHttpServer) -> type[BaseHTTPRequestHandler]:
                 self.wfile.write(content)
 
     return Handler
+
+
+def _with_headers(extra: tuple, whole: bytes, overrides: dict[str, str | None]) -> tuple:
+    """Add the S3-style ETag (MD5 of the whole file), then apply per-path overrides."""
+    headers = {"ETag": f'"{hashlib.md5(whole).hexdigest()}"', **dict(extra), **overrides}
+    return tuple((k, v) for k, v in headers.items() if v is not None)
 
 
 def _apply_range(header: str | None, content: bytes):

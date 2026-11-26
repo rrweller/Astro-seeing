@@ -96,9 +96,11 @@ areas:
     models: [gfs, ifs]
     map_grid_model: gfs
 
-# Saved places (D60 item 1). `height` is the GLO-30 ground height; until the lookup
-# (`astro forecast place-height`, roadmap F1-5) fills it, it is entered by hand and
-# marked so.
+# Saved places (D60 item 1). Adding one is one entry: name, lat, lon, time zone, area,
+# `height: null`, and `published_height_m` (a published height to compare with, or
+# null). Then `astro forecast place-height <id>` looks up the GLO-30 ground height and
+# rewrites `height` with the tile, its SHA-256, the posting read and the Copernicus DEM
+# credit line (D75). The tick refuses a place whose height wasn't looked up.
 default_place: kongsberg
 places:
   kongsberg:
@@ -107,7 +109,37 @@ places:
     lon: 9.652
     time_zone: Europe/Oslo
     area: kongsberg
-    height: {metres: 162.0, source: hand-entered, tile: null, sha256: null}  # D47 evidence
+    published_height_m: null
+    height:  # looked up by `astro forecast place-height kongsberg` (D75)
+      metres: 162.28006
+      source: glo30
+      tile: Copernicus_DSM_COG_10_N59_00_E009_00_DEM
+      sha256: 1782d4d19d9e2f799a76f30336270cf8e9bb957897e5f7a6086a39c550786dcc
+      posting: {row: 1192, col: 1565, lat: 59.66888888888889, lon: 9.652083333333334}
+      attribution: "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved"
+  paranal:
+    name: Paranal
+    # The VLT(I) array centre, from ESO's "VLTI Station Position Technical Data"
+    # (https://www.eso.org/observing/etc/doc/viscalc/vltistations.html, read 2026-11-26).
+    lat: -24.62794830
+    lon: -70.40479659
+    time_zone: America/Santiago
+    area: paranal
+    published_height_m: 2635  # ESO's site altitude; D54 item 3 logs and flags the difference
+    height:  # looked up by `astro forecast place-height paranal` (D75)
+      metres: 2636.0247
+      source: glo30
+      tile: Copernicus_DSM_COG_10_S25_00_W071_00_DEM
+      sha256: fbe8f6d1b2c68aeb8ce7032dc0b003e6f3fc0717136cb1d426f7d86465086a0f
+      posting: {row: 2261, col: 2143, lat: -24.628055555555555, lon: -70.40472222222222}
+      attribution: "produced using Copernicus WorldDEM-30 © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved"
+
+# Where saved places' heights are looked up (D75): the public Copernicus DEM GLO-30
+# bucket on AWS (anonymous; RESEARCH §7), and when a looked-up height is flagged for
+# differing from a published one (D54 item 3: GLO-30 is a surface model).
+place_heights:
+  dem: {name: copernicus-dem-30m, url: "https://copernicus-dem-30m.s3.amazonaws.com", max_requests_per_s: null}
+  flag_published_difference_m: 50
 
 # Cloud classes on the unrounded total cloud (D48 item 6): clear <= 10 %,
 # some cloud 10-50 %, cloudy > 50 %.
