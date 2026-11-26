@@ -99,3 +99,25 @@ def drop_messages(path: Path, drop: Callable[[dict], bool]) -> int:
                 ec.codes_release(h)
     path.write_bytes(b"".join(kept))
     return dropped
+
+
+def edit_values(path: Path, select: Callable[[dict], bool], edit: Callable) -> int:
+    """Rewrite a GRIB file with ``edit(values)`` applied to the messages ``select`` picks
+    (``select`` gets the keys ``drop_messages`` gives); returns how many were edited."""
+    import eccodes as ec
+
+    out, edited = [], 0
+    with open(path, "rb") as f:
+        while (h := ec.codes_grib_new_from_file(f)) is not None:
+            try:
+                keys = {
+                    k: ec.codes_get(h, k) for k in ("shortName", "typeOfLevel", "level", "stepType")
+                }
+                if select(keys):
+                    ec.codes_set_values(h, edit(ec.codes_get_values(h)))
+                    edited += 1
+                out.append(ec.codes_get_message(h))
+            finally:
+                ec.codes_release(h)
+    path.write_bytes(b"".join(out))
+    return edited
