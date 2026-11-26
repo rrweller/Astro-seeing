@@ -182,10 +182,9 @@ class Window:
 
 @dataclass(frozen=True)
 class MepsRequest:
-    """One OPeNDAP request: what it is for (``das``, ``axes``, ``grid`` or ``step``), the
-    step (for ``step``), the path and constraint exactly as sent, and its file name."""
+    """One OPeNDAP request: the step it fetches (``None`` for the attributes, axes and
+    grid), the path and constraint exactly as sent, and its file name."""
 
-    kind: str
     step: int | None
     target: str
     filename: str
@@ -232,8 +231,8 @@ class MepsAdapter:
         """The two requests every fetch makes first: attributes, then the x and y axes."""
         base, label = DAP_DIR + self.dataset(run), run.label
         return [
-            MepsRequest("das", None, f"{base}.das", f"meps_{label}.das"),
-            MepsRequest("axes", None, f"{base}.dods?x,y", f"meps_{label}_axes.dods"),
+            MepsRequest(None, f"{base}.das", f"meps_{label}.das"),
+            MepsRequest(None, f"{base}.dods?x,y", f"meps_{label}_axes.dods"),
         ]
 
     def request_plan(
@@ -243,7 +242,6 @@ class MepsAdapter:
         base, label = DAP_DIR + self.dataset(run), run.label
         plan = [
             MepsRequest(
-                "grid",
                 None,
                 f"{base}.dods?latitude{window.yx},longitude{window.yx}",
                 f"meps_{label}_grid.dods",
@@ -257,7 +255,6 @@ class MepsAdapter:
                 fields.append(f"{var}{_slab(step, step)}{vertical}{window.yx}")
             plan.append(
                 MepsRequest(
-                    "step",
                     step,
                     f"{base}.dods?{','.join(fields)}",
                     f"meps_{label}_f{step:03d}.dods",
@@ -272,7 +269,7 @@ class MepsAdapter:
         the points on its south and north edges there (where the projected parallels
         are lowest)."""
         proj = self.projection(das)
-        x, y = (_axis(axes, name) for name in ("x", "y"))
+        x, y = (_axis(axes, name, self.model.id) for name in ("x", "y"))
         box = area.box
         lats = [box.south, box.south, box.north, box.north]
         lons = [box.west, box.east, box.west, box.east]
@@ -337,7 +334,10 @@ class MepsAdapter:
             try:
                 steps = dds_dims(dds.body.decode("utf-8", errors="replace")).get("time", 0)
             except DapFormatError as e:
-                raise FormatMismatch(self.model.id, f"{run.label}: time axis: {e}") from e
+                # not a reason to stop the whole tick: logged as an error, and no new
+                # run this tick (a format change also fails the fetch's read loudly)
+                log.error("MEPS %s: unreadable time axis, no new run this tick: %s", run.label, e)
+                return None
             if steps >= need:
                 return run
             log.info(
@@ -393,8 +393,8 @@ class MepsAdapter:
         axes = self._dods(by_name[axes_req.filename], "axes")
         self._check_spacing(axes)
         window = self.window(self.areas[fetched.area], das, axes)
-        x = _axis(axes, "x")[window.x0 : window.x1 + 1]
-        y = _axis(axes, "y")[window.y0 : window.y1 + 1]
+        x = _axis(axes, "x", model)[window.x0 : window.x1 + 1]
+        y = _axis(axes, "y", model)[window.y0 : window.y1 + 1]
         plan = self.request_plan(run, window, steps)
         if plan[0].filename not in by_name:
             raise FormatMismatch(model, f"{run.label}: no {plan[0].filename}")
@@ -404,7 +404,8 @@ class MepsAdapter:
         for req in plan[1:]:
             if req.filename not in by_name:
                 raise FormatMismatch(model, f"step {req.step}: no {req.filename}")
-            decoded.append(self._read_step(by_name[req.filename], run, req.step, x, y, fills))
+            path = by_name[req.filename]
+            decoded.append(self._read_step(path, run, req.step, x, y, fills, fetched.area))
         return self._assemble(run, steps, decoded, lat, lon, proj)
 
     # -- reading ------------------------------------------------------------------------
@@ -431,6 +432,10 @@ class MepsAdapter:
                 raise FormatMismatch(
                     self.model.id, f"{var} has units {attrs.get('units')!r}, expected {units!r}"
                 )
+            if "cell_methods" in attrs:  # instantaneous values only (D48 item 1)
+                raise FormatMismatch(
+                    self.model.id, f"{var} has cell_methods {attrs['cell_methods']!r}"
+                )
             if "_FillValue" not in attrs:
                 raise FormatMismatch(self.model.id, f"{var} has no _FillValue")
             fills[var] = float(attrs["_FillValue"])
@@ -438,7 +443,7 @@ class MepsAdapter:
 
     def _check_spacing(self, axes: Mapping[str, DapVariable]) -> None:
         for name in ("x", "y"):
-            d = np.diff(_axis(axes, name))
+            d = np.diff(_axis(axes, name, self.model.id))
             if d.size == 0 or not np.allclose(d, self._spacing_m, rtol=0, atol=_SPACING_TOL_M):
                 raise FormatMismatch(
                     self.model.id, f"{name} axis spacing is not {self._spacing_m:g} m "
@@ -476,7 +481,9 @@ class MepsAdapter:
                     self.model.id, f"{where}: its {name} is not the window of area {area}"
                 )
 
-    def _read_step(self, path: Path, run: RunRef, step: int, x, y, fills) -> dict[str, np.ndarray]:
+    def _read_step(
+        self, path: Path, run: RunRef, step: int, x, y, fills, area: str
+    ) -> dict[str, np.ndarray]:
         model, where = self.model.id, f"step {step} ({path.name})"
         got = self._dods(path, f"step {step}")
         wanted = {var for var, _ in self._variables.values()} | {"forecast_reference_time"}
@@ -499,7 +506,7 @@ class MepsAdapter:
             v = got[var]
             dims = v.array.dims
             names = [d for d, _ in dims]
-            self._check_maps(v, x, y, f"{where} {var}", "fetched")
+            self._check_maps(v, x, y, f"{where} {var}", area)
             t = v.maps.get("time")
             if len(dims) != 4 or names[0] != "time" or names[2:] != ["y", "x"] or t is None:
                 raise FormatMismatch(model, f"{where}: {var} has dimensions {names}")
@@ -507,7 +514,7 @@ class MepsAdapter:
                 raise FormatMismatch(model, f"{where}: {var} is for time {t.values.tolist()}, "
                                      f"expected step {step} h")  # fmt: skip
             vert = v.maps[names[1]].values.astype(float)
-            values = np.asarray(v.array.values[0], dtype=np.float64)  # (vertical, y, x)
+            values = np.array(v.array.values[0], dtype=np.float64)  # a copy: (vertical, y, x)
             values[np.asarray(v.array.values[0]) == np.float32(fills[var])] = np.nan
             if var in self._level_names:
                 if names[1] != "pressure":
@@ -580,8 +587,8 @@ def _slab(a: int, b: int) -> str:
     return f"%5B{a}:1:{b}%5D"
 
 
-def _axis(axes: Mapping[str, DapVariable], name: str) -> np.ndarray:
+def _axis(axes: Mapping[str, DapVariable], name: str, model: str) -> np.ndarray:
     v = axes.get(name)
     if v is None or v.array.values.ndim != 1:
-        raise FormatMismatch("meps", f"axes: missing {name}")
+        raise FormatMismatch(model, f"axes: missing {name}")
     return np.asarray(v.array.values, dtype=np.float64)

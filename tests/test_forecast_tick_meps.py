@@ -16,11 +16,11 @@ import pytest
 from astroseeing.forecast.http import HttpClient
 from astroseeing.forecast.schemas import validate
 from astroseeing.forecast.sources.meps import MepsAdapter
-from astroseeing.forecast.tick import default_adapters, tick
+from astroseeing.forecast.tick import default_adapters
 
 from fake_http import FakeHttpServer
-from forecast_samples import serve_samples, small_box_settings
-from forecast_world import BUILD, DAY, PUBLISHED, World
+from forecast_samples import small_box_settings
+from forecast_world import DAY, World
 from meps_samples import serve_meps
 
 
@@ -42,21 +42,8 @@ class WithMeps(World):
         )
         serve_meps(self.thredds, "box1deg")
 
-    def at(self, now: dt.datetime):
-        """As ``World.at``, with both adapters (MEPS's run is listed all day)."""
-        if now >= PUBLISHED and not self.published:
-            serve_samples(self.server, self.gfs, self.area, self.gfs.model.steps_h,
-                          folder=self.folder)  # fmt: skip
-            self.published = True
-        return tick(
-            now,
-            self.settings,
-            {"gfs": self.gfs, "meps": self.meps},
-            self.manifest,
-            self.paths,
-            ephemeris=self.ephemeris,
-            build=BUILD,
-        )
+    def adapters(self) -> dict:
+        return {**super().adapters(), "meps": self.meps}
 
     def close(self):
         super().close()

@@ -433,3 +433,25 @@ def test_latest_published_is_the_newest_main_run_listed_with_all_its_steps(thred
     assert meps.latest_published(dt.datetime(2026, 11, 26, 8, tzinfo=dt.UTC)) is None
     # nothing listed by then
     assert meps.latest_published(dt.datetime(2026, 11, 25, 12, tzinfo=dt.UTC)) is None
+
+
+def test_an_unreadable_time_axis_means_no_new_run_logged_as_an_error(thredds, caplog):
+    meps = adapter_for(thredds)
+    serve_meps(thredds)
+    garbled = b"<html>Service unavailable</html>"
+    thredds.route("/thredds/dodsC/mepslatest/meps_det_2_5km_20261126T06Z.ncml.dds?time", garbled)
+    assert meps.latest_published(dt.datetime(2026, 11, 26, 15, tzinfo=dt.UTC)) is None
+    assert any(r.levelname == "ERROR" and "time axis" in r.message for r in caplog.records)
+
+
+def test_time_averaged_fields_raise_format_mismatch(tmp_path):
+    def averaged(folder):
+        edit_das(
+            folder,
+            'String long_name "Total cloud cover (TCC)";\n',
+            'String long_name "Total cloud cover (TCC)";\n'
+            '        String cell_methods "time: mean";\n',
+        )
+
+    with pytest.raises(FormatMismatch, match="cloud_area_fraction has cell_methods 'time: mean'"):
+        read_copy(tmp_path, averaged)
