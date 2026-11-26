@@ -36,7 +36,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · next run: F1-23 first (once PR #81 adds it), then F1-6, F1-7, F1-8, F1-9; also ready: F1-10 to F1-15 · ticket: none
 
-- `F1-6` · **in-progress** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
+- `F1-6` · **review** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55) · PR [#86](https://github.com/rrweller/Astro-seeing/pull/86)
 
 - `F1-10` · **ready** · cloud · Per-place daily stores on the NAS · [#59](https://github.com/rrweller/Astro-seeing/issues/59)
 
@@ -200,7 +200,7 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_6 inprogress
+  class F1_6 review
   %% ---
   class F1_10 ready
   %% ---
