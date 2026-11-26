@@ -38,7 +38,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-6` · **in-progress** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
-- `F1-8` · **in-progress** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57)
+- `F1-8` · **review** · cloud · MEPS source adapter (regional, not counted) · [#57](https://github.com/rrweller/Astro-seeing/issues/57) · PR [#84](https://github.com/rrweller/Astro-seeing/pull/84)
 
 - `F1-9` · **in-progress** · cloud · Run rules: retries, backup hosts, late, partial and abandoned runs · [#58](https://github.com/rrweller/Astro-seeing/issues/58)
 
@@ -210,7 +210,7 @@ flowchart LR
   %% ---
   class F1_6 inprogress
   %% ---
-  class F1_8 inprogress
+  class F1_8 review
   %% ---
   class F1_9 inprogress
   %% ---
