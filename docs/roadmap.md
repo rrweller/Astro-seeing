@@ -287,7 +287,7 @@ Don't re-decide anything already decided. Where the decisions leave a real gap, 
 Needs your approval. Depends on C3.
 
 ```text
-/mattpocock-skills:to-tickets Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C4. The spec is the approved F1 spec issue under map #20.
+/mattpocock-skills:to-tickets Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C4. The spec is the approved F1 spec, issue #47 under map #20.
 
 Skills: this message starts to-tickets. Use its tracer-bullet slicing, its approval quiz with Riley and its issue template, plus the extra lines below. Use mattpocock-skills:codebase-design to cut tickets along module boundaries (so parallel tickets touch different files), and mattpocock-skills:writing-for-agents when writing the per-ticket prompts for docs/roadmap.md.
 

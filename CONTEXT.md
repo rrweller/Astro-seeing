@@ -90,6 +90,22 @@ _Avoid_: missing hour, gap
 A forecast model's latest run whose run time is more than 24 hours old: shown, but left out of model agreement.
 _Avoid_: old forecast, expired run
 
+**Saved place**:
+A place listed in the forecast's configuration (Kongsberg, Paranal) that gets the full view: the hourly table, the verdict, and seeing at its real ground height, raised to each forecast model's ground where that is higher. Every place is treated the same way; Kongsberg is only the first.
+_Avoid_: site (for this), location, favourite
+
+**Cell card**:
+The short summary a click on a map point that is not a saved place opens: that map cell's Tonight values, worked out at each forecast model's ground.
+_Avoid_: popup, point forecast
+
+**Map grid**:
+The one grid an area's map layers use so that forecast models can be compared spot by spot; within an area, the finest global forecast model sets it.
+_Avoid_: common grid, regrid, tiles
+
+**Sunset map**:
+The Tonight map as it stood at sunset at the default saved place, the one version of each night's map that is kept for looking back.
+_Avoid_: daily map, snapshot (alone), archive map
+
 **Verdict**:
 The short summary of Tonight at a place: how many counted hours are mostly clear, and the range of seeing across the global forecast models.
 _Avoid_: summary, score, rating
