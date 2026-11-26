@@ -36,8 +36,6 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · this run: F1-1, then F1-2, F1-4, F1-5, then F1-3 · ticket: none
 
-- `F1-1` · **review** · cloud · Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas · [#50](https://github.com/rrweller/Astro-seeing/issues/50) · PR [#75](https://github.com/rrweller/Astro-seeing/pull/75)
-
 - `F1-2` · **blocked** · cloud · Tracer slice, back end: one GFS run at Kongsberg to the page's data files · [#51](https://github.com/rrweller/Astro-seeing/issues/51)
 
 - `F1-3` · **blocked** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
@@ -118,7 +116,6 @@ flowchart LR
     C11["C11 · Calibration spec"]
     C12["C12 · Experiment spec"]
     C13["C13 · F1 coordinator (reusable)"]
-    F1_1["F1-1 · Groundwork #50"]
     F1_2["F1-2 · GFS to place file #51"]
     F1_3["F1-3 · Page: place table #52"]
     F1_4["F1-4 · Tonight rules, Moon #53"]
@@ -154,11 +151,7 @@ flowchart LR
     F1_21["F1-21 · CT install, live trials #70"]
     F1_22["F1-22 · 28-night run, F1 report #71"]
   end
-  F1_1 --> F1_2
-  F1_1 --> F1_3
   F1_2 --> F1_3
-  F1_1 --> F1_4
-  F1_1 --> F1_5
   F1_2 --> F1_6
   F1_2 --> F1_7
   F1_2 --> F1_8
@@ -251,8 +244,6 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_1 review
-  %% ---
   class F1_2 blocked
   %% ---
   class F1_3 blocked
@@ -342,7 +333,6 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 | 3 | C11 | yes: approve | issues, this file |
 | 3 | C12 | yes: approve | issues, this file |
 | 4+ | C13 | yes: answer the helpers' questions | runs the ready F1 cloud tickets, up to 5 per run (see their rows) |
-| 4 | F1-1 | no | new `forecast/` package, new forecast config, schemas |
 | 5 | F1-2 | no | `forecast/` sources (GFS), verify, column, store, publish, tick; `manifest.py`, `cli.py` |
 | 6 | F1-3 | no | `web/forecast/` |
 | 5 | F1-4 | no | `forecast/` tonight and moon |
@@ -405,7 +395,7 @@ Parallel sessions would otherwise take the same number.
 | D68 | C11 |
 | D69 | C12 |
 | D94 | C13 |
-| D71–D92 | F1-1 to F1-22, in order (F1-n takes D70+n) |
+| D72–D92 | F1-2 to F1-22, in order (F1-n takes D70+n) |
 
 - D67 is this roadmap process; D70 is deleting finished items; D93 is agents merging into `dev` and the coordinator.
 - When an item is deleted, its row here goes too: its number is then on `dev`.
@@ -650,23 +640,9 @@ Report to Riley here:
 Then clean up the helpers' worktrees.
 ```
 
-### F1-1. Forecast groundwork: settings, shared data shapes, fake web server, page-file schemas
-
-Ticket [#50](https://github.com/rrweller/Astro-seeing/issues/50). Depends on nothing; it can start now. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
-
-```text
-/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-1.
-
-Skills: this message starts implement, and ticket #50 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
-
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #50 names.
-
-Task: work ticket #50. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D71 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #50. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #50 with a comment linking the PR, and do the handoff's after-merge steps.
-```
-
 ### F1-2. Tracer slice, back end: one GFS run at Kongsberg to the page's data files
 
-Ticket [#51](https://github.com/rrweller/Astro-seeing/issues/51). Depends on F1-1. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
+Ticket [#51](https://github.com/rrweller/Astro-seeing/issues/51). The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-2.
@@ -680,7 +656,7 @@ Task: work ticket #51. Claim it as docs/agents/issue-tracker.md describes. Its a
 
 ### F1-3. Tracer slice, page: Kongsberg's hourly table, freshness, About and credits
 
-Ticket [#52](https://github.com/rrweller/Astro-seeing/issues/52). Depends on F1-1, F1-2. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
+Ticket [#52](https://github.com/rrweller/Astro-seeing/issues/52). Depends on F1-2. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-3.
@@ -694,7 +670,7 @@ Task: work ticket #52. Claim it as docs/agents/issue-tracker.md describes. Its a
 
 ### F1-4. Tonight: the verdict rules and the Moon
 
-Ticket [#53](https://github.com/rrweller/Astro-seeing/issues/53). Depends on F1-1. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
+Ticket [#53](https://github.com/rrweller/Astro-seeing/issues/53). The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-4.
@@ -708,7 +684,7 @@ Task: work ticket #53. Claim it as docs/agents/issue-tracker.md describes. Its a
 
 ### F1-5. Saved places: automatic GLO-30 ground height, and Paranal
 
-Ticket [#54](https://github.com/rrweller/Astro-seeing/issues/54). Depends on F1-1. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
+Ticket [#54](https://github.com/rrweller/Astro-seeing/issues/54). The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-5.
