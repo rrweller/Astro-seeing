@@ -43,6 +43,7 @@ from astroseeing.forecast.schemas import validate
 from astroseeing.forecast.settings import Area, ForecastSettings, Place
 from astroseeing.forecast.sources.gfs import GfsAdapter
 from astroseeing.forecast.sources.icon_eu import IconEuAdapter
+from astroseeing.forecast.sources.ifs import IfsAdapter
 from astroseeing.forecast.sources.interface import (
     FormatMismatch,
     RunFields,
@@ -148,10 +149,12 @@ def tick_lock(path: Path) -> Iterator[None]:
 
 
 def default_adapters(settings: ForecastSettings, http: HttpClient) -> dict[str, SourceAdapter]:
-    """The adapters that exist so far (ticket #51: GFS; ticket #55: ICON-EU)."""
+    """The adapters that exist so far (ticket #51: GFS; ticket #55: ICON-EU; ticket #56:
+    IFS)."""
     return {
         "gfs": GfsAdapter(settings.models["gfs"], http, settings.areas),
         "icon_eu": IconEuAdapter(settings.models["icon_eu"], http, settings.areas),
+        "ifs": IfsAdapter(settings.models["ifs"], http, settings.areas),
     }
 
 
@@ -213,7 +216,7 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
         for model_id in area.models:
             adapter = adapters.get(model_id)
             if adapter is None:
-                continue  # no adapter yet (MEPS, IFS: tickets #56-#57)
+                continue  # no adapter yet (MEPS: ticket #57)
             if model_id not in newest:
                 try:
                     newest[model_id] = adapter.latest_published(now)
