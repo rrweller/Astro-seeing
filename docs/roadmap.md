@@ -40,7 +40,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-3` · **blocked** · cloud · Tracer slice, page: Kongsberg's hourly table, freshness, About and credits · [#52](https://github.com/rrweller/Astro-seeing/issues/52)
 
-- `F1-4` · **needs-you** · cloud · Tonight: the verdict rules and the Moon · needs you: two questions on the tonight rules (asked in the C13 chat and on #53) · [#53](https://github.com/rrweller/Astro-seeing/issues/53) · draft PR [#76](https://github.com/rrweller/Astro-seeing/pull/76)
+- `F1-4` · **review** · cloud · Tonight: the verdict rules and the Moon · [#53](https://github.com/rrweller/Astro-seeing/issues/53) · draft PR [#76](https://github.com/rrweller/Astro-seeing/pull/76)
 
 - `F1-6` · **blocked** · cloud · ICON-EU source adapter · [#55](https://github.com/rrweller/Astro-seeing/issues/55)
 
@@ -243,7 +243,7 @@ flowchart LR
   %% ---
   class F1_3 blocked
   %% ---
-  class F1_4 needsyou
+  class F1_4 review
   %% ---
   class F1_6 blocked
   %% ---
