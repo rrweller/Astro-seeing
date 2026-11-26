@@ -45,6 +45,7 @@ No free or cheap source has multi-year global historical seeing. So seeing is co
 - Verify that every link loads and says what you cite before you cite it.
 - Prefer peer-reviewed papers and primary documentation. Never use Grokipedia or other AI-generated sites.
 - Check sources before stating facts, and don't assume. Say plainly when you're unsure, and double-check yourself.
+- Ask questions in plain language: say what a thing is rather than its decision or ticket number, and explain any scientific or meteorological term (details in `CLAUDE.md`, "Asking Riley questions").
 
 **Decision log:** record every non-trivial decision in `docs/decisions.md` (date, options, evidence, choice, who decided).
 
