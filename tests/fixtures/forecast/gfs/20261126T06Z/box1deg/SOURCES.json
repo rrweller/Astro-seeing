@@ -1,0 +1,554 @@
+{
+ "provider": "NOAA/NCEP GFS 0.25\u00b0, via the NOMADS grib filter (US-government open data)",
+ "fetched_at": "2026-11-26T13:19:13+00:00",
+ "run": "2026-11-26T06:00:00+00:00",
+ "box": {
+  "west": 9.2,
+  "east": 10.3,
+  "south": 59.2,
+  "north": 60.3
+ },
+ "steps_h": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23,
+  24,
+  25,
+  26,
+  27,
+  28,
+  29,
+  30,
+  31,
+  32,
+  33,
+  34,
+  35,
+  36,
+  37,
+  38,
+  39,
+  40,
+  41,
+  42,
+  43,
+  44,
+  45,
+  46,
+  47,
+  48
+ ],
+ "files": {
+  "gfs.t06z.pgrb2.0p25.f000.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f000&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 24172,
+   "sha256": "d9041d408ce715591131e879eac0156c87c51acbbe957d47a0eb468437d1eccc"
+  },
+  "gfs.t06z.pgrb2b.0p25.f000.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f000&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16008,
+   "sha256": "ace1cdd5eccbcd9182398cf99fcb12ce8bdc7bdca4fc7c7a3cc85dbc83097692"
+  },
+  "gfs.t06z.pgrb2.0p25.f001.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f001&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25007,
+   "sha256": "05214b14f1d905d3db4758aec6336cd70db89aee6e2f3c36767f49bbc618ea72"
+  },
+  "gfs.t06z.pgrb2b.0p25.f001.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f001&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16002,
+   "sha256": "fedb2d63cfc0a3210a64314cf9d3c0db1fb1990c73747b5ef36678f47244717b"
+  },
+  "gfs.t06z.pgrb2.0p25.f002.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f002&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25016,
+   "sha256": "0bdc640c69704254849b6838212f8d0b418edaa9a1226a238070c1ecfc4536ab"
+  },
+  "gfs.t06z.pgrb2b.0p25.f002.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f002&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15968,
+   "sha256": "a8b7ea8c83aea0f494fa48d77af1bcff95babbccf8aaff65f85197d16e701663"
+  },
+  "gfs.t06z.pgrb2.0p25.f003.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f003&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 24994,
+   "sha256": "4836829c693d4671406c19e3906a47dc65bbc330f3f92f9af37e526acbbab5a7"
+  },
+  "gfs.t06z.pgrb2b.0p25.f003.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f003&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15945,
+   "sha256": "8f412b3af176137a637cbe52def6b044b5d6d8d37870dc7c15c045c3dcb8b4a8"
+  },
+  "gfs.t06z.pgrb2.0p25.f004.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f004&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 24943,
+   "sha256": "362e98991290ace0330dbb1a3ed8a7d7c4eb32c40a164a76fd0758e703add2f0"
+  },
+  "gfs.t06z.pgrb2b.0p25.f004.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f004&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15926,
+   "sha256": "86f692fbd3ac82a0ef0c7019e9b4f29a29ca15818eef228f372b5367f2259e1d"
+  },
+  "gfs.t06z.pgrb2.0p25.f005.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f005&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 24946,
+   "sha256": "52ea57fde069eeaa90a789117bdf6a6cc52289acef7bc9e06317316a988073fa"
+  },
+  "gfs.t06z.pgrb2b.0p25.f005.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f005&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15930,
+   "sha256": "b627c9cf18b0cd551f657f72aaa815b2d0b300c9b8b6152d0e1b28d1a0cb8742"
+  },
+  "gfs.t06z.pgrb2.0p25.f006.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f006&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 24990,
+   "sha256": "5ab66e66f33ca5d35c9d0bcbf3318144f078233f9ba33465579b54208b59b04b"
+  },
+  "gfs.t06z.pgrb2b.0p25.f006.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f006&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15932,
+   "sha256": "b4e65a64d630489bf9491af12f58d511a8a7087de1a3ea21db65ed0b684a480d"
+  },
+  "gfs.t06z.pgrb2.0p25.f007.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f007&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25016,
+   "sha256": "5b85dac9f1ccc21af7ba635ee5666311e9dea68b343a8a5cbb3f80fa40a61e88"
+  },
+  "gfs.t06z.pgrb2b.0p25.f007.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f007&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15921,
+   "sha256": "30085e0a27739f3351785c6e2ce136c389f6da419af475962a1b6ec8be7d77d3"
+  },
+  "gfs.t06z.pgrb2.0p25.f008.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f008&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25056,
+   "sha256": "c6f85ac608e0ea9900fdf45728221f9defe29f826f1ee37dc4a95dd6bc814234"
+  },
+  "gfs.t06z.pgrb2b.0p25.f008.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f008&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15912,
+   "sha256": "4cb455b161a478270f468cffdb4b9d787205655c899b8d478b84d553bf0d9abf"
+  },
+  "gfs.t06z.pgrb2.0p25.f009.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f009&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25049,
+   "sha256": "5f753bca069b580bfb18ea61f34f58fa22b4d71cfda9dd4af5dee7fac7388fe8"
+  },
+  "gfs.t06z.pgrb2b.0p25.f009.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f009&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15931,
+   "sha256": "2e8ad1d45427e9b58d04a0287b1ad46b907ba5cbf8fb77137f62765b3796c04d"
+  },
+  "gfs.t06z.pgrb2.0p25.f010.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f010&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25081,
+   "sha256": "bd79b812303122bac162c5973a17a4c1ab1fb64b3d4a8932896fba579cec4970"
+  },
+  "gfs.t06z.pgrb2b.0p25.f010.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f010&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15946,
+   "sha256": "169d414fef6c61b57855114896d392f9c3fb492be7eebe60127d87f12c7c1259"
+  },
+  "gfs.t06z.pgrb2.0p25.f011.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f011&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25071,
+   "sha256": "d6c8ee4b1f9c0a6dfcfd6c3cae35beb167ab34cd99d5cea7321f5618c1db73dc"
+  },
+  "gfs.t06z.pgrb2b.0p25.f011.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f011&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15953,
+   "sha256": "78db7beb8e2d901ca3dcf2b623a9e039a96f1ff72f46e2e4e3c20512966f40da"
+  },
+  "gfs.t06z.pgrb2.0p25.f012.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f012&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25057,
+   "sha256": "d8f1470a9643c572263984898795111b4eb345c55185e8d8e514ecc94ee175c9"
+  },
+  "gfs.t06z.pgrb2b.0p25.f012.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f012&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15953,
+   "sha256": "b5512c348b15729988c877e718d54035b306883d94c786fc07f33cd19c27cfb7"
+  },
+  "gfs.t06z.pgrb2.0p25.f013.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f013&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25075,
+   "sha256": "4b95c7e73e142bb0f3b3aea3b8d3d73493cb25a6dc7aa6abb3bd4a661d37f966"
+  },
+  "gfs.t06z.pgrb2b.0p25.f013.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f013&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15946,
+   "sha256": "5c849dd123cdb75bee1793a30ac2d645469d1b6cf35fb08489b63a81d8666b68"
+  },
+  "gfs.t06z.pgrb2.0p25.f014.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f014&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25088,
+   "sha256": "66bed4f2b8575fe8305776ec17c38221b5ac1a2c380a429e8abf551d8f807c2d"
+  },
+  "gfs.t06z.pgrb2b.0p25.f014.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f014&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15951,
+   "sha256": "2502cdf5f3890d37ca731ccdbceebb6c69a3c701c82e6404df7ac6829ec35698"
+  },
+  "gfs.t06z.pgrb2.0p25.f015.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f015&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25068,
+   "sha256": "136727fe15eee41ae8e1b1c8bac62f19737405b59b960deafa20f0dcbe68adeb"
+  },
+  "gfs.t06z.pgrb2b.0p25.f015.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f015&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15988,
+   "sha256": "1f87c92b3ea92f4ad3deafd86e13dc52779834628fd6b24d290965262c551375"
+  },
+  "gfs.t06z.pgrb2.0p25.f016.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f016&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25106,
+   "sha256": "c54dfeeb4e66081ce29dcb64b6b6c1cf64f299148aa1516fc6204eafe89654b8"
+  },
+  "gfs.t06z.pgrb2b.0p25.f016.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f016&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 15992,
+   "sha256": "ba385694a4c517100bbdfa6cee3fa5365ff8fbd13d8267894ee0a3cb50f89a05"
+  },
+  "gfs.t06z.pgrb2.0p25.f017.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f017&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25167,
+   "sha256": "70b9c549e837bd9c2d816d9555aed2a6fdcaf7e95dd4261c0d3a2d1bd795df9a"
+  },
+  "gfs.t06z.pgrb2b.0p25.f017.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f017&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16006,
+   "sha256": "c140ad82002a4ac871998ffdc0d31003133f9fd419a7b04bde487c4a9eb7769f"
+  },
+  "gfs.t06z.pgrb2.0p25.f018.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f018&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25273,
+   "sha256": "026c58779de312ba03f16ebfd0089dd49f71f43762ffa442731132e8f3c51cee"
+  },
+  "gfs.t06z.pgrb2b.0p25.f018.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f018&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16027,
+   "sha256": "caa7b75edf7dbf0bdde5551bf3d2cee1a9f98c8bd5cdc4962ddc5e1548082867"
+  },
+  "gfs.t06z.pgrb2.0p25.f019.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f019&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25331,
+   "sha256": "2cf917db004f13e8fea529df192e2e157275ece94a0f323caa8c89bcc1f36dab"
+  },
+  "gfs.t06z.pgrb2b.0p25.f019.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f019&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16041,
+   "sha256": "64503a2b8d3cea55b155216668c630fe6898f89e52b07c1c49445cc82a59f061"
+  },
+  "gfs.t06z.pgrb2.0p25.f020.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f020&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25345,
+   "sha256": "a09197f9392037829a996bf2adfc7914f944e7e72c3b5fbb8675e8d2e8c3ddda"
+  },
+  "gfs.t06z.pgrb2b.0p25.f020.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f020&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16039,
+   "sha256": "cdf2c0bb2c8f685376b6b56a27bf80b7fbae5125b7c1866c44928ba78c00822d"
+  },
+  "gfs.t06z.pgrb2.0p25.f021.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f021&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25380,
+   "sha256": "1c0aafb23d9f5f9ab63f809785f368e02bab6c5da891bcf7fae0afbdf2d1cf67"
+  },
+  "gfs.t06z.pgrb2b.0p25.f021.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f021&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16060,
+   "sha256": "410bf564b300f0d915db995e06372a410a0190d4e9d0d185f00375a3b472bac9"
+  },
+  "gfs.t06z.pgrb2.0p25.f022.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f022&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25479,
+   "sha256": "38c011e4b388085cad3da58dc79827e53cc1f1d09d36a40f852dce14e9699aed"
+  },
+  "gfs.t06z.pgrb2b.0p25.f022.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f022&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16131,
+   "sha256": "d5c3057c0e5bf41e25d68daa15eb7738162b280f3b63c947865e58968d6743b5"
+  },
+  "gfs.t06z.pgrb2.0p25.f023.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f023&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25480,
+   "sha256": "a92934851be25c4bdd70f7055ed97b8f45447634c4ac184d5116741049ab9ca2"
+  },
+  "gfs.t06z.pgrb2b.0p25.f023.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f023&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16121,
+   "sha256": "9a348be87880201d11ba1e1a86f1217df2d7277d8d03b6289f5f2999e18f2e1a"
+  },
+  "gfs.t06z.pgrb2.0p25.f024.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f024&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25532,
+   "sha256": "0710182ead915157c91054f544aaf4049979a6a442a89b2adfe743d40d1efb49"
+  },
+  "gfs.t06z.pgrb2b.0p25.f024.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f024&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16139,
+   "sha256": "d89cdfbca74107b9cb918dce0edc7594134c8055d1c2114fa951b0377f218374"
+  },
+  "gfs.t06z.pgrb2.0p25.f025.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f025&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25528,
+   "sha256": "7a44b503138d3df8e9f7349abffde27c5ea805af829036fdcb95a7d61cf7d25d"
+  },
+  "gfs.t06z.pgrb2b.0p25.f025.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f025&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16154,
+   "sha256": "c01e5e3c353a1d2adcaf7c4835c7d2592b52df08bf1917576cac2868d08447c3"
+  },
+  "gfs.t06z.pgrb2.0p25.f026.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f026&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25515,
+   "sha256": "fdf1659c20893ff57e6356f3b0e8bf3596893cd71eccaa57e3ac61a31cec53f4"
+  },
+  "gfs.t06z.pgrb2b.0p25.f026.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f026&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16177,
+   "sha256": "783b2c767c0b9b5d48265342983ed595dbea461557af1bb2b4dd37af413c63dd"
+  },
+  "gfs.t06z.pgrb2.0p25.f027.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f027&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25546,
+   "sha256": "0903ebd8dcc42d368cc06df4f64dda89f130b27cf9d4f5fe2d9e3c0e96f227fd"
+  },
+  "gfs.t06z.pgrb2b.0p25.f027.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f027&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16210,
+   "sha256": "04652b5550b0f9ada94bf3b2ff66ea1e49345fdfc21ac5a242e680bebd50eb61"
+  },
+  "gfs.t06z.pgrb2.0p25.f028.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f028&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25536,
+   "sha256": "3e2ff60fcd1ca3fe906325b95e95a2267524c57e9f32601407118a59bbeb6784"
+  },
+  "gfs.t06z.pgrb2b.0p25.f028.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f028&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16212,
+   "sha256": "7815b1d4b3c97e78021b708bbd368ae7ac8b2cf14902838f26698246a1668dea"
+  },
+  "gfs.t06z.pgrb2.0p25.f029.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f029&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25509,
+   "sha256": "dbb8a45bf74ade3570df88622c3cfa6922c75883fe5601f5ca9b769b0581f2b6"
+  },
+  "gfs.t06z.pgrb2b.0p25.f029.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f029&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16198,
+   "sha256": "cfaa13fb3d6423133541b02fd72233b6507d0fd6171a79fba505498c2de67810"
+  },
+  "gfs.t06z.pgrb2.0p25.f030.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f030&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25460,
+   "sha256": "d324ab2b7304deb876f3018763dd3fdcbafece1524c79be34eb7251850ebb9f8"
+  },
+  "gfs.t06z.pgrb2b.0p25.f030.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f030&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16153,
+   "sha256": "4239bb62fddbf0f0f1f22c754e10681cc2eb0759ca6c5bab052228e130d8b5b8"
+  },
+  "gfs.t06z.pgrb2.0p25.f031.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f031&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25430,
+   "sha256": "274bd187f25da1c75efcb13841a9a579a1e7e9d78f02bf2f1a8f1519978eed08"
+  },
+  "gfs.t06z.pgrb2b.0p25.f031.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f031&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16120,
+   "sha256": "1b353a89eaf8f1c875516f52dd37976f4ec8c6e21e4df34c9c1573f03d602823"
+  },
+  "gfs.t06z.pgrb2.0p25.f032.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f032&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25477,
+   "sha256": "4cb70eb3d8ac74d335a2afc12a8ac6d2668479fffe2d79cadaee221f8f2830df"
+  },
+  "gfs.t06z.pgrb2b.0p25.f032.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f032&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16133,
+   "sha256": "b34acd6c3bf2bb7c9ad63fbf55f4c597ced7cd493410a9b83942107055e6baf1"
+  },
+  "gfs.t06z.pgrb2.0p25.f033.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f033&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25484,
+   "sha256": "25892c3c5350e8e48dad3ad9725eb1c9d44ba778729220090e3253b7f44cc827"
+  },
+  "gfs.t06z.pgrb2b.0p25.f033.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f033&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16143,
+   "sha256": "fc11c49c7f74f932d9579c50a4028edb6db72104f8d0951dcb4467a328e9e3b1"
+  },
+  "gfs.t06z.pgrb2.0p25.f034.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f034&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25537,
+   "sha256": "3799c7d3b70a29fae1955266fdbde560707f3193ed463a432f9fad523f09fc7a"
+  },
+  "gfs.t06z.pgrb2b.0p25.f034.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f034&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16193,
+   "sha256": "520cb003924dcd2775e2b915b7651e7bf45e8397042c2eced87519f0e52aeee2"
+  },
+  "gfs.t06z.pgrb2.0p25.f035.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f035&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25539,
+   "sha256": "6c28b908fa37c45bfe9d70ef14441d6ea15b8848a259737498e237bc32693e46"
+  },
+  "gfs.t06z.pgrb2b.0p25.f035.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f035&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16211,
+   "sha256": "5cb0eec91ff2a0a9b7638d147557f3f47cc64d9c92ab9baf97e98b0bbd0bee1f"
+  },
+  "gfs.t06z.pgrb2.0p25.f036.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f036&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25586,
+   "sha256": "49896c3772d3e0619e72e1dc56fc84fee4e52726994891d3007738d37699d66e"
+  },
+  "gfs.t06z.pgrb2b.0p25.f036.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f036&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16257,
+   "sha256": "9060f446bf61c5bffcc6774d953ec10cbeb7eb97a768a704b82d62aa636358ca"
+  },
+  "gfs.t06z.pgrb2.0p25.f037.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f037&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25675,
+   "sha256": "5c886bc8ada7705f8f08cf5097dd7cd23377d41c4374970c8c3764da1643cdef"
+  },
+  "gfs.t06z.pgrb2b.0p25.f037.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f037&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16269,
+   "sha256": "98a538906e4f12f5805386efe6408a9195dc7afc9da3dba882d00890d558b434"
+  },
+  "gfs.t06z.pgrb2.0p25.f038.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f038&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25717,
+   "sha256": "66bbfef4e1d53d14d56db50df498b810998e3d6833ba31e444344710b2369fb2"
+  },
+  "gfs.t06z.pgrb2b.0p25.f038.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f038&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16264,
+   "sha256": "69ad15582c7bc7966db583333b7eb0b8c93c968b74ac4674d9c13e984d5b6e8e"
+  },
+  "gfs.t06z.pgrb2.0p25.f039.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f039&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25770,
+   "sha256": "56b4275eb37f0c04e414f3c7f10b3485c0ad96e150bc58f288a5dddff40b3700"
+  },
+  "gfs.t06z.pgrb2b.0p25.f039.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f039&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16310,
+   "sha256": "f47082c7004503329b84651c43c49d2a176017a3720e3158e6e9c4c1d332022d"
+  },
+  "gfs.t06z.pgrb2.0p25.f040.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f040&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25735,
+   "sha256": "bc0604ec2540af4ee3a2cf0536852985bc742ef01326391e51e51947ce9c6d8d"
+  },
+  "gfs.t06z.pgrb2b.0p25.f040.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f040&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16332,
+   "sha256": "fee1e212d798f5d04b581659015cbff29142ca28c29b0e76cda6a176fffa3089"
+  },
+  "gfs.t06z.pgrb2.0p25.f041.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f041&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25712,
+   "sha256": "d9a1061fe59e690edc1890d38b8a5663c296ff2f78717086d15aa07b2f0f3b01"
+  },
+  "gfs.t06z.pgrb2b.0p25.f041.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f041&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16340,
+   "sha256": "7eda7642e03c26af463261270f815e2075289074147fdcd0655b6138f1b2bf9a"
+  },
+  "gfs.t06z.pgrb2.0p25.f042.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f042&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25694,
+   "sha256": "0b59672e2caa97a39c48d639dcb18c20dd2a36171c4bf2c455b22705bcc82878"
+  },
+  "gfs.t06z.pgrb2b.0p25.f042.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f042&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16308,
+   "sha256": "46bc361c634e124ced6800482b8f7d78d5e76d6905e85ac60609bd24f879cea3"
+  },
+  "gfs.t06z.pgrb2.0p25.f043.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f043&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25728,
+   "sha256": "a2b62c069d2f98f182be7fffd6bfff710ba3200c1606461315ede2e4321567d3"
+  },
+  "gfs.t06z.pgrb2b.0p25.f043.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f043&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16354,
+   "sha256": "f4d46056d8f0f67a45da532b030ea6611ed8aaee924c135f1adc64b1a9ee88b0"
+  },
+  "gfs.t06z.pgrb2.0p25.f044.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f044&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25741,
+   "sha256": "0e7cfdd9f81975892447abc8b237586b6bb9507d4f0dd218242938229bd93b94"
+  },
+  "gfs.t06z.pgrb2b.0p25.f044.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f044&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16343,
+   "sha256": "c64cae58143aa5fe512611fa0d63ad7ae966c114b390deeba810a85443114232"
+  },
+  "gfs.t06z.pgrb2.0p25.f045.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f045&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25743,
+   "sha256": "e6c816aae49bb21c7a153a85dcb9a512569a32e4b1321560cd405b3a7175fd24"
+  },
+  "gfs.t06z.pgrb2b.0p25.f045.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f045&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16379,
+   "sha256": "4b2791a1097604c099b6879aeabf34e40b3b70087bcfa437ff52ec050ef48d79"
+  },
+  "gfs.t06z.pgrb2.0p25.f046.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f046&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25774,
+   "sha256": "92f75f99fdc4584a8de776a35cc0920ffbbee08c5adeb50265fa67ea01393ca4"
+  },
+  "gfs.t06z.pgrb2b.0p25.f046.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f046&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16419,
+   "sha256": "612aa2f6eda4dfce0a27e6051715f4281377bfbe4c4b6fecf1372932c3377fe4"
+  },
+  "gfs.t06z.pgrb2.0p25.f047.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f047&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25812,
+   "sha256": "09f1b3e768bf6d0a2f7904237c2a36e4c67bbd1d1c73480b007bfccd0e725273"
+  },
+  "gfs.t06z.pgrb2b.0p25.f047.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f047&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16392,
+   "sha256": "4c854222d9a3a997403e21776ee0e7db4fa3966a2c4a21b52a339f5120023942"
+  },
+  "gfs.t06z.pgrb2.0p25.f048.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25_1hr.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2.0p25.f048&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&var_LCDC=on&var_MCDC=on&var_HCDC=on&var_VIS=on&var_PRES=on&lev_1000_mb=on&lev_975_mb=on&lev_950_mb=on&lev_925_mb=on&lev_900_mb=on&lev_850_mb=on&lev_800_mb=on&lev_750_mb=on&lev_700_mb=on&lev_650_mb=on&lev_600_mb=on&lev_550_mb=on&lev_500_mb=on&lev_450_mb=on&lev_400_mb=on&lev_350_mb=on&lev_300_mb=on&lev_250_mb=on&lev_200_mb=on&lev_150_mb=on&lev_100_mb=on&lev_70_mb=on&lev_50_mb=on&lev_surface=on&lev_low_cloud_layer=on&lev_middle_cloud_layer=on&lev_high_cloud_layer=on&lev_entire_atmosphere=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 25798,
+   "sha256": "1bd7bf465e7e765e4c2aaffa5e12a6966a29df2c6f5b1c59bad93d03c0a4ab68"
+  },
+  "gfs.t06z.pgrb2b.0p25.f048.grb2": {
+   "target": "/cgi-bin/filter_gfs_0p25b.pl?dir=%2Fgfs.20261126%2F06%2Fatmos&file=gfs.t06z.pgrb2b.0p25.f048&var_HGT=on&var_TMP=on&var_UGRD=on&var_VGRD=on&var_TCDC=on&lev_875_mb=on&lev_825_mb=on&lev_775_mb=on&lev_725_mb=on&lev_675_mb=on&lev_625_mb=on&lev_575_mb=on&lev_525_mb=on&lev_475_mb=on&lev_425_mb=on&lev_375_mb=on&lev_325_mb=on&lev_275_mb=on&lev_225_mb=on&lev_175_mb=on&lev_125_mb=on&lev_70_mb=on&subregion=&leftlon=9.2&rightlon=10.3&toplat=60.3&bottomlat=59.2",
+   "bytes": 16404,
+   "sha256": "3e456fdddb4a53d2ac669f8541a6b222f99765b0fea28e7c4d41bff6d51356fd"
+  }
+ }
+}
