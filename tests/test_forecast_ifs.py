@@ -171,7 +171,9 @@ def test_reads_the_whole_kongsberg_box_with_13_levels_and_3_hourly_steps(portal,
     assert f.surface_pressure_hpa.min() > 800 and f.surface_pressure_hpa.max() < 1060
     # cloud fractions 0-1 in the file, percent in RunFields; some cloud somewhere
     for c in (f.total_cloud_pct, f.low_cloud_pct, f.mid_cloud_pct, f.high_cloud_pct):
-        assert c.min() >= 0 and c.max() <= 100 + 1e-6 and c.max() > 1
+        assert c.min() >= 0 and c.max() <= 100 and c.max() > 1
+    # IFS's 0-1 fractions decode inside 0-100 %: the cloud range rule sets nothing (D95)
+    assert sum(f.qc.totals.values()) > 0 and not any(f.qc.counts.values())
     # the fog signal: 2 m temperature minus dewpoint, never negative beyond packing
     dd = f.fog["dewpoint_depression_2m_k"]
     assert dd is not None and dd.min() > -0.5 and dd.max() < 40
