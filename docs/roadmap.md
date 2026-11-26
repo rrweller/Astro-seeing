@@ -70,7 +70,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-22` · **blocked** · CT · CT: the 28-night run, size report and reports/f1.md · [#71](https://github.com/rrweller/Astro-seeing/issues/71)
 
-- `F1-23` · **in-progress** · cloud · Cloud cover a hair over 100 % (GRIB packing) crashes the tick · [#80](https://github.com/rrweller/Astro-seeing/issues/80)
+- `F1-23` · **review** · cloud · Cloud cover a hair over 100 % (GRIB packing) crashes the tick · [#80](https://github.com/rrweller/Astro-seeing/issues/80) · PR [#82](https://github.com/rrweller/Astro-seeing/pull/82)
 
 - `K1` · **needs-you** · CT · Recover the ntfy URL; pull `dev` and restart the notify watcher · needs you: be at home
 
@@ -251,7 +251,7 @@ flowchart LR
   %% ---
   class F1_22 blocked
   %% ---
-  class F1_23 inprogress
+  class F1_23 review
   %% ---
   class K1 needsyou
   %% ---
