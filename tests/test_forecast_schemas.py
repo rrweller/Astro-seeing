@@ -52,6 +52,18 @@ def test_a_hand_written_minimal_place_file_validates(place):
     assert len(place["hours"]) == 24
 
 
+def test_a_place_file_before_the_verdict_is_wired_in_validates(place):
+    """D72: until the tick calls forecast.tonight (F1-14), the verdict, the Moon and each
+    hour's agreement, past and counted flags and Moon altitude are null, never invented."""
+    place.update(tonight=None, moon=None)
+    for hour in place["hours"]:
+        hour.update(moon_altitude_deg=None, past=None, counted=None, agreement=None)
+    validate(place, "f1-place/1")
+    place["hours"][0]["past"] = "unknown"
+    with pytest.raises(SchemaViolation, match=r"hours\[0\]\.past"):
+        validate(place, "f1-place/1")
+
+
 def drop(doc: dict, path: str) -> dict:
     """A copy of ``doc`` without the key at a dotted path (list indexes as numbers)."""
     doc = copy.deepcopy(doc)

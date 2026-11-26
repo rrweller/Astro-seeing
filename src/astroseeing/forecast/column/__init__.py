@@ -17,12 +17,14 @@ Rules (D47 items 1, 2, 4 and 6):
   the observer up (D47 item 4). Undefined where the column has no turbulence: NaN,
   counted (``hbar_undefined_no_turbulence``).
 - **Seeing:** ``physics.optics.seeing_arcsec`` (exact 5.307 form, 500 nm, zenith) of J.
+- **Cloud class** (:func:`cloud_class`): D48 item 6 on the unrounded total cloud.
 - Unstable layers are zeroed and the WMO lapse-rate tropopause is used, as in the
   historical track (D5, D47 item 6): both come with the engine's Cₙ² models.
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -30,6 +32,7 @@ from types import MappingProxyType
 import numpy as np
 
 from astroseeing.constants import OS_SPLIT_HEIGHT
+from astroseeing.forecast.settings import CloudClasses
 from astroseeing.forecast.sources.interface import RunFields
 from astroseeing.physics.integrate import weighted_moment_above
 from astroseeing.physics.optics import seeing_arcsec
@@ -148,3 +151,15 @@ def column_products(
         wind_200hpa_ms=np.hypot(u200, v200),
         qc=qc,
     )
+
+
+def cloud_class(total_cloud_pct: float, classes: CloudClasses) -> str:
+    """D48 item 6, on the unrounded total cloud: clear ≤ clear_max_pct < some cloud ≤
+    some_cloud_max_pct < cloudy (thresholds from the settings)."""
+    if math.isnan(total_cloud_pct):
+        raise ValueError("no cloud class for a NaN total cloud")
+    if total_cloud_pct <= classes.clear_max_pct:
+        return "clear"
+    if total_cloud_pct <= classes.some_cloud_max_pct:
+        return "some_cloud"
+    return "cloudy"

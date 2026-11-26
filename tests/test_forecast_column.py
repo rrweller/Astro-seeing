@@ -8,8 +8,8 @@ import datetime as dt
 import numpy as np
 import pytest
 
-from astroseeing.forecast.column import CN2_MODELS, column_products
-from astroseeing.forecast.settings import Grid, Host, Hosts, Model
+from astroseeing.forecast.column import CN2_MODELS, cloud_class, column_products
+from astroseeing.forecast.settings import Grid, Host, Hosts, Model, load_settings
 from astroseeing.forecast.sources import RunFields, RunRef
 
 LEVELS = np.array([1000.0, 975, 950, 900, 800, 700, 600, 500, 400, 300, 200, 100])
@@ -131,3 +131,19 @@ def test_a_column_with_no_turbulence_has_no_hbar_and_says_so():
     c = column_products(f, observer_height_m=0.0)["osborn_sarazin"]
     assert c.j_total[0, 0, 0] == 0.0 and np.isnan(c.hbar_m[0, 0, 0])
     assert c.qc["hbar_undefined_no_turbulence"] == 1
+
+
+@pytest.mark.parametrize(
+    ("total", "cls"),
+    [
+        (0.0, "clear"),
+        (10.0, "clear"),
+        (10.001, "some_cloud"),
+        (50.0, "some_cloud"),
+        (50.001, "cloudy"),
+        (100.0, "cloudy"),
+    ],
+)
+def test_cloud_classes_use_the_unrounded_total_cloud(total, cls):
+    # D48 item 6: clear ≤ 10 % < some cloud ≤ 50 % < cloudy (configs/forecast.yaml)
+    assert cloud_class(total, load_settings().cloud_classes) == cls

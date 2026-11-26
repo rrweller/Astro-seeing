@@ -138,6 +138,8 @@ class GfsAdapter:
     checks the grid against the fetched area's box); ``base_url`` replaces the configured
     main host (tests point it at a fake server); ``pacer`` paces every request to it."""
 
+    credit = CREDIT
+
     def __init__(
         self,
         model: Model,
