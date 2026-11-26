@@ -932,6 +932,6 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
      - Options rejected: a 0.25° grid with ICON-EU averaged into it (loses detail; averaging cloud is smoothing); a 0.25° grid with ICON-EU subsampled (drops 15 of 16 values).
   3. **The kept daily map is the one at sunset at the default saved place** (Kongsberg): the latest product set written at or before that day's sunset there. Seven are kept on the SSD (D51 item 10), oldest deleted first. One moment for the whole map, although sunset differs by up to about an hour across the box.
      - Options rejected: one map per new run (more clutter than "one per night"); the map at local noon (older runs).
-  4. **Plain-language questions.** Riley asked that every question to him, in every session from now on, uses plain language: no project jargon, no bare decision or ticket numbers he would have to look up, and a short explanation of any scientific or meteorological term. Written into `CLAUDE.md`.
+  4. **Plain-language questions.** Riley asked that every question to him, in every session from now on, uses plain language: no project jargon, no bare decision or ticket numbers he would have to look up, and a short explanation of any scientific or meteorological term. Written into `CLAUDE.md`, and as a standing preference in `AGENTS.md` at Riley's request (2026-11-26).
 - **Glossary:** saved place, cell card, map grid and sunset map added to `CONTEXT.md`.
 - **Who:** Riley (all four, 2026-11-26); the agent proposed items 1–3 and drafted the wording.
