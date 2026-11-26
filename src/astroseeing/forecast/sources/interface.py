@@ -133,7 +133,7 @@ class RunFields:
     ``fog`` holds every name in ``FOG_SIGNALS``: an array where the model has the
     signal, ``None`` (absent) where it doesn't, so missing never reads as "no fog".
 
-    Every cloud fraction passes the **cloud range rule** (``_apply_cloud_range_rule``)
+    Every cloud fraction passes the **cloud range rule** (``RunFields._apply_cloud_range_rule``)
     here, so every adapter's values do: a value outside 0-100 % by at most
     ``CLOUD_TOLERANCE_PCT`` is set to exactly 0 or 100 and counted in ``qc``; one
     further out raises :class:`FormatMismatch`. ``qc`` holds those counts over the
@@ -204,11 +204,54 @@ class RunFields:
             if values is not None:
                 _check_shape(f"fog signal {name}", values, surface_shape)
         object.__setattr__(self, "fog", MappingProxyType(fog))
-        qc = _apply_cloud_range_rule(self)
+        qc = self._apply_cloud_range_rule()
         if self.qc is None:
             object.__setattr__(self, "qc", qc)
         elif any(qc.counts.values()):
             raise ValueError("qc was passed on, but these fields still had cloud values to set")
+
+    def _apply_cloud_range_rule(self) -> QCCounts:
+        """The cloud range rule (ticket #80, D95), for every cloud fraction here.
+
+        A value below 0 or above 100 % by at most ``CLOUD_TOLERANCE_PCT`` (GRIB packing)
+        is set to exactly 0 or 100, counted per field and logged. A value further out is a
+        data error: :class:`FormatMismatch` names the field, step and value. NaN is left
+        for verification to count. Arrays needing a change are copied, never edited in place.
+        """
+        qc = QCCounts()
+        run_t0 = np.datetime64(self.run.run_time.replace(tzinfo=None), "s")
+        steps = (np.asarray(self.valid_times) - run_t0) // np.timedelta64(1, "h")
+        for name in CLOUD_FIELDS:
+            values = getattr(self, name)
+            if values is None:
+                continue
+            values = np.asarray(values, dtype=np.float64)
+            low, high = values < 0.0, values > 100.0
+            bad = (values < -CLOUD_TOLERANCE_PCT) | (values > 100.0 + CLOUD_TOLERANCE_PCT)
+            if bad.any():
+                k = tuple(np.argwhere(bad)[0])
+                raise FormatMismatch(
+                    self.model.id,
+                    f"{name} at step {int(steps[k[0]])} is {float(values[k])!r} %, outside "
+                    f"0-100 % by more than {CLOUD_TOLERANCE_PCT} ({int(bad.sum())} such value(s))",
+                )
+            qc.add_mask(f"{name}_set_to_0", low)
+            qc.add_mask(f"{name}_set_to_100", high)
+            if low.any() or high.any():
+                log.info(
+                    "%s %s: %s set to 0 for %d value(s) down to %r, to 100 for %d up to %r "
+                    "(cloud range rule, tolerance %s)",
+                    self.model.id,
+                    self.run.label,
+                    name,
+                    int(low.sum()),
+                    float(values[low].min()) if low.any() else None,
+                    int(high.sum()),
+                    float(values[high].max()) if high.any() else None,
+                    CLOUD_TOLERANCE_PCT,
+                )
+                object.__setattr__(self, name, np.clip(values, 0.0, 100.0))
+        return qc
 
     @property
     def grid_shape(self) -> tuple[int, ...]:
@@ -235,50 +278,6 @@ class RunFields:
         """East and north wind at 200 hPa, each ``(S, *G)``."""
         k = int(np.flatnonzero(np.asarray(self.pressure_hpa) == JET_LEVEL_HPA)[0])
         return self.u_ms[..., k], self.v_ms[..., k]
-
-
-def _apply_cloud_range_rule(fields: RunFields) -> QCCounts:
-    """The cloud range rule (ticket #80, D95), for every cloud fraction of ``fields``.
-
-    A value below 0 or above 100 % by at most ``CLOUD_TOLERANCE_PCT`` (GRIB packing)
-    is set to exactly 0 or 100, counted per field and logged. A value further out is a
-    data error: :class:`FormatMismatch` names the field, step and value. NaN is left
-    for verification to count. Arrays needing a change are copied, never edited in place.
-    """
-    qc = QCCounts()
-    run_t0 = np.datetime64(fields.run.run_time.replace(tzinfo=None), "s")
-    steps = (np.asarray(fields.valid_times) - run_t0) // np.timedelta64(1, "h")
-    for name in CLOUD_FIELDS:
-        values = getattr(fields, name)
-        if values is None:
-            continue
-        values = np.asarray(values, dtype=np.float64)
-        low, high = values < 0.0, values > 100.0
-        bad = (values < -CLOUD_TOLERANCE_PCT) | (values > 100.0 + CLOUD_TOLERANCE_PCT)
-        if bad.any():
-            k = tuple(np.argwhere(bad)[0])
-            raise FormatMismatch(
-                fields.model.id,
-                f"{name} at step {int(steps[k[0]])} is {float(values[k])!r} %, outside "
-                f"0-100 % by more than {CLOUD_TOLERANCE_PCT} ({int(bad.sum())} such value(s))",
-            )
-        qc.add_mask(f"{name}_set_to_0", low)
-        qc.add_mask(f"{name}_set_to_100", high)
-        if low.any() or high.any():
-            log.info(
-                "%s %s: %s set to 0 for %d value(s) down to %r, to 100 for %d up to %r "
-                "(cloud range rule, tolerance %s)",
-                fields.model.id,
-                fields.run.label,
-                name,
-                int(low.sum()),
-                float(values[low].min()) if low.any() else None,
-                int(high.sum()),
-                float(values[high].max()) if high.any() else None,
-                CLOUD_TOLERANCE_PCT,
-            )
-            object.__setattr__(fields, name, np.clip(values, 0.0, 100.0))
-    return qc
 
 
 def _check_shape(name: str, values: np.ndarray, expected: tuple[int, ...]) -> None:

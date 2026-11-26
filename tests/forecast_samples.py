@@ -77,6 +77,29 @@ def copy_samples(dest: Path, sample_set: str = "box1deg") -> Path:
     return dest
 
 
+def _rewrite(path: Path, change: Callable) -> int:
+    """Rewrite a GRIB file message by message. ``change(handle, keys)`` returns the
+    message's new bytes (None drops it) and whether it changed the message; ``keys`` are
+    the eccodes keys shortName, typeOfLevel, level and stepType. Returns how many changed."""
+    import eccodes as ec
+
+    out, changed = [], 0
+    with open(path, "rb") as f:
+        while (h := ec.codes_grib_new_from_file(f)) is not None:
+            try:
+                keys = {
+                    k: ec.codes_get(h, k) for k in ("shortName", "typeOfLevel", "level", "stepType")
+                }
+                message, did = change(h, keys)
+                changed += did
+                if message is not None:
+                    out.append(message)
+            finally:
+                ec.codes_release(h)
+    path.write_bytes(b"".join(out))
+    return changed
+
+
 def drop_messages(path: Path, drop: Callable[[dict], bool]) -> int:
     """Rewrite a GRIB file without the messages ``drop`` selects; returns how many went.
 
@@ -84,21 +107,10 @@ def drop_messages(path: Path, drop: Callable[[dict], bool]) -> int:
     """
     import eccodes as ec
 
-    kept, dropped = [], 0
-    with open(path, "rb") as f:
-        while (h := ec.codes_grib_new_from_file(f)) is not None:
-            try:
-                keys = {
-                    k: ec.codes_get(h, k) for k in ("shortName", "typeOfLevel", "level", "stepType")
-                }
-                if drop(keys):
-                    dropped += 1
-                else:
-                    kept.append(ec.codes_get_message(h))
-            finally:
-                ec.codes_release(h)
-    path.write_bytes(b"".join(kept))
-    return dropped
+    def change(h, keys):
+        return (None, True) if drop(keys) else (ec.codes_get_message(h), False)
+
+    return _rewrite(path, change)
 
 
 def edit_values(path: Path, select: Callable[[dict], bool], edit: Callable) -> int:
@@ -106,18 +118,10 @@ def edit_values(path: Path, select: Callable[[dict], bool], edit: Callable) -> i
     (``select`` gets the keys ``drop_messages`` gives); returns how many were edited."""
     import eccodes as ec
 
-    out, edited = [], 0
-    with open(path, "rb") as f:
-        while (h := ec.codes_grib_new_from_file(f)) is not None:
-            try:
-                keys = {
-                    k: ec.codes_get(h, k) for k in ("shortName", "typeOfLevel", "level", "stepType")
-                }
-                if select(keys):
-                    ec.codes_set_values(h, edit(ec.codes_get_values(h)))
-                    edited += 1
-                out.append(ec.codes_get_message(h))
-            finally:
-                ec.codes_release(h)
-    path.write_bytes(b"".join(out))
-    return edited
+    def change(h, keys):
+        hit = select(keys)
+        if hit:
+            ec.codes_set_values(h, edit(ec.codes_get_values(h)))
+        return ec.codes_get_message(h), hit
+
+    return _rewrite(path, change)
