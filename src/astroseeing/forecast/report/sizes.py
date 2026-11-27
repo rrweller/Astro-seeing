@@ -17,6 +17,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+import astroseeing
 from astroseeing.forecast.report.readonly import ReadOnlyManifest, RunRecord
 from astroseeing.forecast.settings import ForecastSettings
 from astroseeing.forecast.store import utc_text
@@ -38,7 +39,11 @@ class Estimate:
 #: 48 h) and D51's evidence (steps 0-36, the F1 box). MEPS's own figure was an estimate.
 RUN_ESTIMATES: Mapping[str, Estimate] = {
     "icon_eu_48h": Estimate(
-        "ICON-EU raw per 48 h run", "D51 item 3", "~4.4 GB", 4.4e9, "passes through /staging"
+        "ICON-EU raw per 48 h run",
+        "D51 item 3",
+        "~4.4 GB",
+        4.4e9,
+        "passes through /staging; bytes as downloaded (bz2)",
     ),
     "gfs": Estimate(
         "GFS raw per run",
@@ -126,6 +131,17 @@ def _measure(path: Path) -> FolderSize:
     return FolderSize(files, size)
 
 
+def _store_day(entry: Path) -> dt.datetime | None:
+    """00 UTC of a day store's day (``<YYYY-MM-DD>.zarr``, a folder), else None."""
+    m = _DAY_STORE.match(entry.name)
+    if m is None or not entry.is_dir():
+        return None
+    try:
+        return dt.datetime.fromisoformat(m.group(1)).replace(tzinfo=dt.UTC)
+    except ValueError:  # 2026-13-01: not a day
+        return None
+
+
 def _place_stores(root: Path, place: str, start: dt.datetime, end: dt.datetime) -> PlaceStores:
     folder = root / place
     if not folder.is_dir():
@@ -133,13 +149,12 @@ def _place_stores(root: Path, place: str, start: dt.datetime, end: dt.datetime) 
     days_in = bytes_in = days_all = bytes_all = 0
     other = []
     for entry in sorted(folder.iterdir()):
-        m = _DAY_STORE.match(entry.name)
-        if m is None or not entry.is_dir():
+        day = _store_day(entry)
+        if day is None:
             other.append(entry.name)
             continue
         size = _measure(entry).bytes
         days_all, bytes_all = days_all + 1, bytes_all + size
-        day = dt.datetime.fromisoformat(m.group(1)).replace(tzinfo=dt.UTC)
         if start <= day < end:
             days_in, bytes_in = days_in + 1, bytes_in + size
     return PlaceStores(
@@ -200,7 +215,7 @@ def _secs(x: float | None) -> str:
     return MISSING if x is None else f"{x:.3f}"
 
 
-def _int(x: int | None) -> str:
+def _exact(x: int | None) -> str:
     return MISSING if x is None else str(x)
 
 
@@ -212,7 +227,7 @@ def _table(head: Sequence[str], rows: Sequence[Sequence[object]]) -> list[str]:
     return [_row(head), _row(["---"] * len(head)), *(_row(r) for r in rows)]
 
 
-def _over(values: Sequence[float | None], n_runs: int, fmt) -> str:
+def _total(values: Sequence[float | None], n_runs: int, fmt) -> str:
     """A total over the runs that have a value, saying how many do."""
     have = [v for v in values if v is not None]
     if not have:
@@ -233,10 +248,11 @@ def _run_rows(runs: Sequence[RunRecord]) -> list[list[object]]:
                 utc_text(r.first_seen_at),
                 f"{r.publishing_delay_h:.2f}",
                 MISSING if ok is None else f"{ok}/{len(r.steps_expected)}",
-                _int(r.bytes),
+                _exact(r.bytes),
                 _secs(r.download_seconds),
                 _secs(r.processing_seconds),
-                _int(r.derived_bytes),
+                _exact(r.derived_bytes),
+                r.id,
             ]
         )
     return rows
@@ -262,13 +278,13 @@ def _model_rows(pairs: Sequence[tuple[str, str]], runs: Sequence[RunRecord]) -> 
                 area,
                 n,
                 steps,
-                _over([r.bytes for r in rs], n, str),
+                _total([r.bytes for r in rs], n, str),
                 f"{statistics.median(sizes):.0f}" if sizes else MISSING,
                 f"{statistics.median(delays):.2f}" if delays else MISSING,
                 f"{max(delays):.2f}" if delays else MISSING,
-                _over([r.download_seconds for r in rs], n, lambda x: f"{x:.3f}"),
-                _over([r.processing_seconds for r in rs], n, lambda x: f"{x:.3f}"),
-                _over([r.derived_bytes for r in rs], n, str),
+                _total([r.download_seconds for r in rs], n, _secs),
+                _total([r.processing_seconds for r in rs], n, _secs),
+                _total([r.derived_bytes for r in rs], n, str),
             ]
         )
     return rows
@@ -327,12 +343,15 @@ def render_size_report(rep: SizeReport) -> str:
         "",
         f"Written {utc_text(rep.now)} by `astro forecast size-report` (ticket #60, D51 item "
         f"11) from the manifest `{rep.manifest_path}`, opened read only. Commit "
-        f"`{rep.commit}`, forecast settings hash `{rep.config_hash}`.",
+        f"`{rep.commit}`, astroseeing {astroseeing.__version__}, forecast settings hash "
+        f"`{rep.config_hash}`.",
         "",
         "Runs are those whose run time falls in the range. A value the manifest doesn't "
         "hold is shown as **missing**, never as zero; each total says how many runs it "
         "covers. Bytes are exact; seconds are rounded to the millisecond; the publishing "
-        "delay is from run time to when the tick first saw the run.",
+        "delay is from run time to when the tick first saw the run. Bytes are as "
+        "downloaded (ICON-EU's files are bz2). `run id` is the manifest's "
+        "`forecast_runs.id`.",
         "",
         "## Runs",
         "",
@@ -349,6 +368,7 @@ def render_size_report(rep: SizeReport) -> str:
                 "download s",
                 "processing s",
                 "derived bytes",
+                "run id",
             ],
             _run_rows(rep.runs),
         ),

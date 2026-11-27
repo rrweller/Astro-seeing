@@ -34,7 +34,8 @@ class Status:
 
 
 def _usable(r: RunRecord) -> bool:
-    """As ``ForecastRecords.latest``: an abandoned run counts only if it stored values."""
+    """As ``ForecastRecords.latest`` (keep the two alike): an abandoned run counts only
+    if it stored values."""
     return r.state in USABLE_STATES and (r.state != "abandoned" or r.derived_bytes is not None)
 
 

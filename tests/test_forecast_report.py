@@ -20,6 +20,7 @@ the manifest the commands read.
 from __future__ import annotations
 
 import datetime as dt
+import multiprocessing
 import os
 import sqlite3
 from concurrent.futures import ProcessPoolExecutor
@@ -53,7 +54,8 @@ def _week_folder(base, d: int):
 @pytest.fixture(scope="module")
 def week(tmp_path_factory, ephemeris):
     base = tmp_path_factory.mktemp("week")
-    with ProcessPoolExecutor(max_workers=min(6, os.cpu_count() or 1)) as pool:  # ~8 s each
+    spawn = multiprocessing.get_context("spawn")  # not fork: the test process has threads
+    with ProcessPoolExecutor(min(6, os.cpu_count() or 1), mp_context=spawn) as pool:  # ~8 s each
         folders = dict(zip(range(7), pool.map(_week_folder, [base] * 7, range(7)), strict=True))
     schedule = [
         (
@@ -218,6 +220,7 @@ def test_size_report_prints_and_writes_each_runs_numbers_and_the_totals(env, tmp
         "download s",
         "processing s",
         "derived bytes",
+        "run id",
     ]
     got = {r[2]: dict(zip(head, r, strict=True)) for r in rows}
     assert list(got) == list(exp)  # all seven runs, oldest first
@@ -331,6 +334,7 @@ def test_size_report_runs_table_matches_the_manifest_exactly(env, tmp_path):
             _cell(r["download_seconds"], "s"),
             _cell(r["processing_seconds"], "s"),
             _cell(r["derived_bytes"], "b"),
+            str(r["id"]),
         ]
 
 
@@ -485,6 +489,7 @@ def test_size_report_totals_say_over_how_many_runs_and_show_absent_things_as_mis
             "98.250",
             "12.500",
             "150000",
+            "1",
         ],
         [
             "2026-11-26T06:00:00Z",
@@ -496,6 +501,7 @@ def test_size_report_totals_say_over_how_many_runs_and_show_absent_things_as_mis
             "missing",
             "missing",
             "missing",
+            "2",
         ],
     ]
     assert _table(report, "Per model") == [
@@ -561,3 +567,27 @@ def test_size_report_measures_the_ssd_products_folder(small, tmp_path):
     ]
     estimates = {r[0]: r[2:4] for r in _table(report, "Against the estimates")}
     assert estimates["F1 area grids"] == ["under 1 GB", "1.1 KB"]
+
+
+def test_size_report_lists_what_is_not_a_day_store_and_records_its_provenance(small, tmp_path):
+    import astroseeing
+
+    places = small / "data" / "forecast" / "places" / "kongsberg"
+    (places / "2026-11-26.zarr").mkdir(parents=True)
+    (places / "2026-11-26.zarr" / "zarr.json").write_bytes(b"0" * 700)
+    (places / "2026-13-01.zarr").mkdir()  # no such day
+    (places / ".2026-11-27.zarr.tmp").mkdir()  # a write in progress
+    out_file = tmp_path / "prov.md"
+    cli.main(["forecast", "size-report", *_small_settings(small), "--now",
+              "2026-11-27T00:00:00Z", "--out", str(out_file)])  # fmt: skip
+    report = out_file.read_text()
+    assert _table(report, "Saved places' day stores on /data") == [
+        ["kongsberg", "1", "700", "700", "1", "700"]
+    ]
+    assert "Not counted for kongsberg: .2026-11-27.zarr.tmp, 2026-13-01.zarr." in report
+    settings = small_box_settings(
+        tmp_path / "again", **{"areas.kongsberg.models": ["gfs", "icon_eu"]}
+    )
+    assert f"astroseeing {astroseeing.__version__}" in report
+    assert f"forecast settings hash `{settings.config_hash}`" in report
+    assert "Commit `" in report and "Commit `unknown`" not in report

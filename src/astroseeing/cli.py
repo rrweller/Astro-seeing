@@ -604,6 +604,7 @@ def cmd_forecast_size_report(args, paths: Paths) -> int:
         size_report,
     )
     from astroseeing.forecast.settings import load_settings
+    from astroseeing.forecast.store import write_atomic
     from astroseeing.forecast.tick import ForecastPaths
 
     settings = load_settings(Path(args.settings) if args.settings else None)
@@ -624,8 +625,7 @@ def cmd_forecast_size_report(args, paths: Paths) -> int:
     out = Path(args.out) if args.out else (
         REPO_ROOT / "reports" / f"forecast_sizes_{start:%Y%m%d}-{end:%Y%m%d}.md"
     )  # fmt: skip
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(text)
+    write_atomic(out, text.encode())
     print(text)
     print(f"written to {out}")
     return 0
