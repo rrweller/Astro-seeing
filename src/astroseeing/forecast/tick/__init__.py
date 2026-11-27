@@ -94,6 +94,11 @@ class ForecastPaths:
         return self.products / "places"
 
     @property
+    def site(self) -> Path:
+        """``/staging/forecast/site``: the deployed page (``astro web deploy``, D52 item 5)."""
+        return self.root / "site"
+
+    @property
     def place_days(self) -> Path:
         """``/data/astro/forecast/places``: the per-place daily stores (D51 item 12)."""
         return self.data / "places"

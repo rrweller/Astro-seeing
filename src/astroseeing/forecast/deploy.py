@@ -22,6 +22,7 @@ import datetime as dt
 import fcntl
 import hashlib
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -29,6 +30,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 CURRENT = "current"
 PREVIOUS = "previous"
@@ -118,14 +121,15 @@ def _sums(files: dict[str, bytes]) -> dict[str, str]:
 def _write_copy(site: Path, commit: str, files: dict[str, bytes]) -> None:
     tmp = site / f".tmp-{commit}"
     if tmp.exists():
-        shutil.rmtree(tmp)  # left by an interrupted deploy; never live
+        log.warning("removing %s, left by an interrupted deploy (never live)", tmp)
+        shutil.rmtree(tmp)
     for path, data in files.items():
         target = tmp / path
-        for d in reversed(target.relative_to(site).parents[:-1]):
-            (site / d).mkdir(exist_ok=True)
-            (site / d).chmod(0o755)
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
         target.chmod(0o644)
+    for d in [tmp, *(p for p in tmp.rglob("*") if p.is_dir())]:
+        d.chmod(0o755)
     sums = _sums(files)
     _check_copy(tmp, sums)
     listing = site / f".tmp-{commit}.sha256"
@@ -140,7 +144,10 @@ def _read_sums(listing: Path) -> dict[str, str]:
         lines = listing.read_text().splitlines()
     except FileNotFoundError as e:
         raise DeployError(f"{listing} is missing, so the copy can't be checked") from e
-    return {p: h for h, p in (line.split("  ", 1) for line in lines)}
+    pairs = [line.split("  ", 1) for line in lines]
+    if not pairs or any(len(pair) != 2 for pair in pairs):
+        raise DeployError(f"{listing} is not a checksum list, so the copy can't be checked")
+    return {p: h for h, p in pairs}
 
 
 def _check_copy(copy: Path, sums: dict[str, str]) -> None:

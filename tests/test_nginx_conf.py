@@ -20,6 +20,7 @@ import urllib.request
 from pathlib import Path
 
 import pytest
+from git_repo import commit_files, new_repo
 
 from astroseeing.forecast.deploy import deploy, rollback
 from astroseeing.provenance import REPO_ROOT
@@ -81,32 +82,16 @@ def test_nginx_accepts_the_config(tmp_path):
     assert "syntax is ok" in out.stderr and "test is successful" in out.stderr
 
 
-def git(repo: Path, *args: str) -> str:
-    return subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True,
-                          check=True).stdout.strip()  # fmt: skip
-
-
-def page_commit(repo: Path, html: str) -> None:
-    (repo / "web" / "forecast").mkdir(parents=True, exist_ok=True)
-    (repo / "web" / "forecast" / "index.html").write_text(html)
-    (repo / "web" / "forecast" / "main.js").write_text("export const x = 1;\n" * 50)
-    git(repo, "add", "-A")
-    git(repo, "commit", "-q", "-m", html)
-
-
 @pytest.fixture
 def served(tmp_path):
     """nginx on the config, serving a deployed site and a product set; yields a getter."""
     binary = nginx_binary()
     port = free_port()
     conf = local_conf(tmp_path, port)
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    git(repo, "init", "-q", "-b", "main")
-    git(repo, "config", "user.email", "test@example.invalid")
-    git(repo, "config", "user.name", "test")
+    repo = new_repo(tmp_path / "repo")
     for html in ("<p>one</p>", "<p>two</p>"):
-        page_commit(repo, html)
+        js = "export const x = 1;\n" * 50  # big enough to be sent compressed
+        commit_files(repo, {"web/forecast/index.html": html, "web/forecast/main.js": js})
         deploy(repo, tmp_path / "site", now=NOW)
     products = tmp_path / "products"
     (products / SET).mkdir(parents=True)

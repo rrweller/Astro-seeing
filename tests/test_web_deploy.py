@@ -14,6 +14,7 @@ import threading
 from pathlib import Path
 
 import pytest
+from git_repo import commit_files, git, new_repo
 
 from astroseeing import cli
 from astroseeing.forecast.deploy import DeployError, deploy, rollback
@@ -22,30 +23,14 @@ from astroseeing.provenance import REPO_ROOT
 NOW = dt.datetime(2026, 11, 27, 12, 0, tzinfo=dt.UTC)
 
 
-def git(repo: Path, *args: str) -> str:
-    return subprocess.run(
-        ["git", *args], cwd=repo, capture_output=True, text=True, check=True
-    ).stdout.strip()
-
-
 def commit_page(repo: Path, html: str, extra: dict[str, str] | None = None) -> str:
-    """Write ``web/forecast/index.html`` (and any extra files), commit, return the sha."""
-    for rel, text in {"web/forecast/index.html": html, **(extra or {})}.items():
-        p = repo / rel
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text)
-    git(repo, "add", "-A")
-    git(repo, "commit", "-q", "-m", f"page {html[:20]}")
-    return git(repo, "rev-parse", "HEAD")
+    """Commit ``web/forecast/index.html`` (and any extra files); return the sha."""
+    return commit_files(repo, {"web/forecast/index.html": html, **(extra or {})})
 
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
-    r = tmp_path / "repo"
-    r.mkdir()
-    git(r, "init", "-q", "-b", "main")
-    git(r, "config", "user.email", "test@example.invalid")
-    git(r, "config", "user.name", "test")
+    r = new_repo(tmp_path / "repo")
     (r / "README.md").write_text("not part of the site\n")
     return r
 
@@ -181,6 +166,34 @@ def test_an_existing_copy_that_no_longer_matches_its_commit_is_refused(repo, sit
         rollback(site, now=NOW)
 
     assert os.readlink(site / "current") != first
+
+
+def test_a_rollback_whose_checksum_list_is_damaged_is_refused(repo, site):
+    first = commit_page(repo, "<p>one</p>")
+    deploy(repo, site, now=NOW)
+    second = commit_page(repo, "<p>two</p>")
+    deploy(repo, site, now=NOW)
+    (site / f"{first}.sha256").write_text("not a checksum list\n")
+
+    with pytest.raises(DeployError, match="not a checksum list"):
+        rollback(site, now=NOW)
+
+    assert os.readlink(site / "current") == second
+
+
+def test_a_copy_left_half_written_by_an_interrupted_deploy_is_replaced(repo, site, caplog):
+    sha = commit_page(repo, "<p>one</p>")
+    leftover = site / f".tmp-{sha}" / "forecast"
+    leftover.mkdir(parents=True)
+    (leftover / "index.html").write_text("<p>half</p>")
+    (leftover / "stray.js").write_text("// from the interrupted deploy\n")
+
+    deploy(repo, site, now=NOW)
+
+    assert (site / "current" / "forecast" / "index.html").read_text() == "<p>one</p>"
+    assert not (site / "current" / "forecast" / "stray.js").exists()
+    assert not (site / f".tmp-{sha}").exists()
+    assert "left by an interrupted deploy" in caplog.text  # never removed silently
 
 
 def test_current_never_goes_missing_while_deploys_and_rollbacks_swap_it(repo, site):

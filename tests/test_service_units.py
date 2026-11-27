@@ -89,6 +89,7 @@ def test_the_web_service_runs_nginx_as_a_dynamic_user_with_read_only_site_and_pr
     service = unit("astro-web.service")
     s = service["Service"]
 
+    assert "/staging" in one(service["Unit"], "RequiresMountsFor").split()
     exec_start = one(s, "ExecStart").split()
     assert exec_start[0].endswith("/nginx")
     assert not exec_start[0].startswith(("/root", "/home"))  # hidden by ProtectHome

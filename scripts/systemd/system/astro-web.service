@@ -11,6 +11,8 @@
 Description=astro-seeing: forecast page web server (nginx, LAN port 8350)
 Wants=network-online.target
 After=network-online.target
+# The served folders are on the local SSD; never bind an unmounted mountpoint.
+RequiresMountsFor=/staging
 
 [Service]
 Type=simple

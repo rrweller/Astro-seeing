@@ -571,8 +571,9 @@ def cmd_forecast_tick(args, paths: Paths) -> int:
 def cmd_web_deploy(args, paths: Paths) -> int:
     """Put this checkout's committed ``web/`` live, or switch back (F1 spec Module 11)."""
     from astroseeing.forecast.deploy import DeployError, deploy, rollback
+    from astroseeing.forecast.tick import ForecastPaths
 
-    site, now = paths.staging / "forecast" / "site", dt.datetime.now(dt.UTC)
+    site, now = ForecastPaths.from_paths(paths).site, dt.datetime.now(dt.UTC)
     try:
         r = rollback(site, now=now) if args.rollback else deploy(REPO_ROOT, site, now=now)
     except DeployError as e:
