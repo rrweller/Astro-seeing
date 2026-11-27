@@ -22,14 +22,14 @@ from collections.abc import Sequence
 import numpy as np
 
 from astroseeing.solar.darkness import ASTRONOMICAL, night_hours_to_keep, night_start_unix
-from astroseeing.solar.sun import SunTable, solar_altitude_deg
+from astroseeing.solar.sun import SunTable, solar_altitude_deg, to_unix
 
 
 def _unix(times: np.ndarray) -> np.ndarray:
     t = np.asarray(times)
     if not np.issubdtype(t.dtype, np.datetime64):
         raise TypeError(f"times must be datetime64 (UTC), got {t.dtype}")
-    return t.astype("datetime64[s]").astype(np.int64).astype(np.float64)
+    return to_unix(t.astype("datetime64[s]"))
 
 
 def _sun_for(unix_s: np.ndarray, sun: SunTable | None) -> SunTable:
@@ -71,6 +71,8 @@ def dark_time(
     ``nights`` are evening dates; a night runs from local mean noon to the next local
     mean noon at ``lon`` (CONTEXT.md "Night"). The altitude is the Sun's at the sample
     time itself, since a reanalysis hour is compared with measurements at that time.
+    Only the default −18° is Dark time as CONTEXT.md defines it; −12° is O&S's
+    sensitivity variant (D57 item 3) and should be named as such in results.
     """
     t = _unix(times)
     if t.size == 0:

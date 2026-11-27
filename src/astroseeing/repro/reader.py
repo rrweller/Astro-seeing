@@ -22,7 +22,8 @@ import numpy as np
 
 from astroseeing.constants import G0
 from astroseeing.qc import QCCounts
-from astroseeing.repro.rules import COORD_DECIMALS, SiteRule
+from astroseeing.repro.rules import COORD_DECIMALS, SiteRule, Stencil
+from astroseeing.solar.sun import to_unix
 
 log = logging.getLogger(__name__)
 
@@ -46,15 +47,27 @@ class StoreRef:
 
 @dataclass(frozen=True)
 class HourGrid:
-    """The hours a read must find: these UTC hours on every ``day_step``-th day,
-    counted from the start date (e.g. Timau's every-4th-day stores: ``day_step=4``)."""
+    """The hours a read must find: these UTC hours on the days kept.
+
+    ``day_step`` > 1 keeps days 1, 1 + step, 1 + 2·step, … of each month, the rule the
+    download planner uses (``download.requests.plan_requests``): Timau's every-4th-day
+    stores hold days 1, 5, 9, … 29 of every month (D31).
+    """
 
     utc_hours: tuple[int, ...] = tuple(range(24))
     day_step: int = 1
 
+    def __post_init__(self) -> None:
+        if self.day_step < 1:
+            raise ValueError("day_step must be >= 1")
+        if any(not 0 <= h <= 23 for h in self.utc_hours):
+            raise ValueError(f"UTC hours must be 0–23, got {self.utc_hours}")
+
     def times(self, start_s: int, end_s: int) -> np.ndarray:
-        day0 = start_s // 86400
-        days = np.arange(day0, (end_s - 1) // 86400 + 1, self.day_step, dtype=np.int64)
+        days = np.arange(start_s // 86400, (end_s - 1) // 86400 + 1, dtype=np.int64)
+        d = days.astype("datetime64[D]")
+        day_of_month = (d - d.astype("datetime64[M]")).astype(np.int64) + 1
+        days = days[(day_of_month - 1) % self.day_step == 0]
         hours = np.asarray(sorted(self.utc_hours), dtype=np.int64)
         t = (days[:, None] * 86400 + hours[None, :] * 3600).ravel()
         return t[(t >= start_s) & (t < end_s)]
@@ -68,8 +81,8 @@ class SiteColumns:
     """A site's hourly columns, levels bottom → top on the last axis.
 
     ``z_m`` is geopotential height (Φ/g₀, metres above mean sea level). Values are as
-    read and combined by the rule; masked levels are *not* blanked: ``level_valid``
-    says which levels are above ground (when masking) and finite. Pass
+    read and combined by the rule; masked levels are *not* blanked. ``level_valid``
+    says which levels are finite and, when masking, above the orography. Pass
     ``surface_height_m`` to ``physics.compute_profile``, which applies the same test
     (Z ≤ orography); it is ``None`` for the unmasked variant.
     """
@@ -83,7 +96,6 @@ class SiteColumns:
     cc: np.ndarray | None
     orography_m: float
     mask_underground: bool
-    level_valid: np.ndarray  # bool (ntime, nlev)
     points: tuple[tuple[float, float], ...]  # grid points used, (lat, lon)
     inputs: tuple[StoreRef, ...]
     settings: dict[str, Any] = field(default_factory=dict)
@@ -92,25 +104,36 @@ class SiteColumns:
     def surface_height_m(self) -> float | None:
         return self.orography_m if self.mask_underground else None
 
-    @property
-    def masked_levels(self) -> int:
-        """Level values at or below the orography (0 when unmasked)."""
-        if not self.mask_underground:
-            return 0
-        return int((self._finite() & (self.z_m <= self.orography_m)).sum())
-
-    @property
-    def qc(self) -> QCCounts:
-        q = QCCounts()
-        q.add("level_nonfinite", int((~self._finite()).sum()), self.level_valid.size)
-        q.add("level_below_orography", self.masked_levels, self.level_valid.size)
-        return q
-
     def _finite(self) -> np.ndarray:
         ok = np.ones(self.z_m.shape, bool)
         for a in (self.z_m, self.t_k, self.u, self.v):
             ok &= np.isfinite(a)
         return ok
+
+    def _underground(self) -> np.ndarray:
+        if not self.mask_underground:
+            return np.zeros(self.z_m.shape, bool)
+        return self._finite() & (self.z_m <= self.orography_m)
+
+    @property
+    def level_valid(self) -> np.ndarray:
+        """bool (ntime, nlev): finite z, T, u, v and, when masking, Z above the orography."""
+        return self._finite() & ~self._underground()
+
+    @property
+    def masked_levels(self) -> int:
+        """Level values at or below the orography (0 for the unmasked variant)."""
+        return int(self._underground().sum())
+
+    @property
+    def qc(self) -> QCCounts:
+        q = QCCounts()
+        n = self.z_m.size
+        q.add("level_nonfinite", int((~self._finite()).sum()), n)
+        q.add("level_below_orography", self.masked_levels, n)
+        if self.cc is not None:
+            q.add("cc_nonfinite", int((~np.isfinite(self.cc)).sum()), self.cc.size)
+        return q
 
     def select(self, hours: np.ndarray) -> SiteColumns:
         """The same columns at the hours where ``hours`` (bool, one per time) is True."""
@@ -125,7 +148,6 @@ class SiteColumns:
             u=self.u[m],
             v=self.v[m],
             cc=None if self.cc is None else self.cc[m],
-            level_valid=self.level_valid[m],
         )
 
 
@@ -133,10 +155,10 @@ class SiteColumns:
 
 
 def _unix_s(x: dt.datetime | np.datetime64 | str) -> int:
+    if isinstance(x, dt.datetime) and x.tzinfo is None:
+        raise ValueError("naive datetime; pass UTC-aware times")
     if isinstance(x, dt.datetime):
-        if x.tzinfo is None:
-            raise ValueError("naive datetime; pass UTC-aware times")
-        return int((x - dt.datetime(1970, 1, 1, tzinfo=dt.UTC)).total_seconds())
+        return int(to_unix(x))
     return int(np.datetime64(x, "s").astype(np.int64))
 
 
@@ -158,6 +180,7 @@ class _Store:
     layout: str
     lats: np.ndarray  # per stored point (grid: axis values; cells: per cell)
     dlons: np.ndarray
+    names: frozenset[str]
 
     @classmethod
     def open(cls, path: Path, site_lon: float) -> _Store:
@@ -181,11 +204,8 @@ class _Store:
             layout=layout,
             lats=np.round(lats, COORD_DECIMALS),
             dlons=np.round(_wrap(lons - site_lon), COORD_DECIMALS),
+            names=frozenset(names),
         )
-
-    @property
-    def names(self) -> set[str]:
-        return {n for n, _ in self.group.arrays()}
 
     @property
     def content_sha256(self) -> str:
@@ -198,9 +218,8 @@ class _Store:
         """Distinct latitudes and longitude offsets present."""
         return np.unique(self.lats), np.unique(self.dlons)
 
-    def _index(self, lat_axis: np.ndarray, dlon_axis: np.ndarray):
-        lat_axis = np.round(lat_axis, COORD_DECIMALS)
-        dlon_axis = np.round(dlon_axis, COORD_DECIMALS)
+    def _index(self, stencil: Stencil):
+        lat_axis, dlon_axis = stencil.lat, stencil.dlon
         if self.layout == "grid":
             iy = [np.flatnonzero(self.lats == la) for la in lat_axis]
             ix = [np.flatnonzero(self.dlons == d) for d in dlon_axis]
@@ -219,22 +238,18 @@ class _Store:
                 idx[a, b] = hit[0]
         return idx
 
-    def read_block(
-        self, name: str, tsel: np.ndarray, lat_axis: np.ndarray, dlon_axis: np.ndarray
-    ) -> np.ndarray:
+    def read_block(self, name: str, tsel: np.ndarray, stencil: Stencil) -> np.ndarray:
         """(ntime, [nlev,] ny, nx) float64 on the stencil, latitudes ascending."""
         a = self.group[name]
+        # Every non-time axis but the spatial ones is read whole (the level axis, if any).
+        whole = (slice(None),) * (a.ndim - (3 if self.layout == "grid" else 2))
         if self.layout == "grid":
-            iy, ix = self._index(lat_axis, dlon_axis)
-            out = a.oindex[tsel, :, iy, ix] if a.ndim == 4 else a.oindex[tsel, iy, ix]
-            return np.asarray(out, dtype=np.float64)
-        idx = self._index(lat_axis, dlon_axis)
+            iy, ix = self._index(stencil)
+            return np.asarray(a.oindex[(tsel, *whole, iy, ix)], dtype=np.float64)
+        idx = self._index(stencil)
         flat = idx.ravel()
         order = np.argsort(flat)
-        if a.ndim == 3:
-            raw = np.asarray(a.oindex[tsel, :, flat[order]], dtype=np.float64)
-        else:
-            raw = np.asarray(a.oindex[tsel, flat[order]], dtype=np.float64)
+        raw = np.asarray(a.oindex[(tsel, *whole, flat[order])], dtype=np.float64)
         out = np.empty_like(raw)
         out[..., order] = raw
         return out.reshape(*out.shape[:-1], *idx.shape)
@@ -266,6 +281,7 @@ def read_site(
     end: dt.datetime | np.datetime64 | str,
     static_store: Path | None,
     expected: HourGrid | None = None,
+    levels: Sequence[float] | None = None,
     mask_underground: bool = True,
     data_root: Path | None = None,
 ) -> SiteColumns:
@@ -275,7 +291,9 @@ def read_site(
     ``static_store``: the area's static store (orography = z/g₀ at the site by the same
     rule); needed when ``mask_underground``. ``expected``: the hours that must be
     present (default every UTC hour of every day); a duplicate, missing or unexpected
-    hour raises :class:`SiteReadError`. ``data_root`` only shapes the store ids.
+    hour raises :class:`SiteReadError`. ``levels``: keep only these stored levels (hPa,
+    e.g. Haslebacher's 28 without 70 hPa); every one must be stored. ``data_root`` only
+    shapes the store ids.
     """
     start_s, end_s = _unix_s(start), _unix_s(end)
     if end_s <= start_s:
@@ -284,81 +302,79 @@ def read_site(
     if mask_underground and static_store is None:
         raise ValueError("masking underground levels needs the static store (orography)")
 
-    stencil: tuple[np.ndarray, np.ndarray] | None = None
-    levels: np.ndarray | None = None
+    stencil: Stencil | None = None
+    stored_levels: np.ndarray | None = None
     parts: list[tuple[np.ndarray, dict[str, np.ndarray]]] = []
     refs: list[StoreRef] = []
     for path in stores:
-        s = _Store.open(path, lon)
-        t_all = np.asarray(s.group["time"][...], dtype=np.int64)
+        store = _Store.open(path, lon)
+        t_all = np.asarray(store.group["time"][...], dtype=np.int64)
         tsel = np.flatnonzero((t_all >= start_s) & (t_all < end_s))
         if tsel.size == 0:
             continue
-        missing = [v for v in REQUIRED_VARIABLES if v not in s.names]
+        missing = [v for v in REQUIRED_VARIABLES if v not in store.names]
         if missing:
             raise SiteReadError(f"{path}: variables {missing} missing")
-        lv = np.asarray(s.group["level"][...], dtype=np.float64)
-        if levels is None:
-            levels = lv
-        elif not np.array_equal(lv, levels):
-            raise SiteReadError(f"{path}: levels {lv.tolist()} differ from {levels.tolist()}")
-        st = rule.stencil(*s.axes(), lat)
+        lv = np.asarray(store.group["level"][...], dtype=np.float64)
+        if stored_levels is None:
+            stored_levels = lv
+        elif not np.array_equal(lv, stored_levels):
+            raise SiteReadError(
+                f"{path}: levels {lv.tolist()} differ from {stored_levels.tolist()}"
+            )
+        this = rule.stencil(*store.axes(), lat)
         if stencil is None:
-            stencil = st
-        elif not (np.array_equal(st[0], stencil[0]) and np.array_equal(st[1], stencil[1])):
+            stencil = this
+        elif this != stencil:
             raise SiteReadError(f"{path}: the rule picks different grid points than other stores")
-        names = [*REQUIRED_VARIABLES, *(["cc"] if "cc" in s.names else [])]
-        data = {n: rule.combine(s.read_block(n, tsel, *stencil), *stencil, lat) for n in names}
+        names = [*REQUIRED_VARIABLES, *(["cc"] if "cc" in store.names else [])]
+        data = {n: rule.combine(store.read_block(n, tsel, stencil), stencil, lat) for n in names}
         parts.append((t_all[tsel], data))
-        refs.append(StoreRef(store_id(path, data_root), s.content_sha256))
+        refs.append(StoreRef(store_id(path, data_root), store.content_sha256))
 
     if not parts:
         raise SiteReadError(f"no store holds any hour in [{_iso(start_s)}, {_iso(end_s)})")
-    assert stencil is not None and levels is not None
+    assert stencil is not None and stored_levels is not None
 
     times = np.concatenate([t for t, _ in parts])
     order = np.argsort(times, kind="stable")
     times = times[order]
     has_cc = all("cc" in d for _, d in parts)
-    cc_mixed = any("cc" in d for _, d in parts) and not has_cc
-    if cc_mixed:
+    if not has_cc and any("cc" in d for _, d in parts):
         log.info("cc is in some stores only; not returned")
     names = [*REQUIRED_VARIABLES, *(["cc"] if has_cc else [])]
     cat = {n: np.concatenate([d[n] for _, d in parts])[order] for n in names}
     _check_hours(times, expected.times(start_s, end_s))
-    stored_levels = levels
+
+    keep = _level_selection(stored_levels, levels)
+    out_levels = stored_levels[keep]
     for n in names:
-        levels, cat[n] = rule.vertical(stored_levels, cat[n])
+        out_levels, cat[n] = rule.vertical(stored_levels[keep], cat[n][:, keep])
 
     orography = np.nan
     if static_store is not None:
-        st = _Store.open(static_store, lon)
-        block = st.read_block("z", np.array([0]), *stencil)
-        orography = float(rule.combine(block, *stencil, lat)[0]) / G0
-        refs.append(StoreRef(store_id(static_store, data_root), st.content_sha256))
-
-    z_m = cat["z"] / G0
-    finite = np.ones(z_m.shape, bool)
-    for n in REQUIRED_VARIABLES:
-        finite &= np.isfinite(cat[n])
-    valid = finite & (z_m > orography) if mask_underground else finite
+        static = _Store.open(static_store, lon)
+        block = static.read_block("z", np.array([0]), stencil)
+        orography = float(rule.combine(block, stencil, lat)[0]) / G0
+        if not np.isfinite(orography):
+            raise SiteReadError(f"{static_store}: the orography at the site is not finite")
+        refs.append(StoreRef(store_id(static_store, data_root), static.content_sha256))
 
     points = tuple(
-        (float(la), float(np.round(lon + d, COORD_DECIMALS)))
-        for la in stencil[0][::-1]
-        for d in stencil[1]
+        (float(la), float(np.round(_wrap(lon + d), COORD_DECIMALS)))
+        for la in stencil.lat[::-1]
+        for d in stencil.dlon
     )
     cols = SiteColumns(
         times=times.astype("datetime64[s]"),
-        p_hpa=levels,
-        z_m=z_m,
+        p_hpa=out_levels,
+        z_m=cat["z"] / G0,
         t_k=cat["t"],
         u=cat["u"],
         v=cat["v"],
         cc=cat.get("cc"),
         orography_m=orography,
         mask_underground=mask_underground,
-        level_valid=valid,
         points=points,
         inputs=tuple(refs),
         settings={
@@ -369,10 +385,21 @@ def read_site(
             "expected_hours": expected.settings(),
             "mask_underground": mask_underground,
             "stored_levels_hpa": stored_levels.tolist(),
+            "levels_hpa": None if levels is None else stored_levels[keep].tolist(),
         },
     )
     cols.qc.log(log, context=f"site ({lat}, {lon}) ")
     return cols
+
+
+def _level_selection(stored: np.ndarray, wanted: Sequence[float] | None) -> np.ndarray:
+    if wanted is None:
+        return np.ones(stored.size, bool)
+    w = np.asarray(wanted, dtype=np.float64)
+    absent = np.setdiff1d(w, stored)
+    if absent.size:
+        raise SiteReadError(f"levels {absent.tolist()} hPa are not stored")
+    return np.isin(stored, w)
 
 
 def _check_hours(times: np.ndarray, want: np.ndarray) -> None:

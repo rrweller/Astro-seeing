@@ -45,6 +45,14 @@ class GoldenResult:
     def __post_init__(self) -> None:
         if self.status not in STATUSES:
             raise ValueError(f"status must be one of {STATUSES}, got {self.status!r}")
+        tol = self.tolerance
+        if tol is None:
+            return
+        kinds = [k for k in ("abs", "rel") if k in tol]
+        if len(kinds) != 1 or set(tol) != {kinds[0], "on"} or not tol["on"]:
+            raise ValueError(f"{self.key}: tolerance must be one of abs or rel, with 'on': {tol}")
+        if self.target is None or not set(tol["on"]) <= set(self.target):
+            raise ValueError(f"{self.key}: the tolerance names statistics the target lacks")
 
     @property
     def key(self) -> str:
@@ -54,8 +62,11 @@ class GoldenResult:
         return asdict(self)
 
 
-def summary_statistics(values: np.ndarray) -> dict[str, float | int]:
-    """Median, quartiles (NumPy's default linear quantiles) and the number of values.
+def summary_statistics(
+    values: np.ndarray, masked_levels: int | None = None
+) -> dict[str, float | int]:
+    """Median, quartiles (NumPy's default linear quantiles), the number of values and,
+    if given, the masked-level count (``SiteColumns.masked_levels``; D57 item 5).
 
     NaN is refused rather than dropped: choose the hours before, and count what you drop.
     """
@@ -66,7 +77,15 @@ def summary_statistics(values: np.ndarray) -> dict[str, float | int]:
     if n_nan:
         raise ValueError(f"{n_nan} NaN among {v.size} values; select the hours first")
     q1, med, q3 = np.percentile(v, [25.0, 50.0, 75.0])
-    return {"median": float(med), "q1": float(q1), "q3": float(q3), "hours": int(v.size)}
+    out: dict[str, float | int] = {
+        "median": float(med),
+        "q1": float(q1),
+        "q3": float(q3),
+        "hours": int(v.size),
+    }
+    if masked_levels is not None:
+        out["masked_levels"] = int(masked_levels)
+    return out
 
 
 def meets_target(result: GoldenResult) -> bool | None:
@@ -80,10 +99,8 @@ def meets_target(result: GoldenResult) -> bool | None:
         ours, theirs = float(result.statistics[name]), float(result.target[name])
         if "abs" in tol:
             ok &= abs(ours - theirs) <= float(tol["abs"]) + 1e-12
-        elif "rel" in tol:
-            ok &= abs(ours - theirs) <= float(tol["rel"]) * abs(theirs) + 1e-12
         else:
-            raise ValueError(f"tolerance needs 'abs' or 'rel': {tol}")
+            ok &= abs(ours - theirs) <= float(tol["rel"]) * abs(theirs) + 1e-12
     return bool(ok)
 
 
@@ -115,9 +132,11 @@ def write_golden(
 ) -> Path:
     """Write (or replace) a paper's golden file atomically.
 
-    Results already in the file and not passed are kept. A changed gating statistic,
-    or a gating result turned informational, raises unless ``allow_gating_change``
-    (Riley approved it); a changed informational statistic needs a ``note``.
+    Results already in the file and not passed are kept. Any change to a gating
+    result other than its note (statistics, status, settings, inputs, target,
+    tolerance) raises unless ``allow_gating_change`` (Riley approved it); a changed
+    informational statistic needs a new ``note``. The file is written to a temporary
+    name, read back and compared, then renamed into place.
     """
     path = Path(path)
     keys = [r.key for r in results]
@@ -135,21 +154,24 @@ def write_golden(
         merged = {r.key: r for r in old}
     for r in results:
         prev = merged.get(r.key)
-        if prev is not None and prev.statistics != r.statistics:
-            if prev.status == "gating" and not allow_gating_change:
+        if prev is not None and prev.status == "gating":
+            changed = [
+                f
+                for f in ("status", "settings", "inputs", "statistics", "target", "tolerance")
+                if getattr(prev, f) != getattr(r, f)
+            ]
+            if changed and not allow_gating_change:
                 raise ValueError(
-                    f"{r.key}: gating statistics would change ({prev.statistics} → "
-                    f"{r.statistics}); that needs Riley's approval (allow_gating_change)"
+                    f"{r.key}: changing a gating result ({', '.join(changed)}) needs Riley's "
+                    "approval (allow_gating_change=True)"
                 )
-            if prev.status == "informational" and (not r.note or r.note == prev.note):
-                raise ValueError(f"{r.key}: informational statistics changed; add a note why")
         if (
             prev is not None
-            and prev.status == "gating"
-            and r.status != "gating"
-            and not allow_gating_change
+            and prev.status == "informational"
+            and prev.statistics != r.statistics
+            and (not r.note or r.note == prev.note)
         ):
-            raise ValueError(f"{r.key}: un-gating a result needs Riley's approval")
+            raise ValueError(f"{r.key}: informational statistics changed; add a note why")
         merged[r.key] = r
 
     doc = {
@@ -161,9 +183,12 @@ def write_golden(
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.tmp-{os.getpid()}")
     try:
-        tmp.write_text(text)
-        with open(tmp, "rb") as f:
+        with open(tmp, "w") as f:
+            f.write(text)
+            f.flush()
             os.fsync(f.fileno())
+        if tmp.read_text() != text or load_golden(tmp)[1] != [merged[k] for k in sorted(merged)]:
+            raise OSError(f"read-back of {tmp} failed")
         os.replace(tmp, path)
     finally:
         tmp.unlink(missing_ok=True)
@@ -173,12 +198,15 @@ def write_golden(
 def check_golden(path: Path, recomputed: Sequence[GoldenResult], rtol: float = 1e-9) -> list[str]:
     """Differences between recomputed results and the golden file (empty if none).
 
-    Settings, inputs, status, target and tolerance must match exactly; statistics
-    within ``rtol`` (relative), which allows only floating-point noise.
+    Every recorded result must be recomputed. Settings, inputs, status, target and
+    tolerance must match exactly; statistics within ``rtol`` (relative), which allows
+    only floating-point noise.
     """
     _, recorded = load_golden(path)
     by_key = {r.key: r for r in recorded}
     problems: list[str] = []
+    for key in sorted(set(by_key) - {r.key for r in recomputed}):
+        problems.append(f"{key}: in the golden file, not recomputed")
     for r in recomputed:
         rec = by_key.get(r.key)
         if rec is None:

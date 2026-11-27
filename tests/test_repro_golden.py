@@ -142,6 +142,44 @@ def test_meets_target_absolute_and_relative():
     assert meets_target(_result(target=None, tolerance=None)) is None
 
 
+def test_summary_statistics_carry_the_masked_level_count():
+    s = summary_statistics(np.arange(1.0, 9.0), masked_levels=12)
+    assert s["masked_levels"] == 12 and s["median"] == 4.5
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"tolerance": {"abs": 0.5, "on": ["median", "q1", "q3"]}},
+        {"target": {"median": 0.9, "q1": 0.79, "q3": 1.00}},
+        {"settings": {"rule": {"rule": "bilinear"}, "wavelength_nm": 550.0}},
+        {"inputs": []},
+    ],
+)
+def test_any_change_to_a_gating_result_needs_approval(tmp_path, change):
+    path = tmp_path / "bi2023.json"
+    write_golden(path, "bi2023", [_result()])
+    with pytest.raises(ValueError, match="Riley"):
+        write_golden(path, "bi2023", [_result(**change)])
+    # A note alone may change.
+    write_golden(path, "bi2023", [_result(note="re-read 2026-12-01")])
+
+
+def test_check_golden_reports_recorded_results_that_were_not_recomputed(tmp_path):
+    path = tmp_path / "bi2023.json"
+    write_golden(path, "bi2023", [_result(), _result(site="lenghu")])
+    assert check_golden(path, [_result()]) == [
+        "lenghu/night-mask: in the golden file, not recomputed"
+    ]
+
+
+def test_a_tolerance_must_say_one_kind_and_name_statistics_the_target_has():
+    with pytest.raises(ValueError, match="one of"):
+        _result(tolerance={"abs": 0.05, "rel": 0.01, "on": ["median"]})
+    with pytest.raises(ValueError, match="target"):
+        _result(tolerance={"abs": 0.05, "on": ["iqr"]})
+
+
 # --- the ``data`` marker ---------------------------------------------------------------
 
 _MARKED = """

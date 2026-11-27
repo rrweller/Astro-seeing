@@ -19,6 +19,38 @@ import numpy as np
 COORD_DECIMALS = 6
 
 
+@dataclass(frozen=True, eq=False)
+class Stencil:
+    """The rectangle of grid points a rule uses: latitudes and longitude offsets east of
+    the site (degrees), both ascending and rounded to :data:`COORD_DECIMALS`."""
+
+    lat: np.ndarray
+    dlon: np.ndarray
+
+    @classmethod
+    def of(cls, lat, dlon) -> Stencil:
+        return cls(
+            np.round(np.asarray(lat, float), COORD_DECIMALS),
+            np.round(np.asarray(dlon, float), COORD_DECIMALS),
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, Stencil)
+            and np.array_equal(self.lat, other.lat)
+            and np.array_equal(self.dlon, other.dlon)
+        )
+
+    __hash__ = None  # type: ignore[assignment]
+
+
+class _HorizontalOnly:
+    """Rules that leave the stored levels as they are."""
+
+    def vertical(self, p_hpa: np.ndarray, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return p_hpa, values
+
+
 def _nearest(axis: np.ndarray, x: float, what: str) -> float:
     d = np.abs(axis - x)
     best = d.min()
@@ -32,7 +64,7 @@ def _nearest(axis: np.ndarray, x: float, what: str) -> float:
 
 
 @dataclass(frozen=True)
-class Nearest:
+class Nearest(_HorizontalOnly):
     """The nearest grid point (Bi: its listed point; Haslebacher: their code's choice).
 
     Nearest in latitude and in longitude separately, which on a regular grid is the
@@ -43,22 +75,13 @@ class Nearest:
     def settings(self) -> dict[str, Any]:
         return {"rule": "nearest"}
 
-    def stencil(
-        self, lats: np.ndarray, dlons: np.ndarray, site_lat: float
-    ) -> tuple[np.ndarray, np.ndarray]:
-        return (
-            np.array([_nearest(lats, site_lat, "latitude")]),
-            np.array([_nearest(dlons, 0.0, "longitude")]),
+    def stencil(self, lats: np.ndarray, dlons: np.ndarray, site_lat: float) -> Stencil:
+        return Stencil.of(
+            [_nearest(lats, site_lat, "latitude")], [_nearest(dlons, 0.0, "longitude")]
         )
 
-    def combine(
-        self, values: np.ndarray, lat_axis: np.ndarray, dlon_axis: np.ndarray, site_lat: float
-    ) -> np.ndarray:
+    def combine(self, values: np.ndarray, stencil: Stencil, site_lat: float) -> np.ndarray:
         return values[..., 0, 0]
-
-    def vertical(self, p_hpa: np.ndarray, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """The stored levels, unchanged."""
-        return p_hpa, values
 
 
 def _bracket(axis: np.ndarray, x: float, what: str) -> np.ndarray:
@@ -80,7 +103,7 @@ def _linear_weights(axis: np.ndarray, x: float) -> np.ndarray:
 
 
 @dataclass(frozen=True)
-class Bilinear:
+class Bilinear(_HorizontalOnly):
     """Four-point bilinear interpolation in latitude and longitude (degrees; O&S 2018).
 
     A site exactly on a grid line uses that line alone (two points, or one on a
@@ -90,21 +113,13 @@ class Bilinear:
     def settings(self) -> dict[str, Any]:
         return {"rule": "bilinear"}
 
-    def stencil(
-        self, lats: np.ndarray, dlons: np.ndarray, site_lat: float
-    ) -> tuple[np.ndarray, np.ndarray]:
-        return _bracket(lats, site_lat, "latitude"), _bracket(dlons, 0.0, "longitude")
+    def stencil(self, lats: np.ndarray, dlons: np.ndarray, site_lat: float) -> Stencil:
+        return Stencil.of(_bracket(lats, site_lat, "latitude"), _bracket(dlons, 0.0, "longitude"))
 
-    def combine(
-        self, values: np.ndarray, lat_axis: np.ndarray, dlon_axis: np.ndarray, site_lat: float
-    ) -> np.ndarray:
-        wy = _linear_weights(lat_axis, site_lat)
-        wx = _linear_weights(dlon_axis, 0.0)
+    def combine(self, values: np.ndarray, stencil: Stencil, site_lat: float) -> np.ndarray:
+        wy = _linear_weights(stencil.lat, site_lat)
+        wx = _linear_weights(stencil.dlon, 0.0)
         return np.einsum("...yx,y,x->...", values, wy, wx)
-
-    def vertical(self, p_hpa: np.ndarray, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        """The stored levels, unchanged."""
-        return p_hpa, values
 
 
 def _spline_eval(x: np.ndarray, y: np.ndarray, xq: np.ndarray | float, axis: int) -> np.ndarray:
@@ -162,24 +177,18 @@ class PriyatikantoCubic:
             "step_hpa": float(self.step_hpa),
         }
 
-    def stencil(
-        self, lats: np.ndarray, dlons: np.ndarray, site_lat: float
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def stencil(self, lats: np.ndarray, dlons: np.ndarray, site_lat: float) -> Stencil:
+        if lats.size < 2 or dlons.size < 2:
+            raise ValueError("a cubic stencil needs a stored box, not a single grid line")
         lat0 = _nearest(lats, site_lat, "latitude")
         dlon0 = _nearest(dlons, 0.0, "longitude")
-        step_y = np.min(np.diff(lats)) if lats.size > 1 else 0.25
-        step_x = np.min(np.diff(dlons)) if dlons.size > 1 else 0.25
         k = np.arange(-self.half_width, self.half_width + 1)
-        return (
-            np.round(lat0 + k * step_y, COORD_DECIMALS),
-            np.round(dlon0 + k * step_x, COORD_DECIMALS),
-        )
+        # The grid spacing is the smallest gap between stored lines (0.25° for ERA5 here).
+        return Stencil.of(lat0 + k * np.diff(lats).min(), dlon0 + k * np.diff(dlons).min())
 
-    def combine(
-        self, values: np.ndarray, lat_axis: np.ndarray, dlon_axis: np.ndarray, site_lat: float
-    ) -> np.ndarray:
-        along_lon = _spline_eval(dlon_axis, values, 0.0, axis=values.ndim - 1)
-        return _spline_eval(lat_axis, along_lon, site_lat, axis=along_lon.ndim - 1)
+    def combine(self, values: np.ndarray, stencil: Stencil, site_lat: float) -> np.ndarray:
+        along_lon = _spline_eval(stencil.dlon, values, 0.0, axis=values.ndim - 1)
+        return _spline_eval(stencil.lat, along_lon, site_lat, axis=along_lon.ndim - 1)
 
     def target_levels(self) -> np.ndarray:
         n = round((self.bottom_hpa - self.top_hpa) / self.step_hpa)

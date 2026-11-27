@@ -240,3 +240,77 @@ def test_select_keeps_the_chosen_hours_and_their_masked_counts(tmp_path):
     assert sub.inputs == cols.inputs and sub.settings == cols.settings
     with pytest.raises(ValueError, match="shape"):
         cols.select(keep[:5])
+
+
+def test_every_fourth_day_restarts_each_month_as_the_downloads_do(tmp_path):
+    # The planner keeps days 1, 5, 9, … 29 of each month (download/requests.py), so
+    # after 29 January the next stored day is 1 February, not 2 February.
+    days = [np.datetime64(f"2023-01-{d:02d}") for d in (1, 5, 9, 13, 17, 21, 25, 29)]
+    days += [np.datetime64(f"2023-02-{d:02d}") for d in (1, 5)]
+    times = np.array(
+        [np.datetime64(d, "s") + np.timedelta64(h * 3600, "s") for d in days for h in range(24)]
+    )
+    s1 = write_pl_store(tmp_path / "a.zarr", times=times, lat=LAT, lon=LON)
+    static = write_static_store(tmp_path / "st.zarr", lat=LAT, lon=LON)
+    cols = _read([s1], static, start="2023-01-01", end="2023-02-06", expected=HourGrid(day_step=4))
+    np.testing.assert_array_equal(cols.times, times)
+
+
+def test_the_planner_and_the_hour_grid_keep_the_same_days():
+    # The every-4th-day rule lives in two places; they must agree over a whole year.
+    from astroseeing.download.requests import Area, plan_requests
+
+    plans = plan_requests(
+        "pl",
+        "timau@every4d",
+        dt.date(2003, 1, 1),
+        dt.date(2003, 12, 31),
+        Area(-9.5, 123.5, -10.0, 124.0),
+        day_step=4,
+    )
+    planned = sorted({t for p in plans for t in p.expected()["times"]})
+    start = np.datetime64("2003-01-01T00:00", "s").astype(np.int64)
+    end = np.datetime64("2004-01-01T00:00", "s").astype(np.int64)
+    grid = HourGrid(day_step=4).times(int(start), int(end))
+    assert [str(np.datetime64(int(t), "s"))[:16] for t in grid] == planned
+
+
+def test_levels_can_be_chosen_and_must_be_stored(tmp_path):
+    s1 = write_pl_store(tmp_path / "a.zarr", times=hourly("2023-06-01T00:00", 24), lat=LAT, lon=LON)
+    static = write_static_store(tmp_path / "st.zarr", lat=LAT, lon=LON)
+    no70 = [p for p in ERA5_LEVELS_HPA if p != 70.0]  # Haslebacher's 28 levels
+    cols = _read([s1], static, start="2023-06-01", end="2023-06-02", levels=no70)
+    np.testing.assert_array_equal(cols.p_hpa, no70)
+    assert cols.t_k.shape == (24, 28)
+    assert cols.settings["levels_hpa"] == no70
+    with pytest.raises(SiteReadError, match=r"\[1\.0\] hPa are not stored"):
+        _read([s1], static, start="2023-06-01", end="2023-06-02", levels=[1000.0, 1.0])
+
+
+def test_a_missing_orography_is_an_error_not_a_column_masked_without_count(tmp_path):
+    s1 = write_pl_store(tmp_path / "a.zarr", times=hourly("2023-06-01T00:00", 24), lat=LAT, lon=LON)
+    static = write_static_store(tmp_path / "st.zarr", lat=LAT, lon=LON, orography_m=np.nan)
+    with pytest.raises(SiteReadError, match="orography at the site is not finite"):
+        _read([s1], static, start="2023-06-01", end="2023-06-02")
+
+
+def test_non_finite_values_are_counted_not_hidden(tmp_path):
+    def t_with_gap(t, p, la, lo):
+        return np.where((p == 500.0) & (t == t.min()), np.nan, 250.0 + 0.0 * la + 0.0 * lo)
+
+    def cc(t, p, la, lo):
+        return np.where(p == 300.0, np.nan, 0.1 + 0.0 * t + 0.0 * la + 0.0 * lo)
+
+    s1 = write_pl_store(
+        tmp_path / "a.zarr",
+        times=hourly("2023-06-01T00:00", 24),
+        lat=LAT,
+        lon=LON,
+        fields={"t": t_with_gap},
+        cc=cc,
+    )
+    static = write_static_store(tmp_path / "st.zarr", lat=LAT, lon=LON)
+    cols = _read([s1], static, start="2023-06-01", end="2023-06-02")
+    assert cols.qc["level_nonfinite"] == 1
+    assert cols.qc["cc_nonfinite"] == 24
+    assert not cols.level_valid[0, 15] and cols.level_valid[1:, 15].all()
