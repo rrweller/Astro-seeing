@@ -18,8 +18,6 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C5` · **needs-you** · cloud · Surface-pressure point fetcher for Haslebacher (b) · needs you: merge PR #94 · [#93](https://github.com/rrweller/Astro-seeing/issues/93) · PR [#94](https://github.com/rrweller/Astro-seeing/pull/94)
-
 - `C6` · **ready** · cloud · Multi-month surface requests and per-kind planning rates · ticket: none yet
 
 - `C7` · **ready** · cloud · Code to move the kept raw GRIB to the NAS · ticket: none yet
@@ -54,7 +52,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `K4` · **blocked** · CT · One model-level (ERA5 complete) test request · [#16](https://github.com/rrweller/Astro-seeing/issues/16)
 
-- `K5` · **blocked** · CT · Fetch surface pressure at the 8 Haslebacher sites · ticket: none yet
+- `K5` · **ready** · CT · Fetch surface pressure at the 8 Haslebacher sites · ticket: none yet
 
 - `K6` · **blocked** · CT · Surface-request cost check, then the raw GRIB archive move · ticket: none yet
 
@@ -75,7 +73,6 @@ Colors show each item's state (legend at the bottom). The arrows show what has t
 ```mermaid
 flowchart LR
   subgraph cloud["Cloud"]
-    C5["C5 · Surface-pressure fetcher"]
     C6["C6 · Multi-month surface requests"]
     C7["C7 · Raw GRIB archive code"]
     C8["C8 · ESO fetcher"]
@@ -112,12 +109,10 @@ flowchart LR
   C8 --> C11
   C9 --> C11
   K2 --> K4 --> K7
-  C5 --> K5
   C6 --> K6
   C7 --> K6 --> K7
   C8 --> K8
   C10 --> K9
-  C5 --> C12
   C8 --> C12
   C9 --> C12
   C12 --> K10
@@ -141,8 +136,6 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C5 needsyou
-  %% ---
   class C6 ready
   %% ---
   class C7 ready
@@ -177,7 +170,7 @@ flowchart LR
   %% ---
   class K4 blocked
   %% ---
-  class K5 blocked
+  class K5 ready
   %% ---
   class K6 blocked
   %% ---
@@ -207,7 +200,6 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 
 | Wave | ID | Needs you? | Touches |
 |---|---|---|---|
-| 1 | C5 | no | `download/`, `cli.py` |
 | 1 | C8 | no | new module, `cli.py` |
 | 1 | C9 | no | new module |
 | 2 | C6 | no | `download/requests.py`, `configs/era5.yaml`, `cli.py` |
@@ -237,7 +229,7 @@ F1-21 and F1-22 (the forecast's live trials and its 28-night run) don't use it e
 | K2 | — | yes (running now) |
 | K3 | — | no |
 | K4 | K2 | **yes** |
-| K5 | C5 | own slot |
+| K5 | — | own slot |
 | K6 | C6, C7 | estimates only |
 | K7 | K4, K6 | **yes** |
 | K8 | C8 | no |
@@ -254,7 +246,6 @@ Parallel sessions would otherwise take the same number.
 | D-number | Item |
 |---|---|
 | D61 | C10 |
-| D62 | C5 |
 | D63 | C6 |
 | D64 | C7 |
 | D65 | C8 |
@@ -275,29 +266,6 @@ Parallel sessions would otherwise take the same number.
 ## Prompts
 
 Every prompt has the same first sentence, which loads the session protocol. Most put a slash command in front of it on the same line, which starts that item's main skill. Copy everything inside the box and send it as one message. If a session ever shows the skill without the rest of the prompt (it shouldn't), send the prompt again without the slash command as the next message.
-
-### C5. Surface-pressure point fetcher for Haslebacher (b)
-
-```text
-/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C5.
-
-Skills: this message starts implement, and this prompt is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Implement ends with a commit; this item still ends with the PR and status steps below.
-
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §3.4 and §7 (the single-level time-series product), and decisions D2, D25, D29, D39 and D57 item 4 (if D57 isn't on dev, read it from branch grill/7-reproductions, PR #39).
-
-Task: build a minimal point fetcher for the CDS product reanalysis-era5-single-levels-timeseries that gets surface pressure (sp) at given points for 1979–2020 (D57 item 4). First create a ticket under map #6 (labels runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
-
-Requirements:
-- Use the existing ecmwf-datastores client pattern (D2) and the manifest, so requests are tracked and resumable.
-- The product has its own CDS slot (D29). Its jobs are recorded, but never counted by or blocking the pressure-level gate (D39).
-- Chunk by year if a request limit bites; the chunk size is configurable, because the 42-year single request is untested.
-- Verify the returned NetCDF: variable, point, time coverage, no gaps or NaN (count and log any).
-- Write atomically as a small per-site store under a path from config.
-- Add a CLI command and tests against tests/fakes.py, covering a resubmitted lost job, a partial year, and a verification failure.
-- Use the 8 Haslebacher sites' nearest grid points from configs/sites.yaml.
-
-Don't contact the CDS from this session. Log non-trivial choices as D62. Run the full test suite and ruff, then open a PR into dev with the exact CT commands for Riley.
-```
 
 ### C6. Multi-month surface requests and per-kind planning rates
 
@@ -448,7 +416,7 @@ The Blocked by line in each ticket body is the source of truth (docs/agents/issu
 
 ### C12. Experiment spec and CT tickets
 
-Needs your approval. Like C10 and C11: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C5 and C8 (the fetchers its tickets extend) and C9 (the site reader every experiment uses).
+Needs your approval. Like C10 and C11: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C8 (the fetcher its tickets extend) and C9 (the site reader every experiment uses).
 
 ```text
 /mattpocock-skills:to-spec Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C12.
