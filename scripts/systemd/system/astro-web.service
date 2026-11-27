@@ -1,0 +1,36 @@
+# CT 350: serve the forecast page on LAN port 8350 with nginx (F1 spec #47 Module 11,
+# D52 items 7-9). The site is /staging/forecast/site/current (`astro web deploy`), the
+# data /staging/forecast/products (the tick). Riley's Nginx Proxy Manager adds the name,
+# TLS and the LAN/tailnet access list in front (docs/ct_runbook.md).
+#
+# nginx is conda-forge's, installed with `pixi global` into /opt/astro-web/pixi rather
+# than /root/.pixi, since ProtectHome hides /root and the dynamic user couldn't read it
+# anyway (D83). Its config is /etc/astro-web/nginx.conf, from scripts/nginx/astro-web.conf.
+# Installed (not enabled) by scripts/install_services.sh.
+[Unit]
+Description=astro-seeing: forecast page web server (nginx, LAN port 8350)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/opt/astro-web/pixi/bin/nginx -t -q -p /run/astro-web/ -c /etc/astro-web/nginx.conf -e stderr
+ExecStart=/opt/astro-web/pixi/bin/nginx -p /run/astro-web/ -c /etc/astro-web/nginx.conf -e stderr
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=30s
+# Sandbox (D52 item 9): a throwaway user, nothing writable but its own folders.
+DynamicUser=yes
+ProtectSystem=strict
+ProtectHome=yes
+NoNewPrivileges=yes
+# /staging is hidden except the two folders served, and those are read-only.
+TemporaryFileSystem=/staging:ro
+BindReadOnlyPaths=/staging/forecast/site /staging/forecast/products
+# Its own temp folder (/run/astro-web: pid and request buffers) and log folder
+# (/var/log/astro-web: access log; errors go to the journal).
+RuntimeDirectory=astro-web
+LogsDirectory=astro-web
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,28 @@
+# CT 350 (root, repo at /home/astro-seeing): one forecast tick (F1 spec #47 Module 8,
+# D51): fetch new runs, verify, store, publish the page's files. Started every 15 min by
+# astro-forecast.timer; idempotent and manifest-driven, so a missed or killed tick costs
+# nothing. Installed (not enabled) by scripts/install_services.sh; docs/ct_runbook.md.
+[Unit]
+Description=astro-seeing: forecast tick (fetch, verify, store, publish the page's files)
+Wants=network-online.target
+After=network-online.target
+# Never run against an unmounted /data (the per-place day stores go there, D51 item 12).
+RequiresMountsFor=/data/astro /staging
+
+[Service]
+Type=oneshot
+Environment=HOME=/root
+WorkingDirectory=/home/astro-seeing
+# At most 2 worker processes, at normal priority (D51 item 4): the tick runs in one
+# process; numeric libraries' thread pools are capped at 2 and the whole service at two
+# cores' worth of CPU, so the ERA5 jobs keep the other 3 of AGENTS.md's 5.
+Environment=OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2
+CPUQuota=200%
+Nice=0
+# A hung NFS mount must not block forever (AGENTS.md "Environment"). Generous, since a
+# whole-box ICON-EU run is thousands of requests (D76 item 6); "no tick for 1 h" alerts
+# long before this (D51 item 9).
+TimeoutStartSec=3h
+ExecStart=/root/.pixi/bin/pixi run astro forecast tick
+StandardOutput=append:/home/astro-seeing/logs/forecast_tick.log
+StandardError=inherit
