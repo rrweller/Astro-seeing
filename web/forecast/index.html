@@ -31,6 +31,9 @@
     <section id="map-view" class="map-view" aria-labelledby="map-title" hidden>
       <h2 id="map-title" class="visually-hidden">Tonight's map</h2>
       <div class="map-controls">
+        <label id="night-pick" class="night-pick" hidden>Night
+          <select id="night"></select>
+        </label>
         <fieldset id="layer-choice" class="layer-choice">
           <legend class="visually-hidden">Show on the map</legend>
           <label><input type="radio" name="layer" value="clear" checked><span>Clear hours left</span></label>
@@ -46,6 +49,7 @@
         <input id="hour" type="range" min="0" max="23" step="1" value="0" aria-describedby="hour-label">
         <output id="hour-label" for="hour"></output>
       </div>
+      <p id="night-label" class="night-label" role="status" hidden></p>
       <div class="map-body">
         <div id="map" class="map" role="region" aria-label="Map of the forecast area"></div>
         <aside id="cell-card" class="cell-card" aria-live="polite" hidden></aside>

@@ -4,8 +4,9 @@
 A set is written only when its content differs from the current set's: the content hash
 covers every file's bytes and ``latest.json`` without its three write-time keys
 (``set_id``, ``set_path``, ``written_at``), and is kept beside the files as
-``content.sha256``. ``set_id`` is the write time ``YYYYMMDDTHHMMSSZ`` plus the hash's
-first 8 hex digits.
+``content.sha256``, with a copy of the set's own ``latest.json`` (the sunset maps copy
+the ``latest.json`` of the set current at sunset, ticket #67). ``set_id`` is the write
+time ``YYYYMMDDTHHMMSSZ`` plus the hash's first 8 hex digits.
 
 Order on disk: the set's files go into a temp folder (each written, fsynced and made
 world-readable), the folder is renamed into place, then ``latest.json`` is written to a
@@ -30,6 +31,7 @@ from astroseeing.provenance import canonical_json
 
 KEEP_SETS = 3
 CONTENT_FILE = "content.sha256"
+SET_LATEST = "latest.json"  # the set's own copy of its latest.json (for the sunset maps)
 _WRITE_TIME_KEYS = ("set_id", "set_path", "written_at")
 
 
@@ -68,6 +70,9 @@ def publish(
             return Published(current, new=False)
 
     set_id = f"{now.astimezone(dt.UTC):%Y%m%dT%H%M%SZ}-{digest[:8]}"
+    doc = {**latest, "set_id": set_id, "set_path": f"sets/{set_id}/", "written_at": utc_text(now)}
+    ordered = {k: doc[k] for k in ("schema", "set_id", "set_path", "written_at")} | doc
+    latest_bytes = (json.dumps(ordered, indent=1, allow_nan=False) + "\n").encode()
     final = sets / set_id
     tmp = sets / f".tmp-{set_id}-{os.getpid()}"
     sets.mkdir(parents=True, exist_ok=True)
@@ -76,7 +81,8 @@ def publish(
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir()
     try:
-        for name, data in {**files, CONTENT_FILE: (digest + "\n").encode()}.items():
+        own = {CONTENT_FILE: (digest + "\n").encode(), SET_LATEST: latest_bytes}
+        for name, data in {**files, **own}.items():
             write_atomic(tmp / name, data)
         os.chmod(tmp, 0o755)
         os.rename(tmp, final)
@@ -84,11 +90,7 @@ def publish(
         shutil.rmtree(tmp, ignore_errors=True)
         raise
     fsync_dir(sets)
-    doc = {**latest, "set_id": set_id, "set_path": f"sets/{set_id}/", "written_at": utc_text(now)}
-    ordered = {k: doc[k] for k in ("schema", "set_id", "set_path", "written_at")} | doc
-    write_atomic(
-        products / "latest.json", (json.dumps(ordered, indent=1, allow_nan=False) + "\n").encode()
-    )
+    write_atomic(products / "latest.json", latest_bytes)
     prune(products)
     return Published(set_id, new=True)
 

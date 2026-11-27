@@ -43,6 +43,11 @@ export function dayLabel(utcText, timeZone) {
   return `${p.weekday} ${p.day} ${p.month}`;
 }
 
+/** "Wed 25 Nov" for the Night "2026-11-25" (a Night is named by its evening's date). */
+export function nightLabel(night) {
+  return dayLabel(`${night}T12:00:00Z`, "UTC");
+}
+
 /** "06 UTC 26 Nov": how forecast runs are named. */
 export function runLabel(utcText) {
   const p = parts(new Date(utcText), "UTC", {
