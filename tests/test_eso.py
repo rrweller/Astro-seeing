@@ -658,3 +658,23 @@ def test_repeated_and_out_of_order_times_are_counted_not_dropped():
     assert rows.series["seeing"].values.size == 8
     assert rows.counts()["duplicate_times"] == 1
     assert rows.counts()["out_of_order_times"] == 1
+
+
+def test_cli_fetch_takes_utc_times_and_converts_zoned_ones(world, monkeypatch, tmp_path):
+    from astroseeing import cli
+
+    monkeypatch.setenv("ASTRO_LOG_DIR", str(tmp_path / "logs"))
+    f, _ = world.fetcher((FIXTURES / "paranal-dimm.csv").read_bytes())
+    monkeypatch.setattr(cli, "_eso_fetcher", lambda paths: f)
+
+    args = [
+        "eso",
+        "fetch",
+        "paranal-dimm",
+        "--start",
+        "2026-11-13T13:41:36-03:00",
+        "--end",
+        "2026-11-14T16:41:36",
+    ]
+    assert cli.main(args) == 0
+    assert len(f.history("paranal-dimm", *NIGHT)) == 1

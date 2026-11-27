@@ -748,11 +748,6 @@ def _eso_run(fn) -> int:
     return 0
 
 
-def _utc(t: dt.datetime) -> dt.datetime:
-    """A time given without a zone is UTC; one with a zone is converted to UTC."""
-    return t.replace(tzinfo=dt.UTC) if t.tzinfo is None else t.astimezone(dt.UTC)
-
-
 def _eso_print(got) -> None:
     print(json.dumps({"path": str(got.path), "sha256": got.sha256, **got.rows.counts()}))
 
@@ -765,7 +760,7 @@ def cmd_eso_fetch(args, paths: Paths) -> int:
     """One ESO table over one UTC range [start, end)."""
 
     def run():
-        start, end = (_utc(dt.datetime.fromisoformat(x)) for x in (args.start, args.end))
+        start, end = args.start, args.end
         _eso_print(_eso_fetcher(paths).fetch(args.table, start, end, label=args.label))
 
     return _eso_run(run)
@@ -947,8 +942,8 @@ def main(argv: list[str] | None = None) -> int:
     esub = eso_p.add_subparsers(dest="eso_cmd", required=True)
     p = esub.add_parser("fetch", help="one table over one UTC range [start, end)")
     p.add_argument("table", choices=eso_tables())
-    p.add_argument("--start", required=True, help="UTC, e.g. 2026-11-13T16:41:36")
-    p.add_argument("--end", required=True, help="UTC, exclusive")
+    p.add_argument("--start", required=True, type=_utc, help="UTC, e.g. 2026-11-13T16:41:36")
+    p.add_argument("--end", required=True, type=_utc, help="UTC, exclusive")
     p.add_argument("--label", help="name part of the file (default: the range)")
     p.set_defaults(fn=cmd_eso_fetch)
     p = esub.add_parser("night", help="the tables for one Night, by its evening date")
