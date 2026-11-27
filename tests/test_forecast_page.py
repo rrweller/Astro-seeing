@@ -526,7 +526,8 @@ def night(case: Case, now: dt.datetime, runs=RUNS_26, cloud=normal_cloud) -> dic
 
 
 def open_night(case: Case, now: dt.datetime, **viewport) -> Browser:
-    return case.open(utc_text(now + dt.timedelta(minutes=1)), **viewport)
+    """Open the page a minute after ``now`` (sharp, for the PR's screenshots)."""
+    return case.open(utc_text(now + dt.timedelta(minutes=1)), **{"scale": 2, **viewport})
 
 
 def verdict_text(b: Browser) -> dict:
