@@ -1,7 +1,7 @@
 """The tick (F1 spec Module 8): ``astro forecast tick``, every 15 min from
 ``astro-forecast.timer``; idempotent, manifest-driven, every dependency injected (D51).
 
-Ticket #51 builds steps 1-5 of the spec's order, ticket #59 step 6:
+Ticket #51 builds steps 1-5 of the spec's order, ticket #59 step 6, ticket #67 step 7:
 
 1. ask each adapter for its newest published run;
 2. fetch, verify and compute what's new (one run at a time, in this process: within
@@ -10,7 +10,11 @@ Ticket #51 builds steps 1-5 of the spec's order, ticket #59 step 6:
 4. build each saved place's file, with ``tonight()``'s verdict and the Moon (ticket #63),
    and the map layers of the default saved place's area: ``tonight()`` for every map
    cell (ticket #65, ``publish.layers``), timed in the report and the log;
-5. publish a product set, if anything changed;
+5. take the sunset map if due (the spec's step 7, moved before publishing so this
+   tick's ``latest.json`` already lists it in ``sunset_maps``; ticket #67, D88): at the
+   first tick after sunset at the default saved place, the set current at sunset is
+   copied to ``products/sunset/<night>/`` (``publish.sunset``); then publish a product
+   set, if anything changed;
 6. finalise days: each saved place's UTC days whose runs are all final go from the SSD
    to one Zarr store each on ``/data``, written once (``store.days``). Every call to
    ``/data`` has a timeout, so a hung NAS is logged and tried again next tick; and it
@@ -57,6 +61,7 @@ from astroseeing.forecast.places import PlaceHeightMissing, require_looked_up_he
 from astroseeing.forecast.publish.layers import MapLayers, build_layers
 from astroseeing.forecast.publish.place_file import build_place_file
 from astroseeing.forecast.publish.sets import publish
+from astroseeing.forecast.publish.sunset import sunset_maps, take_sunset_map
 from astroseeing.forecast.schemas import validate
 from astroseeing.forecast.settings import ForecastSettings, Place
 from astroseeing.forecast.sources.gfs import GfsAdapter
@@ -159,6 +164,7 @@ class TickReport:
     days: list[dict] = field(default_factory=list)  # per-place days finalised or tried
     map_seconds: float | None = None  # time to build the map layers (ticket #65)
     map_bytes: int | None = None  # the map layers' size, all files
+    sunset: dict | None = None  # the sunset map taken by this tick (ticket #67)
 
     def as_dict(self) -> dict:
         return {
@@ -171,6 +177,7 @@ class TickReport:
             "days": self.days,
             "map_seconds": self.map_seconds,
             "map_bytes": self.map_bytes,
+            "sunset": self.sunset,
         }
 
 
@@ -322,7 +329,15 @@ def _tick(
     log.info("map layers: %d × %d cells, %d files, %.0f kB, built in %.1f s", grid.nlat,
              grid.nlon, len(layers.files), report.map_bytes / 1e3, report.map_seconds)  # fmt: skip
     files.update(layers.files)
+
+    # 7 (before 5, so this tick's latest.json lists it): the sunset map, if due
+    try:
+        taken = take_sunset_map(paths.products, suns[settings.default_place], now)
+        report.sunset = taken.as_dict() if taken is not None else None
+    except Exception:  # logged; the next tick tries again while the set is kept
+        log.exception("taking the sunset map failed")
     latest = _latest_doc(now, settings, places, records, build, grid, layers)
+    latest["sunset_maps"] = sunset_maps(paths.products)
     validate(
         {
             **latest,
@@ -424,7 +439,7 @@ def _latest_doc(
         },
         "layers": dict(layers.entries),
         "runs": runs,
-        "sunset_maps": [],
+        "sunset_maps": [],  # filled by the tick from the kept sunset maps
     }
 
 

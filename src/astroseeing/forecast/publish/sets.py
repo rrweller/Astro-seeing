@@ -4,8 +4,9 @@
 A set is written only when its content differs from the current set's: the content hash
 covers every file's bytes and ``latest.json`` without its three write-time keys
 (``set_id``, ``set_path``, ``written_at``), and is kept beside the files as
-``content.sha256``. ``set_id`` is the write time ``YYYYMMDDTHHMMSSZ`` plus the hash's
-first 8 hex digits.
+``content.sha256``, with a copy of the set's own ``latest.json`` (the sunset maps copy
+the ``latest.json`` of the set current at sunset, ticket #67). ``set_id`` is the write
+time ``YYYYMMDDTHHMMSSZ`` plus the hash's first 8 hex digits.
 
 Order on disk: the set's files go into a temp folder (each written, fsynced and made
 world-readable), the folder is renamed into place, then ``latest.json`` is written to a
@@ -30,6 +31,7 @@ from astroseeing.provenance import canonical_json
 
 KEEP_SETS = 3
 CONTENT_FILE = "content.sha256"
+SET_LATEST = "latest.json"  # the set's own copy of its latest.json (for the sunset maps)
 _WRITE_TIME_KEYS = ("set_id", "set_path", "written_at")
 
 
@@ -60,6 +62,8 @@ def publish(
     """
     products = Path(products)
     sets = products / "sets"
+    if clash := {CONTENT_FILE, SET_LATEST} & set(files):
+        raise ValueError(f"a set's own file names can't be given as files: {sorted(clash)}")
     digest = content_hash(files, latest)
     current = current_set(products)
     if current is not None:
@@ -68,29 +72,37 @@ def publish(
             return Published(current, new=False)
 
     set_id = f"{now.astimezone(dt.UTC):%Y%m%dT%H%M%SZ}-{digest[:8]}"
-    final = sets / set_id
-    tmp = sets / f".tmp-{set_id}-{os.getpid()}"
-    sets.mkdir(parents=True, exist_ok=True)
+    doc = {**latest, "set_id": set_id, "set_path": f"sets/{set_id}/", "written_at": utc_text(now)}
+    ordered = {k: doc[k] for k in ("schema", "set_id", "set_path", "written_at")} | doc
+    latest_bytes = (json.dumps(ordered, indent=1, allow_nan=False) + "\n").encode()
+    products.mkdir(parents=True, exist_ok=True)
     os.chmod(products, 0o755)
-    os.chmod(sets, 0o755)
+    own = {CONTENT_FILE: (digest + "\n").encode(), SET_LATEST: latest_bytes}
+    write_folder(sets / set_id, {**files, **own})
+    write_atomic(products / "latest.json", latest_bytes)
+    prune(products)
+    return Published(set_id, new=True)
+
+
+def write_folder(final: Path, files: Mapping[str, bytes]) -> None:
+    """Write ``files`` as the new folder ``final``: each written (fsynced, world-readable)
+    into a temp folder beside it, which is then renamed into place and its parent
+    fsynced. Nothing is left on failure; a leftover temp folder is named ``.tmp-*``."""
+    parent = Path(final).parent
+    parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(parent, 0o755)
+    tmp = parent / f".tmp-{Path(final).name}-{os.getpid()}"
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir()
     try:
-        for name, data in {**files, CONTENT_FILE: (digest + "\n").encode()}.items():
+        for name, data in files.items():
             write_atomic(tmp / name, data)
         os.chmod(tmp, 0o755)
         os.rename(tmp, final)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)
         raise
-    fsync_dir(sets)
-    doc = {**latest, "set_id": set_id, "set_path": f"sets/{set_id}/", "written_at": utc_text(now)}
-    ordered = {k: doc[k] for k in ("schema", "set_id", "set_path", "written_at")} | doc
-    write_atomic(
-        products / "latest.json", (json.dumps(ordered, indent=1, allow_nan=False) + "\n").encode()
-    )
-    prune(products)
-    return Published(set_id, new=True)
+    fsync_dir(parent)
 
 
 def prune(products: Path, keep: int = KEEP_SETS) -> list[str]:

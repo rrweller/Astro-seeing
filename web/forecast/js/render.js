@@ -448,14 +448,24 @@ export function renderCredits(place) {
   list.replaceChildren(...Object.entries(place.models).map(([id, m]) => el("li", { dataset: { model: id }, text: m.credit })));
 }
 
-export function renderAbout(latest, place, pageCommit) {
+/** The provenance panel for set `latest`; with `sunset` ({night, latest}), the map shown
+ *  is that night's sunset map, whose own set is named first. */
+export function renderAbout(latest, place, pageCommit, sunset = null) {
   const tz = place.place.time_zone;
-  const items = [
-    ["Data set", `${latest.set_id}, written ${clockLabel(latest.written_at, tz)} ${tz} (${latest.written_at})`],
+  const written = (doc) => `${doc.set_id}, written ${clockLabel(doc.written_at, tz)} ${tz} (${doc.written_at})`;
+  const items = [];
+  if (sunset) {
+    const s = sunset.latest;
+    items.push(["Map shown", `the sunset map of the night of ${sunset.night}: data set ${written(s)}`]);
+    if (s.provenance.commit !== latest.provenance.commit) items.push(["Sunset map's back-end commit", s.provenance.commit]);
+    if (s.provenance.config_hash !== latest.provenance.config_hash) items.push(["Sunset map's config hash", s.provenance.config_hash]);
+  }
+  items.push(
+    [sunset ? "Tonight's data set" : "Data set", written(latest)],
     ["Back-end commit", latest.provenance.commit],
     ["Config hash", latest.provenance.config_hash],
     ["Software", Object.entries(latest.provenance.software).map(([k, v]) => `${k} ${v}`).join(", ")],
-  ];
+  );
   if (place.provenance.commit !== latest.provenance.commit) items.push(["Place file commit", place.provenance.commit]);
   if (place.provenance.config_hash !== latest.provenance.config_hash) items.push(["Place file config hash", place.provenance.config_hash]);
   const runIds = Object.entries(place.provenance.run_ids);

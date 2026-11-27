@@ -7,8 +7,12 @@
 //
 // No base map: the only geography is the vendored outline (Natural Earth coastlines and
 // borders, web/vendor/natural-earth/); no request leaves the host.
+//
+// Sunset maps (ticket #67, D88): the night picker shows one of the last 7 nights' map
+// as forecast at sunset in the default saved place, from `sunset/<night>/` (that set's
+// own latest.json and layers), labelled with its night; "Tonight" shows the live set.
 
-import { clockLabel, dayLabel, duration, fixed, latLon, metres } from "./format.js";
+import { clockLabel, dayLabel, duration, fixed, latLon, metres, nightLabel } from "./format.js";
 import { KINDS, cellAt, familiesOf, field, gridBounds, loadLayer, paintTile, patternSwatch, scaleGradient } from "./layers.js";
 import { el } from "./render.js";
 import { familyName } from "./verdict.js";
@@ -59,7 +63,11 @@ function cellLine(grid, c) {
 export class MapView {
   constructor(dataBase) {
     this.dataBase = dataBase;
-    this.latest = null;
+    this.live = null; // the live set's latest.json
+    this.night = null; // the past night shown (its sunset map), or null for Tonight
+    this.latest = null; // the latest.json of the set shown: the live one or a sunset map's
+    this.setBase = null; // where the shown set's layer files are
+    this.sunsetDocs = new Map(); // night → its sunset map's latest.json (never rewritten)
     this.home = null; // the default saved place's file: time zone and model names
     this.places = [];
     this.layers = new Map(); // layer name → typed array, for the set shown
@@ -88,6 +96,11 @@ export class MapView {
     document.getElementById("model").addEventListener("change", (e) => this.choose({ family: e.target.value }));
     document.getElementById("hour").addEventListener("input", (e) => {
       this.choose({ hourTime: this.sliderHours()[Number(e.target.value)] });
+    });
+    // a night is chosen through the address, so it can be bookmarked and the back
+    // button returns to the night before (main.js shows the view the address asks for)
+    document.getElementById("night").addEventListener("change", (e) => {
+      location.hash = e.target.value ? `#night/${e.target.value}` : "#map";
     });
   }
 
@@ -126,7 +139,8 @@ export class MapView {
     const hours = this.latest.layers[`total_cloud_${this.family}`]?.hours ?? [];
     let k = hours.indexOf(this.hourTime);
     if (k < 0) {
-      const now = Date.now();
+      // a sunset map starts at the hour it was forecast at, not the device's "now"
+      const now = this.night ? Date.parse(this.latest.written_at) : Date.now();
       k = Math.max(0, hours.findLastIndex((h) => Date.parse(h) <= now));
     }
     this.hour = k;
@@ -141,7 +155,7 @@ export class MapView {
     if (!this.layers.has(name)) {
       const entry = this.latest.layers[name];
       if (!entry) throw new Error(`latest.json has no layer ${name}`);
-      const url = new URL(this.latest.set_path + entry.file, this.dataBase);
+      const url = new URL(entry.file, this.setBase);
       const loading = loadLayer(url, entry);
       this.layers.set(name, loading);
       loading.catch(() => {
@@ -153,18 +167,31 @@ export class MapView {
 
   // -- showing a set ----------------------------------------------------------------------
 
-  /** Show product set `latest`, with the saved places' files (`places`, the default
-   *  saved place first). */
-  async show(latest, places) {
-    const newSet = latest.set_id !== this.latest?.set_id;
-    this.latest = latest;
+  /** Show the live product set `live`, with the saved places' files (`places`, the
+   *  default saved place first); or, with `night`, that night's sunset map (one of
+   *  `live.sunset_maps`). Returns the latest.json of the set shown. */
+  async show(live, places, night = null) {
+    let shown = live;
+    let setBase = new URL(live.set_path, this.dataBase);
+    if (night) {
+      const entry = live.sunset_maps.find((m) => m.night === night);
+      if (!entry) throw new Error(`no sunset map for the night of ${night}`);
+      setBase = new URL(entry.path, this.dataBase);
+      shown = await this.sunsetDoc(night, setBase);
+    }
+    const newSet = setBase.href !== this.setBase?.href || shown.set_id !== this.latest?.set_id;
+    this.live = live;
+    this.night = night;
+    this.latest = shown;
+    this.setBase = setBase;
     this.home = places[0];
     this.places = places;
     if (newSet) this.layers = new Map();
     this.renderPlaces();
-    if (this.noMap) return; // no WebGL: the places' links still work
+    this.renderNights();
+    if (this.noMap) return shown; // no WebGL: the places' links still work
     const base = ["clear_left", "counted_left", "incomplete_left", "dark_left_min"];
-    for (const f of familiesOf(latest)) base.push(`seeing_fa_${f}`, `model_ground_${f}`);
+    for (const f of familiesOf(shown)) base.push(`seeing_fa_${f}`, `model_ground_${f}`);
     await Promise.all(base.map((name) => this.layer(name)));
     if (!this.map) {
       try {
@@ -172,10 +199,50 @@ export class MapView {
       } catch (err) {
         this.noMap = true;
         this.problem(err.message);
-        return;
+        return shown;
       }
     } else if (newSet) this.refreshMap();
     await this.redraw();
+    return shown;
+  }
+
+  /** A sunset map's own latest.json, fetched once: a kept night is never rewritten. */
+  async sunsetDoc(night, setBase) {
+    const key = setBase.href;
+    if (!this.sunsetDocs.has(key)) {
+      const response = await fetch(new URL("latest.json", setBase), { cache: "no-store" });
+      if (!response.ok) throw new Error(`the sunset map of ${night}: HTTP ${response.status}`);
+      this.sunsetDocs.set(key, await response.json());
+    }
+    return this.sunsetDocs.get(key);
+  }
+
+  /** The night picker: Tonight and each kept night, newest first; hidden while no
+   *  night is kept. The label above the map names the night shown. */
+  renderNights() {
+    const maps = this.live.sunset_maps;
+    const select = document.getElementById("night");
+    select.replaceChildren(
+      el("option", { value: "", text: "Tonight" }),
+      ...maps.map((m) => el("option", { value: m.night, text: `${nightLabel(m.night)}, as forecast at sunset` })),
+    );
+    select.value = this.night ?? "";
+    document.getElementById("night-pick").hidden = maps.length === 0;
+    document.body.dataset.night = this.night ?? "";
+    const label = document.getElementById("night-label");
+    label.hidden = !this.night;
+    if (!this.night) {
+      label.replaceChildren();
+      return;
+    }
+    const name = this.home.place.name;
+    const at = clockLabel(this.latest.written_at, this.home.place.time_zone);
+    label.replaceChildren(
+      el("strong", { text: `Night of ${nightLabel(this.night)}, as forecast at sunset. ` }),
+      `This is the map as it stood at sunset in ${name}, from the data written at ${at}; ` +
+        "hours “left” count from then. ",
+      el("a", { href: "#map", text: "Back to Tonight" }),
+    );
   }
 
   renderPlaces() {
@@ -392,9 +459,12 @@ export class MapView {
       cloud: "The slider steps through tonight's hours. Hours a model has no value for are drawn as “no value”, never filled.",
     };
     const coarse = "GFS and IFS show as larger blocks than ICON-EU: their grid is coarser (0.25° against 0.0625°).";
+    const past = this.night
+      ? `This is the night of ${nightLabel(this.night)} as forecast at sunset: “tonight” and “from now on” mean that night from then. `
+      : "";
     const note = document.getElementById("map-note");
     note.classList.remove("caution");
-    note.textContent = `${notes[this.choice]} ${coarse} ${common}`;
+    note.textContent = `${past}${notes[this.choice]} ${coarse} ${common}`;
   }
 
   // -- the cell card -----------------------------------------------------------------------
@@ -418,15 +488,16 @@ export class MapView {
     const [clear, counted, incomplete, dark] = await Promise.all(
       ["clear_left", "counted_left", "incomplete_left", "dark_left_min"].map(v),
     );
+    const when = this.night ? "that night" : "tonight";
     let clearText;
-    if (clear === 255) clearText = "No counted hours left tonight.";
+    if (clear === 255) clearText = `No counted hours left ${when}.`;
     else if (clear === 254) {
       clearText = `Not known: all ${counted} counted hours left are incomplete (fewer than two models have a value).`;
     } else {
       clearText = `${clear} of ${counted} counted hours left look clear on most models`;
       clearText += incomplete > 0 ? ` (${incomplete} incomplete).` : ".";
     }
-    const darkText = dark === 0 ? "No dark time left tonight." : `${duration(dark)} of dark time left.`;
+    const darkText = dark === 0 ? `No dark time left ${when}.` : `${duration(dark)} of dark time left.`;
 
     const rows = [];
     for (const f of familiesOf(this.latest)) {
@@ -459,16 +530,18 @@ export class MapView {
     const lon = g.lon_west + c.j * g.dlon;
     const close = el("button", { type: "button", class: "card-close", "aria-label": "Close the cell card", text: "×" });
     close.addEventListener("click", () => this.pick(null));
-    card.replaceChildren(
+    const parts = [
       close,
-      el("h3", { text: "This spot tonight" }),
+      el("h3", { text: this.night ? `This spot on the night of ${nightLabel(this.night)}` : "This spot tonight" }),
       el("p", { class: "card-where", text: `Map cell at ${latLon(lat, lon)}` }),
+      this.night ? el("p", { class: "card-label", text: `As forecast at sunset in ${this.home.place.name}.` }) : null,
       el("p", { class: "card-label", text: "At the models' ground, not your terrain height." }),
       el("p", { class: "card-clear", dataset: { field: "clear_left", value: clear }, text: clearText }),
       el("p", { dataset: { field: "dark_left", value: dark }, text: darkText }),
       el("p", { class: "card-seeing-head" }, "Median free-atmosphere seeing over the counted hours, ", el("span", { class: "caution", text: "uncalibrated" }), " (Osborn–Sarazin):"),
       el("dl", { class: "card-models" }, ...rows),
-    );
+    ];
+    card.replaceChildren(...parts.filter((p) => p !== null));
     card.dataset.row = String(c.i);
     card.dataset.col = String(c.j);
     card.hidden = false;
