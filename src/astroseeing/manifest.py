@@ -664,6 +664,16 @@ class Manifest:
         ).fetchone()
 
     # --- raw GRIB archive (D64) ----------------------------------------------------
+    def current_files(self) -> list[sqlite3.Row]:
+        """Each request's newest file row that isn't marked deleted, with the request's
+        key, kind, region, period and state (``rid``/``fid`` are the two ids)."""
+        return self.conn.execute(
+            "SELECT r.id rid, r.key, r.kind, r.region, r.period, r.state, f.id fid, f.path,"
+            " f.size, f.sha256 FROM files f JOIN requests r ON r.id = f.request_id"
+            " WHERE f.deleted_at IS NULL"
+            " AND f.id = (SELECT MAX(id) FROM files WHERE request_id = r.id) ORDER BY r.id"
+        ).fetchall()
+
     def raw_archive(self, file_id: int) -> sqlite3.Row | None:
         """The archive record of a file row, if it was archived."""
         return self.conn.execute(

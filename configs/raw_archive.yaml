@@ -9,7 +9,8 @@ root: raw-archive
 # The NAS hangs rather than failing (AGENTS.md): every call to it runs under a
 # watchdog. A call stops the run if it shows no progress (no chunk read or written)
 # for stall_s, or runs longer than timeout_base_s + size / min_rate_mb_s. The NAS
-# does ~110 MB/s; 5 MB/s gives a 400 MB file 200 s on top of the base.
+# does ~110 MB/s; at 5 MB/s a 400 MB file gets 80 s on top of the base, a 1 GB file 200 s.
+# The copy is flushed every 256 MB, so the final fsync (no progress) stays short.
 timeout_base_s: 120
 min_rate_mb_s: 5
 stall_s: 120

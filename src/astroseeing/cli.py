@@ -193,8 +193,9 @@ def cmd_archive_raw(args, paths: Paths) -> int:
         s.copied, s.copied_bytes / 1e9, s.present, s.staging_deleted, s.recovered,
         s.measured_kept, s.refused, s.failed,
     )  # fmt: skip
-    for t in s.stale_temps:
-        log.warning("temp file left by an earlier run (not deleted): %s", t)
+    if s.stale_temps:
+        log.warning("%d temp file(s) on the NAS to remove by hand (listed above)",
+                    len(s.stale_temps))  # fmt: skip
     for p in s.problems:
         log.error("  %s", p)
     if s.hung:

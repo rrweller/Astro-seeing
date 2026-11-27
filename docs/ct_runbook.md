@@ -292,21 +292,32 @@ through Nginx Proxy Manager; a tick's run time against the timer's 15 min and
 `/data/astro/raw-archive/era5/<kind>/<region>/<period>.grib`, checks each copy's
 SHA-256 against the manifest, records it, and only then deletes the `/staging` copy.
 Measurement files (state `measured`) are copied too, but their `/staging` copy stays
-unless you add `--delete-measured`. Nothing on `/data` is ever overwritten or deleted.
-It can be stopped (Ctrl-C) and run again at any time; it carries on where it stopped.
+unless you add `--delete-measured`. No file content on `/data` is ever overwritten or
+deleted; the only name it removes there is its own temp name, right after the same
+file got its final name by a hard link. It can be stopped (Ctrl-C) and run again at
+any time; it carries on where it stopped.
 
 ```bash
 cd /home/astro-seeing && export PATH=/root/.pixi/bin:$PATH
 pixi run astro archive-raw --dry-run              # sizes and the plan; touches nothing
 pixi run astro archive-raw --dry-run --files | less   # every file and where it goes
-tmux new -s archive 'pixi run astro archive-raw 2>&1 | tee -a logs/archive_raw.log'
+tmux new -s archive 'set -o pipefail; pixi run astro archive-raw 2>&1 | tee -a logs/archive_raw.log; echo "exit code $?"; read'
 pixi run astro archive-raw --dry-run              # afterwards: part 1 shows 0 files
 df -h /staging
 ```
 
 Exit codes: 0 done; 1 a file was refused or failed (the log says which; its `/staging`
-copy is kept); 2 refused before starting (size limit, no room on the NAS, `/data/astro`
-missing, or another run active); 3 the NAS stopped answering (run it again once it
-answers). Temp files a dead or hung run left beside a destination
-(`.<name>.tmp-<pid>-<random>`) are listed on every run and never deleted by the code.
+copy is kept); 2 refused (size limit, no room on the NAS, `/data/astro` missing,
+another run active, or the NAS refuses hard links); 3 the NAS stopped answering (run
+it again once it answers). The tmux window stays open with the exit code until you
+press Enter.
+
+More than 45 GB to copy (for example once the TMT requests are ingested) is refused
+until you pass `--max-gb <N>`; the dry run shows the total.
+
+Temp files beside a destination (`.<name>.tmp-<pid>-<random>`), left by a run that
+died or hung or by a copy that failed its checksum, are listed on every run and never
+deleted by the code. Remove them by hand once no run is active. If the final file
+exists and has the same size, the temp name may be a second name of the same file
+(a crash right after the hard link); removing it leaves the final file intact.
 

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from astroseeing import rawarchive
 from astroseeing.download.requests import Area, RequestSpec
 from astroseeing.manifest import Manifest
 from astroseeing.rawarchive import (
@@ -74,9 +75,6 @@ class FakeFS(LocalArchiveFS):
 
     def link_new(self, tmp, final):
         return self._wrap("link_new", super().link_new, tmp, final)
-
-    def remove_own_temp(self, tmp):
-        return self._wrap("remove_own_temp", super().remove_own_temp, tmp)
 
 
 def crash(*_a):
@@ -418,7 +416,8 @@ def test_a_staging_file_that_no_longer_matches_its_checksum_is_refused(w):
     s = w.run()
     assert s.refused == 1 and not s.ok
     assert not w.archived(w.a).exists()
-    assert not [x for x in w.archived(w.a).parent.iterdir() if x.name.startswith(".")]
+    (temp,) = [x for x in w.archived(w.a).parent.iterdir() if x.name.startswith(".")]
+    assert s.stale_temps == [temp]  # the bad copy is left on the NAS and reported
     assert p.exists() and w.m.get(w.a).state == "ingested"
 
 
@@ -453,7 +452,7 @@ def test_the_plan_lists_sizes_and_measurements_separately_and_touches_nothing(w,
     assert [i.request_id for i in plan.archive] == [w.a, w.b, w.c]
     assert [i.request_id for i in plan.measured] == [w.meas]
     assert plan.to_copy_bytes() == sum(len(w.content[r]) for r in (w.a, w.b, w.c, w.meas))
-    assert [why for _, why, *_ in plan.left_alone] == ["state verified"]
+    assert [x.why for x in plan.left_alone] == ["state verified"]
     assert [p.name for p, _ in plan.unknown] == ["stray.grib.part"]
     text = format_plan(plan, w.settings, delete_measured=False, files=True)
     assert "3 files, 0.00 GB" in text and "KEPT" in text and "stray.grib.part" in text
@@ -543,3 +542,65 @@ def test_the_command_exits_non_zero_on_a_refusal_and_on_the_size_limit(ct):
     assert cli.main(["archive-raw", "--max-gb", "0.00001"]) == 2  # over the limit
     assert cli.main(["archive-raw"]) == 1  # one refusal
     assert ct.staged(ct.a).exists()
+
+
+def test_a_filesystem_without_hard_links_stops_the_run_and_never_renames(w, monkeypatch):
+    def no_links(*_a):
+        raise OSError(1, "Operation not permitted")  # EPERM, as some NAS exports answer
+
+    monkeypatch.setattr(os, "link", no_links)
+    with pytest.raises(PlanRefused, match="no hard links"):
+        w.run()
+    assert not w.archived(w.a).exists()  # never put in place by a rename
+    assert [p.name.startswith(".") for p in w.archived(w.a).parent.iterdir()] == [True]
+    assert all(w.staged(r).exists() for r in (w.a, w.b, w.c, w.meas))
+    assert w.m.raw_archive(w.m.latest_file(w.a)["id"]) is None
+
+
+def test_no_call_starts_in_this_process_while_an_earlier_one_still_hangs(w):
+    release = threading.Event()
+    fs = FakeFS()
+    fs.before["write_copy"] = lambda *_a: release.wait(30)
+    try:
+        assert w.run(fs).hung
+        calls = len(fs.calls)
+        again = w.run(fs)  # a second run in the same process, the thread still hanging
+        assert again.hung and "still hanging" in again.hung
+        assert len(fs.calls) == calls  # nothing was called on the NAS
+    finally:
+        release.set()
+    deadline = time.monotonic() + 5
+    while rawarchive._HUNG and any(t.is_alive() for _, t in rawarchive._HUNG):
+        assert time.monotonic() < deadline
+        time.sleep(0.02)
+    assert w.run().ok  # once it has ended, runs go ahead
+
+
+def test_the_check_before_deleting_uses_the_recorded_archive_path(w, monkeypatch):
+    monkeypatch.setattr(Manifest, "mark_staging_deleted_after_archive", lambda *a, **k: crash())
+    with pytest.raises(Crash):
+        w.run()  # w.a archived and recorded; its /staging copy unlinked, not recorded
+    monkeypatch.undo()
+    recorded = w.archived(w.a)
+    w.settings = ArchiveSettings(**{**w.settings.__dict__, "root": w.data / "moved"})
+    s = w.run()
+    assert s.recovered == 1  # checked at the recorded path, not under the new root
+    assert w.m.raw_archive(w.m.latest_file(w.a)["id"])["archive_path"] == str(recorded)
+
+
+@pytest.mark.parametrize("size", [0, 1, (3 << 20) + 5])
+def test_the_archive_checksum_reads_whole_files_of_any_size(tmp_path, size):
+    p = tmp_path / "f.grib"
+    data = os.urandom(size)
+    p.write_bytes(data)
+    beats = []
+    assert LocalArchiveFS().sha256(p, beats.append) == sha(data)
+    assert sum(beats) == size
+
+
+def test_a_copy_flushed_in_steps_is_still_whole(w, monkeypatch):
+    monkeypatch.setattr(rawarchive, "SYNC_EVERY_BYTES", 10_000)
+    s = w.run(FakeFS(chunk_bytes=4_096))
+    assert s.ok and s.copied == 4
+    for rid in (w.a, w.b, w.c):
+        done(w, rid)

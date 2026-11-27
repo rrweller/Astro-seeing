@@ -14,10 +14,10 @@ call). For each file, in this order (D12's ordering and crash recovery):
    row, the archive row, and ``ingested`` → ``raw_deleted``).
 
 A destination that already holds the same bytes is a no-op (recorded as ``present``);
-one with other bytes is refused and left as it is. Nothing under the archive root is
-ever overwritten or deleted, except this run's own temp file when its copy fails the
-checksum (it never held archive content). Temp files left by a run that died or hung
-are reported, never deleted.
+one with other bytes is refused and left as it is. No content under the archive root is
+ever overwritten or deleted. The one name ever removed there is a temp name, right
+after the same file has been hard-linked to its final name. Temp files left by a run
+that died or hung, or by a copy that failed its checksum, are reported, never deleted.
 
 Crash recovery: a run that died after step 3 is finished by the next run (the
 destination is found identical and recorded). One that died between deleting the
@@ -38,6 +38,7 @@ import errno
 import fcntl
 import hashlib
 import logging
+import mmap
 import os
 import secrets
 import threading
@@ -63,6 +64,10 @@ MB = 1e6
 #: Free space kept on the NAS beyond the bytes this run copies.
 FREE_MARGIN_BYTES = int(1 * GB)
 TEMP_MARK = ".tmp-"
+#: The copy is flushed to the NAS every this many bytes (see ``write_copy``).
+SYNC_EVERY_BYTES = 256 << 20
+#: Block size for reads that bypass the client cache (O_DIRECT needs aligned buffers).
+DIRECT_BLOCK = 1 << 20
 
 
 # -- settings -------------------------------------------------------------------------
@@ -115,6 +120,15 @@ class LocalArchiveFS:
             return []
 
     def sha256(self, path: Path, beat: Beat) -> str:
+        """SHA-256 of a file on the archive, read past the client's cache where the
+        filesystem allows (``O_DIRECT``, which the Linux NFS client supports), so the
+        check reads what the NAS holds; otherwise an ordinary read."""
+        try:
+            return _sha256_direct(path, beat)
+        except OSError as e:
+            if e.errno != errno.EINVAL:
+                raise
+            log.debug("O_DIRECT not supported for %s; ordinary read", path)
         h = hashlib.sha256()
         with open(path, "rb") as f:
             while chunk := f.read(self.chunk_bytes):
@@ -126,9 +140,15 @@ class LocalArchiveFS:
         """Copy ``src`` to the new file ``tmp`` (exclusive create), fsync it, and drop
         its pages from the cache so the read-back comes from the NAS, as far as the
         client allows."""
+        since_sync = 0
         with open(src, "rb") as fi, open(tmp, "xb") as fo:
             while chunk := fi.read(self.chunk_bytes):
                 fo.write(chunk)
+                since_sync += len(chunk)
+                if since_sync >= SYNC_EVERY_BYTES:  # keeps the final fsync, which shows
+                    fo.flush()  # no progress to the watchdog, short on a large file
+                    os.fdatasync(fo.fileno())
+                    since_sync = 0
                 beat(len(chunk))
             fo.flush()
             os.fsync(fo.fileno())
@@ -138,24 +158,38 @@ class LocalArchiveFS:
     def link_new(self, tmp: Path, final: Path) -> None:
         """Give ``tmp`` the name ``final``, failing if ``final`` exists; fsync the dir.
 
-        A hard link never replaces an existing name. Where the filesystem has no hard
-        links, fall back to a rename after checking ``final`` is absent (one archive run
-        at a time holds the lock, and nothing else writes in the archive)."""
+        A hard link never replaces an existing name, even against a thread of an earlier
+        run still hanging on the NAS. There is no rename fallback (a rename replaces):
+        where the filesystem has no hard links, :class:`NoHardLinks` stops the run."""
         try:
             os.link(tmp, final)
         except OSError as e:
-            if e.errno not in (errno.EPERM, errno.EOPNOTSUPP, errno.ENOTSUP, errno.EMLINK):
-                raise
-            log.warning("hard links not supported at %s (%s); using a checked rename", final, e)
-            if os.path.lexists(final):
-                raise FileExistsError(errno.EEXIST, "exists", str(final)) from e
-            os.rename(tmp, final)
-        else:
-            os.unlink(tmp)  # the temp name only; the content now has its final name
+            if e.errno in (errno.EPERM, errno.EOPNOTSUPP, errno.ENOTSUP, errno.EMLINK):
+                raise NoHardLinks(f"no hard links at {final.parent} ({e})") from e
+            raise
+        os.unlink(tmp)  # the temp name only; the content now has its final name
         _fsync_dir(final.parent)
 
-    def remove_own_temp(self, tmp: Path) -> None:
-        os.unlink(tmp)
+
+def _sha256_direct(path: Path, beat: Beat) -> str:
+    """Read with ``O_DIRECT`` into a page-aligned buffer (EINVAL where unsupported)."""
+    flag = getattr(os, "O_DIRECT", None)
+    if flag is None:
+        raise OSError(errno.EINVAL, "no O_DIRECT on this platform")
+    h = hashlib.sha256()
+    fd = os.open(path, os.O_RDONLY | flag)
+    try:
+        with mmap.mmap(-1, DIRECT_BLOCK) as buf:
+            view = memoryview(buf)
+            try:
+                while n := os.readv(fd, [buf]):
+                    h.update(view[:n])
+                    beat(n)
+            finally:
+                view.release()
+    finally:
+        os.close(fd)
+    return h.hexdigest()
 
 
 def _fsync_dir(path: Path) -> None:
@@ -167,10 +201,16 @@ def _fsync_dir(path: Path) -> None:
 
 
 # -- the watchdog ---------------------------------------------------------------------
+#: Archive calls given up on that may still be running, process-wide (D80 item 5).
+_HUNG: list[tuple[str, threading.Thread]] = []
+
+
 class Watchdog:
     """Runs each archive call in a daemon thread and gives up on it if it shows no
     progress for ``stall_s`` or passes its deadline. After one call has hung, every
-    later call fails at once: the run stops (a hung NAS costs one timeout)."""
+    later call fails at once: the run stops (a hung NAS costs one timeout). The memory
+    of a hang outlives the Watchdog, so no call in this process starts beside a thread
+    that is still hanging (cleared once that thread ends)."""
 
     def __init__(self, stall_s: float, poll_s: float = 0.5):
         self.stall_s = stall_s
@@ -180,6 +220,10 @@ class Watchdog:
     def call(self, what: str, fn: Callable[[Beat], T], deadline_s: float) -> T:
         if self.hung is not None:
             raise StorageUnresponsive(f"{what}: not tried, an earlier call hung ({self.hung})")
+        _HUNG[:] = [(w, t) for w, t in _HUNG if t.is_alive()]
+        if _HUNG:
+            raise StorageUnresponsive(f"{what}: not tried, an earlier call is still hanging "
+                                      f"({_HUNG[0][0]})")  # fmt: skip
         box: dict[str, Any] = {}
         last = [time.monotonic()]
 
@@ -202,9 +246,10 @@ class Watchdog:
             now = time.monotonic()
             if now - last[0] > self.stall_s:
                 self.hung = f"{what}: no progress for {self.stall_s:g} s"
-                raise StorageUnresponsive(self.hung)
-            if now - start > deadline_s:
+            elif now - start > deadline_s:
                 self.hung = f"{what}: not finished within {deadline_s:.0f} s"
+            if self.hung:
+                _HUNG.append((what, thread))
                 raise StorageUnresponsive(self.hung)
         if "error" in box:
             raise box["error"]
@@ -225,12 +270,22 @@ class Item:
     archived: bool  # an archive copy is already recorded (an earlier run)
 
 
+@dataclass(frozen=True)
+class LeftAlone:
+    """A raw file the run never touches, and why."""
+
+    key: str
+    why: str
+    path: Path
+    size: int
+
+
 @dataclass
 class Plan:
     root: Path
     archive: list[Item] = field(default_factory=list)  # ingested: copy, then delete
     measured: list[Item] = field(default_factory=list)  # copy; delete only on request
-    left_alone: list[tuple[str, str, Path, int]] = field(default_factory=list)  # why
+    left_alone: list[LeftAlone] = field(default_factory=list)
     unknown: list[tuple[Path, int]] = field(default_factory=list)  # not in the manifest
 
     def to_copy_bytes(self) -> int:
@@ -248,22 +303,17 @@ def plan_archive(m: Manifest, staging_root: Path, settings: ArchiveSettings) -> 
     """What a run would do, from the manifest and /staging only (never touches the NAS)."""
     staging_root = Path(staging_root).resolve()
     plan = Plan(root=settings.root)
-    rows = m.conn.execute(
-        "SELECT r.id rid, r.key, r.kind, r.region, r.period, r.state, f.id fid, f.path,"
-        " f.size, f.sha256 FROM files f JOIN requests r ON r.id = f.request_id"
-        " WHERE f.deleted_at IS NULL"
-        " AND f.id = (SELECT MAX(id) FROM files WHERE request_id = r.id) ORDER BY r.id"
-    ).fetchall()
+    rows = m.current_files()
     known: set[Path] = set()
     seen: dict[Path, str] = {}
     for r in rows:
         path = Path(r["path"])
         known.add(path.resolve())
         if r["state"] not in ("ingested", "measured"):
-            plan.left_alone.append((r["key"], f"state {r['state']}", path, r["size"]))
+            plan.left_alone.append(LeftAlone(r["key"], f"state {r['state']}", path, r["size"]))
             continue
         if not path.resolve().is_relative_to(staging_root):
-            plan.left_alone.append((r["key"], "outside /staging", path, r["size"]))
+            plan.left_alone.append(LeftAlone(r["key"], "outside /staging", path, r["size"]))
             continue
         dest = dest_path(settings.root, r["kind"], r["region"], r["period"])
         if dest in seen:
@@ -302,30 +352,30 @@ def format_plan(plan: Plan, settings: ArchiveSettings, delete_measured: bool,
                     for i in items]  # fmt: skip
         return out
 
-    a, me = plan.archive, plan.measured
-    biggest = max((i.size for i in a + me), default=0)
+    ingested, measured = plan.archive, plan.measured
+    biggest = max((i.size for i in ingested + measured), default=0)
     lines = [
         "Raw GRIB archive plan (D64). Dry run: nothing is copied, recorded or deleted.",
         f"Archive root: {plan.root}  (layout: era5/<kind>/<region>/<period>.grib)",
         "",
         f"1. Copy, verify, record, then delete the /staging copy (state ingested): "
-        f"{len(a)} files, {gb(sum(i.size for i in a))}",
-        *group(a),
+        f"{len(ingested)} files, {gb(sum(i.size for i in ingested))}",
+        *group(ingested),
         f"   of which already archived by an earlier run (only the /staging delete is "
-        f"left): {sum(i.archived for i in a)}",
+        f"left): {sum(i.archived for i in ingested)}",
         "",
-        f"2. Measurement-only (state measured): {len(me)} files, "
-        f"{gb(sum(i.size for i in me))}. Copied and verified; the /staging copy is "
+        f"2. Measurement-only (state measured): {len(measured)} files, "
+        f"{gb(sum(i.size for i in measured))}. Copied and verified; the /staging copy is "
         + (
             "DELETED (--delete-measured)."
             if delete_measured
             else "KEPT (deleting it is Riley's call: --delete-measured)."
         ),
-        *group(me),
+        *group(measured),
         "",
         f"3. Left alone (other states or outside /staging): {len(plan.left_alone)} files, "
-        f"{gb(sum(s for *_, s in plan.left_alone))}",
-        *[f"    {k}: {why} ({p})" for k, why, p, _ in plan.left_alone],
+        f"{gb(sum(x.size for x in plan.left_alone))}",
+        *[f"    {x.key}: {x.why} ({x.path})" for x in plan.left_alone],
         f"4. In /staging/grib but not in the manifest (left alone): {len(plan.unknown)} "
         f"files, {gb(sum(s for _, s in plan.unknown))}",
         *[f"    {p}" for p, _ in plan.unknown],
@@ -341,6 +391,11 @@ def format_plan(plan: Plan, settings: ArchiveSettings, delete_measured: bool,
 class ArchiveConflict(RuntimeError):
     """The archive already holds other bytes under that name, or a copy failed its
     checksum: refused, nothing overwritten, the /staging copy kept."""
+
+
+class NoHardLinks(RuntimeError):
+    """The archive filesystem has no hard links, so no file can be put in place without
+    risking a replace: the run stops (D64 item 7)."""
 
 
 class PlanRefused(RuntimeError):
@@ -389,7 +444,7 @@ def archive_raw(
 ) -> Summary:
     """Archive every kept raw GRIB in the plan (see the module docstring)."""
     fs = fs or LocalArchiveFS()
-    dog = Watchdog(settings.stall_s, settings.poll_s)
+    watchdog = Watchdog(settings.stall_s, settings.poll_s)
     plan = plan_archive(m, staging_root, settings)
     s = Summary()
     items = plan.archive + plan.measured
@@ -401,9 +456,10 @@ def archive_raw(
         raise PlanRefused(f"{need / GB:.2f} GB to copy is over the {limit:g} GB limit")
     try:
         parent = settings.root.parent
-        if not dog.call(f"exists {parent}", lambda _b: fs.exists(parent), settings.timeout_base_s):
+        if not watchdog.call(f"exists {parent}", lambda _b: fs.exists(parent),
+                             settings.timeout_base_s):  # fmt: skip
             raise PlanRefused(f"{parent} does not exist: is the NAS mounted? Not creating it")
-        free = dog.call("free space", lambda _b: fs.free_bytes(settings.root),
+        free = watchdog.call("free space", lambda _b: fs.free_bytes(settings.root),
                         settings.timeout_base_s)  # fmt: skip
         if free < need + FREE_MARGIN_BYTES:
             raise PlanRefused(f"{free / GB:.2f} GB free at {settings.root}, "
@@ -411,13 +467,13 @@ def archive_raw(
         for item in items:
             delete = item.state == "ingested" or delete_measured
             try:
-                _one(m, fs, dog, settings, item, delete, s)
+                _archive_one(m, fs, watchdog, settings, item, delete, s)
             except ArchiveConflict as e:
                 log.error("%s: refused: %s", item.key, e)
                 m.archive_event(item.request_id, "archive_refused", str(e))
                 s.refused += 1
                 s.problems.append(f"{item.key}: {e}")
-            except StorageUnresponsive:
+            except (StorageUnresponsive, NoHardLinks):
                 raise
             except Exception as e:
                 log.exception("%s: archive failed", item.key)
@@ -427,15 +483,26 @@ def archive_raw(
         log.error("the NAS stopped answering: %s; stopping, nothing recorded for that file",
                   e)  # fmt: skip
         s.hung = str(e)
+    except NoHardLinks as e:
+        raise PlanRefused(f"{e}; nothing can be put in place without risking a replace. "
+                          "Stopped; the temp copy is left and reported") from e  # fmt: skip
     return s
 
 
-def _one(m: Manifest, fs: LocalArchiveFS, dog: Watchdog, cfg: ArchiveSettings, item: Item,
-         delete: bool, s: Summary) -> None:  # fmt: skip
-    limit = cfg.deadline_s(item.size)
-    rec = m.raw_archive(item.file_id)
+def _archive_one(
+    m: Manifest,
+    fs: LocalArchiveFS,
+    watchdog: Watchdog,
+    settings: ArchiveSettings,
+    item: Item,
+    delete: bool,
+    s: Summary,
+) -> None:
+    """One file: archive it (unless recorded already), then maybe delete /staging."""
+    limit = settings.deadline_s(item.size)
+    record = m.raw_archive(item.file_id)
     verified_now = False
-    if rec is None:
+    if record is None:
         if not item.staging.exists():
             raise FileNotFoundError(f"{item.staging} is gone and no archive copy is recorded")
         if item.staging.stat().st_size != item.size:
@@ -443,7 +510,7 @@ def _one(m: Manifest, fs: LocalArchiveFS, dog: Watchdog, cfg: ArchiveSettings, i
                 f"{item.staging} is {item.staging.stat().st_size} B, the manifest says "
                 f"{item.size} B; not copied"
             )
-        outcome = _publish(fs, dog, cfg, item, limit, s)
+        outcome = _publish(fs, watchdog, settings, item, limit, s)
         m.record_raw_archive(item.request_id, item.file_id, item.dest, item.size, item.sha256,
                              outcome)  # fmt: skip
         verified_now = True
@@ -452,12 +519,13 @@ def _one(m: Manifest, fs: LocalArchiveFS, dog: Watchdog, cfg: ArchiveSettings, i
         log.info("%s: archived at %s; /staging copy kept (measurement)", item.key, item.dest)
         return
     if not verified_now:
-        # Recorded by an earlier run: check the archive copy again right before the
-        # /staging copy goes (D12: check at deletion time).
-        got = dog.call(f"check {item.dest}", lambda b: fs.sha256(item.dest, b), limit)
+        # Recorded by an earlier run: check the recorded archive copy again right before
+        # the /staging copy goes (D12: check at deletion time).
+        archived = Path(record["archive_path"])
+        got = watchdog.call(f"check {archived}", lambda b: fs.sha256(archived, b), limit)
         if got != item.sha256:
             raise ArchiveConflict(
-                f"archive copy {item.dest} no longer matches the manifest ({got} != "
+                f"archive copy {archived} no longer matches the manifest ({got} != "
                 f"{item.sha256}); /staging copy kept"
             )
     if item.staging.exists():
@@ -474,21 +542,20 @@ def _one(m: Manifest, fs: LocalArchiveFS, dog: Watchdog, cfg: ArchiveSettings, i
         s.recovered += 1
 
 
-def _publish(fs: LocalArchiveFS, dog: Watchdog, cfg: ArchiveSettings, item: Item,
+def _publish(fs: LocalArchiveFS, watchdog: Watchdog, settings: ArchiveSettings, item: Item,
              limit: float, s: Summary) -> str:  # fmt: skip
     """Put the file at ``item.dest`` once; return ``copied`` or ``present``."""
     d = item.dest
-    base = cfg.timeout_base_s
-    dog.call(f"mkdir {d.parent}", lambda _b: fs.makedirs(d.parent), base)
-    stale = [d.parent / n for n in dog.call(f"list {d.parent}", lambda _b: fs.listdir(d.parent),
-                                            base)
-             if n.startswith(f".{d.name}{TEMP_MARK}")]  # fmt: skip
+    base = settings.timeout_base_s
+    watchdog.call(f"mkdir {d.parent}", lambda _b: fs.makedirs(d.parent), base)
+    names = watchdog.call(f"list {d.parent}", lambda _b: fs.listdir(d.parent), base)
+    stale = [d.parent / n for n in names if n.startswith(f".{d.name}{TEMP_MARK}")]
     for t in stale:
         log.warning("%s: temp file %s left by an earlier run that died or hung; not deleted "
                     "(remove it by hand once no run is active)", item.key, t)  # fmt: skip
     s.stale_temps += stale
-    if dog.call(f"exists {d}", lambda _b: fs.exists(d), base):
-        got = dog.call(f"checksum {d}", lambda b: fs.sha256(d, b), limit)
+    if watchdog.call(f"exists {d}", lambda _b: fs.exists(d), base):
+        got = watchdog.call(f"checksum {d}", lambda b: fs.sha256(d, b), limit)
         if got != item.sha256:
             raise ArchiveConflict(f"{d} already exists with other content ({got} != "
                                   f"{item.sha256}); left as it is")  # fmt: skip
@@ -496,13 +563,15 @@ def _publish(fs: LocalArchiveFS, dog: Watchdog, cfg: ArchiveSettings, item: Item
         s.present += 1
         return "present"
     tmp = d.parent / f".{d.name}{TEMP_MARK}{os.getpid()}-{secrets.token_hex(4)}"
-    dog.call(f"copy to {tmp}", lambda b: fs.write_copy(item.staging, tmp, b), limit)
-    got = dog.call(f"read back {tmp}", lambda b: fs.sha256(tmp, b), limit)
+    watchdog.call(f"copy to {tmp}", lambda b: fs.write_copy(item.staging, tmp, b), limit)
+    got = watchdog.call(f"read back {tmp}", lambda b: fs.sha256(tmp, b), limit)
     if got != item.sha256:
-        dog.call(f"remove {tmp}", lambda _b: fs.remove_own_temp(tmp), base)
-        raise ArchiveConflict(f"the copy's checksum {got} != the manifest's {item.sha256}; "
-                              "temp copy removed, /staging copy kept")  # fmt: skip
-    dog.call(f"link {d}", lambda _b: fs.link_new(tmp, d), base)
+        s.stale_temps.append(tmp)
+        raise ArchiveConflict(
+            f"the copy's checksum {got} != the manifest's {item.sha256}; "
+            f"temp copy {tmp} left (not deleted), /staging copy kept"
+        )
+    watchdog.call(f"link {d}", lambda _b: fs.link_new(tmp, d), base)
     s.copied += 1
     s.copied_bytes += item.size
     log.info("%s: copied to %s (%d B, checksum verified)", item.key, d, item.size)
