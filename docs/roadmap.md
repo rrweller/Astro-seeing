@@ -36,7 +36,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · next run: F1-15, F1-16 · ticket: none
 
-- `F1-15` · **in-progress** · cloud · Fog-signals row, terrain warning, missing-column depth · [#64](https://github.com/rrweller/Astro-seeing/issues/64)
+- `F1-15` · **review** · cloud · Fog-signals row, terrain warning, missing-column depth · [#64](https://github.com/rrweller/Astro-seeing/issues/64) · PR [#92](https://github.com/rrweller/Astro-seeing/pull/92)
 
 - `F1-16` · **in-progress** · cloud · Map data: ICON-EU map grid and map layers · [#65](https://github.com/rrweller/Astro-seeing/issues/65)
 
@@ -175,7 +175,7 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_15 inprogress
+  class F1_15 review
   %% ---
   class F1_16 inprogress
   %% ---
