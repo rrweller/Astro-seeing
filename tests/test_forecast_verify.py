@@ -126,6 +126,7 @@ def test_an_old_manifest_gains_the_two_forecast_tables_and_nothing_else_changes(
         "ts_requests_state",
         "ts_events",
         "ts_stores",
+        "raw_archives",  # the raw GRIB archive (D64)
     }
     assert {k: after_schema[k] for k in before_schema} == before_schema
     assert after_rows == before_rows
