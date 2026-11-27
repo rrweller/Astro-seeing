@@ -123,7 +123,10 @@ CREATE TABLE IF NOT EXISTS events (
 #: read them. ``forecast.verify.ForecastRecords`` writes them. Created on every open, so
 #: an older manifest gains these tables and nothing else changes. ``forecast_step_tries``
 #: holds every try to fetch a run's step, ``forecast_hosts`` each model's host choice
-#: (the run rules, ticket #58).
+#: (the run rules, ticket #58). ``forecast_alerts`` holds the forecast alerts now active
+#: and ``forecast_heartbeat`` the last finished tick (``forecast.alerts``, ticket #61):
+#: the heartbeat is the one forecast table the download watcher reads (D82).
+#: ``forecast_place_days`` records each per-place daily store written to ``/data`` (D80).
 FORECAST_SCHEMA = """
 CREATE TABLE IF NOT EXISTS forecast_runs (
     id                 INTEGER PRIMARY KEY,
@@ -170,6 +173,19 @@ CREATE TABLE IF NOT EXISTS forecast_hosts (
     main_failing_since TEXT,
     switched_at        TEXT,
     updated_at         TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS forecast_alerts (
+    key        TEXT PRIMARY KEY,
+    title      TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    message    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS forecast_heartbeat (
+    id         INTEGER PRIMARY KEY CHECK (id = 1),
+    first_at   TEXT NOT NULL,
+    last_at    TEXT NOT NULL,
+    no_tick_h  REAL NOT NULL,
+    health     TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS forecast_place_days (
     place          TEXT NOT NULL,
