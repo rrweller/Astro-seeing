@@ -18,7 +18,7 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C6` · **in-progress** · cloud · Multi-month surface requests and per-kind planning rates · [#99](https://github.com/rrweller/Astro-seeing/issues/99)
+- `C6` · **review** · cloud · Multi-month surface requests and per-kind planning rates · [#99](https://github.com/rrweller/Astro-seeing/issues/99), PR [#103](https://github.com/rrweller/Astro-seeing/pull/103)
 
 - `C7` · **in-progress** · cloud · Code to move the kept raw GRIB to the NAS · [#100](https://github.com/rrweller/Astro-seeing/issues/100)
 
@@ -136,7 +136,7 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C6 inprogress
+  class C6 review
   %% ---
   class C7 inprogress
   %% ---
