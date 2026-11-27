@@ -252,6 +252,12 @@ def max_months(kind: str) -> int:
     return int(load_config("era5")["request"]["max_months_per_request"][kind])
 
 
+def default_months(kind: str) -> int:
+    """Months per request ``plan-area`` uses unless ``--months`` is given (configs/era5.yaml
+    ``request.default_months_per_request``; D63)."""
+    return int(load_config("era5")["request"]["default_months_per_request"][kind])
+
+
 def _merge_months(groups: list[list[dt.date]], n: int, day_step: int) -> list[list[dt.date]]:
     """Merge one-month groups into calendar blocks of ``n`` months (D63).
 

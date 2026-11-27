@@ -191,3 +191,33 @@ def test_cost_check_flags_a_cds_cost_that_matches_neither_count(ct, monkeypatch,
     assert cli.main(args) == 1
     out = capsys.readouterr().out
     assert "neither" in out
+
+
+def test_plan_area_default_months_come_from_the_config_per_kind(ct, monkeypatch, tmp_path):
+    """Riley (2026-11-27): single levels default to 3 months once the cost check passes.
+    The default is per kind in configs/era5.yaml, so pressure levels in the same plan stay
+    at one month whatever the single-level default is."""
+    import shutil
+
+    import yaml
+
+    from astroseeing import config
+
+    cfg_dir = tmp_path / "configs"
+    shutil.copytree(config.REPO_CONFIG_DIR, cfg_dir)
+    path = cfg_dir / "era5.yaml"
+    cfg = yaml.safe_load(path.read_text())
+    assert cfg["request"]["default_months_per_request"] == {"pl": 1, "sl": 1, "static": 1}
+    cfg["request"]["default_months_per_request"]["sl"] = 3
+    path.write_text(yaml.safe_dump(cfg))
+    monkeypatch.setenv("ASTRO_CONFIG_DIR", str(cfg_dir))
+    config.load_config.cache_clear()
+    try:
+        assert cli.main([*SL_2023[:-1], "2023-03-31"]) == 0
+        assert _keys(ct) == ["sl/chile/2023-01_2023-03"]
+        pl = ["plan-area", "chile", "--kinds", "pl", "--start", "2023-01-01",
+              "--end", "2023-01-31"]  # fmt: skip
+        assert cli.main(pl) == 0  # pressure levels keep their one-month default
+        assert "pl/chile/2023-01-01_2023-01-16" in _keys(ct)
+    finally:
+        config.load_config.cache_clear()

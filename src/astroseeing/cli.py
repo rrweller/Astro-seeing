@@ -209,7 +209,7 @@ def _area_plan(args, allow_global: bool = False):
     With ``allow_global``, the name ``global`` means the whole globe (``area`` None).
     """
     from astroseeing.download.areas import load_areas
-    from astroseeing.download.requests import plan_requests, static_request
+    from astroseeing.download.requests import default_months, plan_requests, static_request
 
     if allow_global and args.name == "global":
         validation_area = None
@@ -254,7 +254,7 @@ def _area_plan(args, allow_global: bool = False):
                 levels=levels if kind == "pl" else None,
                 hours=hours,
                 day_step=args.day_step,
-                months_per_request=args.months,
+                months_per_request=default_months(kind) if args.months is None else args.months,
             )
         except ValueError as e:  # over the month cap or the cost limit: nothing planned
             raise SystemExit(f"{e}; nothing added") from e
@@ -797,9 +797,10 @@ def _plan_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
     p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
     p.add_argument(
-        "--months", type=int, default=1,
-        help="consecutive months per single-level request, in calendar blocks (default 1; at "
-        "most configs/era5.yaml request.max_months_per_request; pressure levels: 1; D63)",
+        "--months", type=int, default=None,
+        help="consecutive months per request, in calendar blocks, for every kind in --kinds "
+        "(default per kind: configs/era5.yaml request.default_months_per_request; at most "
+        "request.max_months_per_request; pressure levels: 1; D63)",
     )  # fmt: skip
 
 

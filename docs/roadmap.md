@@ -572,6 +572,8 @@ Replace `<ID>`, the skills line and the task line. Replace `<slash command>` wit
 
 Skills by item: K1 and K3 `mattpocock-skills:wizard` (a step-by-step script for you); K4, K7 and K11 `mattpocock-skills:research` (write up what was measured); K9 also `mattpocock-skills:diagnosing-bugs` when a reproduction misses its tolerance, and K10 `mattpocock-skills:research` for the LHATPRO clear flag; the others none. Whether the Matt Pocock plugin is installed on the CT hasn't been checked: if a slash command answers "unknown command" there, it needs installing.
 
+K6's task line: "Roadmap item K6: first the surface-request cost check in `docs/ct_runbook.md` §9 (`astro cost-check`, which submits nothing; D63). If it passes as defined in D63 item 7, set `request.default_months_per_request.sl` to 3 in `configs/era5.yaml` (Riley, 2026-11-27) and record the answer in a short report; otherwise stop and ask Riley. Then the raw GRIB archive move with C7's command, dry run first."
+
 K11's task line: "Roadmap item K11, D59 item 2: the model-level (ERA5 complete) download for the Paranal 5×5 box, 2023, 23–11 UTC, levels 49–137 of t, q, u, v plus lnsp and z on level 1. Before planning anything, check that Riley has approved the size in an [ASK] (asked on ticket #16 once K4 reports, with the size recomputed from K4's measurements); if not, stop and set K11 to needs-you. Plan requests at the cost limit K4 measured, queue them behind K7 under the D39 gate, verify and ingest as validation-box stores."
 
 ```text

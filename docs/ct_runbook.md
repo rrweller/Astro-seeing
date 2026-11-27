@@ -304,6 +304,11 @@ pixi run astro cost-check global --kinds sl --start 2023-01-01 --end 2024-12-31 
 
 Each row shows our two counts next to the CDS's: `real fields` (the real dates, what
 verification expects) and `named` (the whole year × month × day product, what planning
-checks against the limit). The last line says which one the CDS charged. Planning keeps
-single levels monthly unless `plan-area --months` asks for more (at most
-`request.max_months_per_request`, 3 for single levels; pressure levels stay at 1).
+checks against the limit). The verdict line says which one the CDS charged.
+
+If it exits 0 with the verdict "counts the non-existent dates" or "counts only the real
+dates", the check has passed. Set `request.default_months_per_request.sl` to 3 in
+`configs/era5.yaml` in the report PR (Riley, 2026-11-27; D63). Any other result goes to
+Riley first. Until then `plan-area` plans single levels monthly unless `--months` asks
+for more (at most `request.max_months_per_request`: 3 for single levels, 1 for
+pressure levels).

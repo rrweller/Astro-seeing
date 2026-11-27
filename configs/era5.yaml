@@ -77,11 +77,17 @@ request:
   # Most consecutive months one request may span (D55 item 5, D63). Pressure levels stay
   # one month at most (half-monthly requests, D55 item 4). Single levels may merge up to
   # 3 months in calendar blocks (Jan-Mar, Apr-Jun, ...): ~71 GB of global hourly GRIB, the
-  # most /staging holds (D55). `astro plan-area` still plans one month unless asked
-  # (`--months`), until the cost check on non-existent dates (`astro cost-check`) is done.
+  # most /staging holds (D55).
   max_months_per_request:
     pl: 1
     sl: 3
+    static: 1
+  # Months per request `astro plan-area` uses unless `--months` is given. Single levels
+  # stay monthly until the cost check on non-existent dates (`astro cost-check`, roadmap
+  # K6) passes; then sl becomes 3 (Riley, 2026-11-27; D63).
+  default_months_per_request:
+    pl: 1
+    sl: 1
     static: 1
   # CDS time for the estimates printed when planning (D63, replacing D40's single
   # fields_per_s). At one job at a time (D39) each request takes its queue wait, then
