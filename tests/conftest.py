@@ -6,6 +6,28 @@ import datetime as dt
 
 import pytest
 
+pytest_plugins = ["pytester"]
+
+
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "data: needs the NAS stores under ASTRO_DATA_ROOT (default /data/astro); "
+        "skipped when that folder is absent (golden tests, D57 item 5)",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    from astroseeing.paths import Paths
+
+    root = Paths.from_env().data_root
+    if root.is_dir():
+        return
+    skip = pytest.mark.skip(reason=f"needs the NAS stores: {root} is absent")
+    for item in items:
+        if item.get_closest_marker("data") is not None:
+            item.add_marker(skip)
+
 
 @pytest.fixture(scope="session")
 def ephemeris():
