@@ -74,8 +74,26 @@ request:
     pl: 60000
     sl: 121000
     static: 121000
-  # CDS throughput for the time estimates printed when planning (D40). With one job
-  # at a time (D39), the measured rate is the one from 12-17 Oct 2026, when only one
-  # of our jobs was running (D34): 5.6 fields/s (pressure levels). The 26.4 fields/s
-  # of the first day (D24) was with several jobs queued and is no longer reachable.
-  fields_per_s: 5.6
+  # Most consecutive months one request may span (D55 item 5, D63). Pressure levels stay
+  # one month at most (half-monthly requests, D55 item 4). Single levels may merge up to
+  # 3 months in calendar blocks (Jan-Mar, Apr-Jun, ...): ~71 GB of global hourly GRIB, the
+  # most /staging holds (D55). `astro plan-area` still plans one month unless asked
+  # (`--months`), until the cost check on non-existent dates (`astro cost-check`) is done.
+  max_months_per_request:
+    pl: 1
+    sl: 3
+    static: 1
+  # CDS time for the estimates printed when planning (D63, replacing D40's single
+  # fields_per_s). At one job at a time (D39) each request takes its queue wait, then
+  # run_overhead_s + fields / run_fields_per_s at the CDS, then idle_s before the next
+  # submission (reports/cds_throughput_one_job.md, section 5). Queue waits are the p10,
+  # median and p90 of requests submitted from 7 to 13 Nov 2026 (section 7.1: 15 pressure-
+  # level, 21 single-level requests); run rates are from sections 2 and 5. The waits follow
+  # the CDS's load, so re-measure them (scripts/download_estimates.py) before a campaign.
+  planning:
+    idle_s: 18
+    kinds:
+      pl: {queue_wait_h: [3.38, 4.04, 4.28], run_fields_per_s: 28, run_overhead_s: 0}
+      sl: {queue_wait_h: [2.76, 3.25, 4.63], run_fields_per_s: 17, run_overhead_s: 22.5}
+      # requested from the single-levels dataset
+      static: {queue_wait_h: [2.76, 3.25, 4.63], run_fields_per_s: 17, run_overhead_s: 22.5}

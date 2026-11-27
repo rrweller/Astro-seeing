@@ -354,6 +354,7 @@ class Manifest:
         Re-adding the identical request returns the existing id. Re-using a key for
         a *different* request raises instead of silently replacing it.
         """
+        spec.check_cost_limit()  # never queue what the CDS would refuse (D23, D63)
         req = spec.cds_request()
         h = spec.request_hash()
         now = utcnow()
@@ -389,6 +390,25 @@ class Manifest:
                 "INSERT INTO events (request_id, at, event) VALUES (?,?,?)", (rid, now, "planned")
             )
             return rid
+
+    def overlapping_keys(self, spec) -> list[str]:
+        """Keys of other live (not cancelled) requests of the same kind and region that
+        already cover one of ``spec``'s dates (D63).
+
+        Keys are unique, but a monthly and a three-month plan of one region would still put
+        the same day in two stores; planning refuses that instead.
+        """
+        days = {d.isoformat() for d in spec.dates}
+        rows = self.conn.execute(
+            "SELECT key, expected_json FROM requests"
+            " WHERE kind=? AND region=? AND key<>? AND state<>'cancelled' ORDER BY id",
+            (spec.kind, spec.region, spec.key),
+        ).fetchall()
+        return [
+            r["key"]
+            for r in rows
+            if days.intersection(t[:10] for t in json.loads(r["expected_json"])["times"])
+        ]
 
     def get(self, request_id: int) -> Request:
         r = self.conn.execute("SELECT * FROM requests WHERE id=?", (request_id,)).fetchone()
