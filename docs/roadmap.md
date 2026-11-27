@@ -36,9 +36,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · next run: F1-15, F1-16 · ticket: none
 
-- `F1-17` · **review** · cloud · The map page: layers, hour slider, cell card · [#66](https://github.com/rrweller/Astro-seeing/issues/66) · PR [#96](https://github.com/rrweller/Astro-seeing/pull/96)
-
-- `F1-18` · **blocked** · cloud · Sunset maps for the last 7 nights · [#67](https://github.com/rrweller/Astro-seeing/issues/67)
+- `F1-18` · **ready** · cloud · Sunset maps for the last 7 nights · [#67](https://github.com/rrweller/Astro-seeing/issues/67)
 
 - `F1-19` · **blocked** · cloud · Paranal scoring: hourly ESO values, matched hours, statistics · waits also for C8's ticket · [#68](https://github.com/rrweller/Astro-seeing/issues/68)
 
@@ -86,7 +84,6 @@ flowchart LR
     C11["C11 · Calibration spec"]
     C12["C12 · Experiment spec"]
     C13["C13 · F1 coordinator (reusable)"]
-    F1_17["F1-17 · Map page #66"]
     F1_18["F1-18 · Sunset maps #67"]
     F1_19["F1-19 · Paranal scoring #68"]
     F1_20["F1-20 · Paranal check #69"]
@@ -106,10 +103,8 @@ flowchart LR
     F1_21["F1-21 · CT install, live trials #70"]
     F1_22["F1-22 · 28-night run, F1 report #71"]
   end
-  F1_17 --> F1_18
   C8 --> F1_19
   F1_19 --> F1_20
-  F1_17 --> F1_21
   F1_18 --> F1_21
   F1_19 --> F1_21
   F1_20 --> F1_21
@@ -165,9 +160,7 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_17 review
-  %% ---
-  class F1_18 blocked
+  class F1_18 ready
   %% ---
   class F1_19 blocked
   %% ---
@@ -224,7 +217,6 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 | 3 | C11 | yes: approve | issues, this file |
 | 3 | C12 | yes: approve | issues, this file |
 | 4+ | C13 | yes: answer the helpers' questions | runs the ready F1 cloud tickets, up to 5 per run (see their rows) |
-| 8 | F1-17 | no | `web/forecast/` map, vendored MapLibre |
 | 9 | F1-18 | no | `forecast/` publish (sunset), tick, `web/forecast/` map |
 | 5 | F1-19 | no | `forecast/` paranal scoring |
 | 8 | F1-20 | no | `forecast/` paranal, column (relocation), tick, `web/forecast/` Paranal panel, `cli.py` |
@@ -253,7 +245,7 @@ F1-21 and F1-22 (the forecast's live trials and its 28-night run) don't use it e
 | K9 | C10, C9 | no |
 | K10 | C12, C11 (stage 1, for the ground-layer part) | no (time-series slot, AWS, ESO only) |
 | K11 | K4, K7, and your [ASK] on the size | **yes** |
-| F1-21 | F1-17 to F1-20 | no |
+| F1-21 | F1-18 to F1-20 | no |
 | F1-22 | F1-21 | no |
 
 ## Reserved D-numbers
@@ -271,7 +263,7 @@ Parallel sessions would otherwise take the same number.
 | D68 | C11 |
 | D69 | C12 |
 | D94 | C13 |
-| D87–D92 | F1-17 to F1-22, in order (F1-n takes D70+n) |
+| D88–D92 | F1-18 to F1-22, in order (F1-n takes D70+n) |
 
 - D67 is this roadmap process; D70 is deleting finished items; D93 is agents merging into `dev` and the coordinator.
 - When an item is deleted, its row here goes too: its number is then on `dev`.
@@ -516,23 +508,9 @@ Report to Riley here:
 Then clean up the helpers' worktrees.
 ```
 
-### F1-17. The map page: layers, hour slider, cell card
-
-Ticket [#66](https://github.com/rrweller/Astro-seeing/issues/66). The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
-
-```text
-/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-17.
-
-Skills: this message starts implement, and ticket #66 is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Use any other skill the ticket's "Suggested skills:" line names. Implement ends with a commit; this item still ends with the PR and status steps.
-
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, the F1 spec #47, and the decisions ticket #66 names. Also read web/prototype-globe-library/ on branch prototype/globe-library (throwaway; for the addProtocol nearest-block technique).
-
-Task: work ticket #66. Claim it as docs/agents/issue-tracker.md describes. Its acceptance criteria are the bar: every box ticked, or the gap stated in the PR. Log non-trivial choices as D87 (reserved for this item; add letters for more). Run the full test suite and ruff, then open a PR into dev that closes #66. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close ticket #66 with a comment linking the PR, and do the handoff's after-merge steps.
-```
-
 ### F1-18. Sunset maps for the last 7 nights
 
-Ticket [#67](https://github.com/rrweller/Astro-seeing/issues/67). Depends on F1-17. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
+Ticket [#67](https://github.com/rrweller/Astro-seeing/issues/67). The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-18.
@@ -574,7 +552,7 @@ Task: work ticket #69. Claim it as docs/agents/issue-tracker.md describes. Its a
 
 ### F1-21. CT: install the service and page, live trials, alerts once
 
-Ticket [#70](https://github.com/rrweller/Astro-seeing/issues/70). Depends on F1-17, F1-18, F1-19, F1-20.
+Ticket [#70](https://github.com/rrweller/Astro-seeing/issues/70). Depends on F1-18, F1-19, F1-20.
 
 ```text
 Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-21.
