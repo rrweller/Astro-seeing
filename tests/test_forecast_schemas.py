@@ -52,15 +52,23 @@ def test_a_hand_written_minimal_place_file_validates(place):
     assert len(place["hours"]) == 24
 
 
-def test_a_place_file_before_the_verdict_is_wired_in_validates(place):
-    """D72: until the tick calls forecast.tonight (F1-14), the verdict, the Moon and each
-    hour's agreement, past and counted flags and Moon altitude are null, never invented."""
-    place.update(tonight=None, moon=None)
-    for hour in place["hours"]:
-        hour.update(moon_altitude_deg=None, past=None, counted=None, agreement=None)
-    validate(place, "f1-place/1")
-    place["hours"][0]["past"] = "unknown"
-    with pytest.raises(SchemaViolation, match=r"hours\[0\]\.past"):
+@pytest.mark.parametrize(
+    ("edit", "where"),
+    [
+        (lambda d: d.update(tonight=None), r"tonight"),
+        (lambda d: d.update(moon=None), r"moon"),
+        (lambda d: d["hours"][3].update(moon_altitude_deg=None), r"hours\[3\]\.moon_altitude_deg"),
+        (lambda d: d["hours"][3].update(past=None), r"hours\[3\]\.past"),
+        (lambda d: d["hours"][3].update(counted=None), r"hours\[3\]\.counted"),
+        (lambda d: d["hours"][3].update(agreement=None), r"hours\[3\]\.agreement"),
+    ],
+)
+def test_a_place_file_without_the_verdict_is_refused(place, edit, where):
+    """Ticket #63 (D84): the tick fills the verdict, the Moon and each hour's agreement,
+    past and counted flags and Moon altitude from forecast.tonight, so a file without
+    them (as F1-2's were, D72 item 10) no longer validates."""
+    edit(place)
+    with pytest.raises(SchemaViolation, match=where):
         validate(place, "f1-place/1")
 
 

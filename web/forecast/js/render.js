@@ -1,10 +1,12 @@
 // Draws a saved place's view from `latest.json` and its place file (schemas
 // f1-latest/1 and f1-place/1). It formats what the files give and derives no rule
 // (D60 item 1): shading comes from each hour's `sun_class`, greying from `past`, a
-// model's missing hour or null value stays a blank cell.
+// model's missing hour or null value stays a blank cell. The verdict's wording is
+// verdict.js's, from the file's `tonight` and `moon`.
 
-import { ageText, clockLabel, dayLabel, fixed, hourLabel, km, metres, percent, runLabel } from "./format.js";
+import { ageText, clockLabel, dayLabel, degrees, fixed, hourLabel, km, metres, percent, runLabel } from "./format.js";
 import { SOURCES } from "./sources.js";
+import { MAJORITY_WORDS, basisNote, chips, headline, mepsLine, moonLine, seeingLine } from "./verdict.js";
 
 /** Display names of the Cₙ² models by their keys in the place file. */
 const CN2_NAMES = { osborn_sarazin: "Osborn–Sarazin", tatarskii: "Tatarskii + HMNSP99" };
@@ -60,13 +62,58 @@ export function renderUpdated(latest, timeZone) {
   document.getElementById("updated").textContent = `Updated ${clockLabel(latest.written_at, timeZone)}`;
 }
 
+// -- verdict ------------------------------------------------------------------------
+
+function showLine(id, text) {
+  const node = document.getElementById(id);
+  node.hidden = text === null;
+  node.textContent = text ?? "";
+  return node;
+}
+
+export function renderVerdict(place) {
+  const box = document.getElementById("verdict");
+  const t = place.tonight;
+  box.hidden = !t;
+  if (!t) return;
+  box.dataset.basis = t.basis;
+  showLine("headline", headline(place));
+  showLine("basis-note", basisNote(t));
+  const where = `${place.place.name} time`;
+  document.getElementById("strip").replaceChildren(
+    ...chips(place).map((c) =>
+      el(
+        "li",
+        {
+          class: `chip chip-${c.cls}`,
+          dataset: { class: c.cls, start: c.start, end: c.end },
+          style: `flex-grow:${c.hours}`,
+          title: `${c.label}: ${c.hours} ${c.hours === 1 ? "hour" : "hours"}, ${c.time.replace("–", " to ")} ${where}`,
+        },
+        el("span", { class: "chip-class", text: c.label }),
+        el("span", { class: "chip-time", text: c.time }),
+      ),
+    ),
+  );
+  showLine("meps-line", mepsLine(t));
+  const seeing = seeingLine(t);
+  const line = showLine("seeing-line", seeing && seeing.text);
+  if (seeing?.uncalibrated) {
+    line.title = Object.entries(t.seeing.per_family).map(([f, v]) => `${f}: ${fixed(v, 2)}″`).join(", ");
+    line.append(", ", el("strong", { class: "caution", text: "uncalibrated" }));
+  }
+  showLine("moon-line", place.moon ? moonLine(place) : null);
+}
+
 // -- runs ---------------------------------------------------------------------------
 
 export function renderRuns(latest, place, nowMs) {
   const list = document.getElementById("runs");
   list.replaceChildren();
+  // the place's own verdict says which runs are stale at this place (D48 item 5)
+  const runs = place.tonight ? place.tonight.runs : latest.runs;
   for (const id of modelIds(place)) {
-    const run = latest.runs[id];
+    const run = runs[id];
     const item = el("li", { dataset: { model: id } }, el("span", { class: "run-model", text: modelName(place, id) }));
     if (!run) {
       item.append(" no run yet");
@@ -166,6 +213,59 @@ function hourClasses(hour) {
   return [`sun-${hour.sun_class}`, hour.past === true ? "past" : null].filter(Boolean).join(" ");
 }
 
+/** The rows over all global models: their agreement (D48 item 4) and the Moon. */
+const VERDICT_ROWS = [
+  {
+    quantity: "agreement",
+    label: "Models agree",
+    note: "global models putting the hour in the clear class, of those with a value",
+    value: (hour) => (hour.agreement && hour.agreement.of > 0 ? hour.agreement : null),
+    content: (a) => [
+      el("span", { class: "agree-count", text: `${a.clear}/${a.of} clear` }),
+      el("span", { class: "agree-class", text: a.state === "incomplete" ? "incomplete" : MAJORITY_WORDS[a.majority] }),
+    ],
+    cellClass: (a) => `agree-${a.state} major-${a.majority}`,
+    dataValue: (a) => `${a.clear}/${a.of}`,
+    missingTitle: "no global model has a value this hour",
+  },
+  {
+    quantity: "moon",
+    label: "Moon altitude (°)",
+    note: "below 0: under the horizon",
+    value: (hour) => hour.moon_altitude_deg,
+    content: (v) => [degrees(v)],
+    cellClass: (v) => (v < 0 ? "below" : "above"),
+    dataValue: (v) => String(v),
+    missingTitle: "no value",
+  },
+];
+
+function renderVerdictRows(place, body, span) {
+  if (!place.tonight) return;
+  body.append(
+    el("tr", { class: "model-head" }, el("th", { colspan: span, scope: "colgroup" }, el("div", { class: "cap" }, el("span", { class: "model-name", text: "All global models" })))),
+  );
+  for (const row of VERDICT_ROWS) {
+    const tr = el(
+      "tr",
+      { class: `verdict-row ${row.quantity}` },
+      el("th", { scope: "row" }, el("span", { class: "label", text: row.label }), el("span", { class: "row-note", text: row.note })),
+    );
+    for (const hour of place.hours) {
+      const value = row.value(hour);
+      const missing = value === null || value === undefined;
+      const attrs = {
+        class: [hourClasses(hour), missing ? "missing" : row.cellClass(value)].filter(Boolean).join(" "),
+        dataset: { model: "all", quantity: row.quantity, time: hour.time },
+        title: missing ? row.missingTitle : null,
+      };
+      if (!missing) attrs.dataset.value = row.dataValue(value);
+      tr.append(el("td", attrs, ...(missing ? [] : row.content(value))));
+    }
+    body.append(tr);
+  }
+}
+
 export function renderTable(place) {
   const tz = place.place.time_zone;
   const table = document.getElementById("hours");
@@ -177,17 +277,25 @@ export function renderTable(place) {
     head.append(
       el(
         "th",
-        { scope: "col", class: hourClasses(hour), dataset: { time: hour.time, sun: hour.sun_class }, title: hour.sun_class.replace(/_/g, " ") },
+        {
+          scope: "col",
+          class: [hourClasses(hour), hour.counted === true ? "counted" : null].filter(Boolean).join(" "),
+          dataset: { time: hour.time, sun: hour.sun_class },
+          title: hour.sun_class.replace(/_/g, " ") + (hour.counted === true ? ", counted in the verdict" : ""),
+        },
         el("span", { class: "hour", text: label }),
         el("span", { class: "day", text: showDay ? dayLabel(hour.time, tz).split(" ")[0] : "" }),
       ),
     );
   });
   const body = el("tbody");
+  renderVerdictRows(place, body, span);
   let uid = 0;
   for (const id of modelIds(place)) {
+    const regional = place.models[id]?.regional ? el("span", { class: "not-counted", text: " (regional, not counted)" }) : null;
+    const name = el("span", { class: "model-name", text: modelName(place, id) });
     body.append(
-      el("tr", { class: "model-head" }, el("th", { colspan: span, scope: "colgroup" }, el("div", { class: "cap" }, el("span", { class: "model-name", text: modelName(place, id) })))),
+      el("tr", { class: "model-head", dataset: { model: id } }, el("th", { colspan: span, scope: "colgroup" }, el("div", { class: "cap" }, name, regional))),
     );
     let groupId = null;
     for (const row of rowsFor(place, id)) {

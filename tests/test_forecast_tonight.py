@@ -501,3 +501,17 @@ def test_cloud_classes_use_the_unrounded_value_and_the_settings_thresholds(total
     # D48 item 6: clear T <= 10 %, some cloud 10 < T <= 50 %, cloudy T > 50 %, from the
     # settings file; 10.0001 would round to 10 but is not clear.
     assert cloud_class(total, load_settings().cloud_classes) == expected
+
+
+def test_a_run_that_ends_before_the_hours_left_names_its_family_missing():
+    # Ticket #63: the store gives no_run for the hours a model's run doesn't reach,
+    # though the model has a run. ICON's run (22 h old: not stale) ends at 04 UTC; at
+    # 04:40 every counted hour left (05, 06) has GFS only, so nothing can be counted.
+    icon_values = clouds(0.0)
+    for h in (5, 6, 7, 8, 9, 10, 11):
+        icon_values[row(h)] = Missing("no_run")
+    icon = model("icon_eu", "icon", icon_values, run(10, 6))
+    t = verdict(table(model("gfs", "gfs", clouds(0.0), run(11, 0)), icon), now=at(11, 4, 40))
+    assert t.nothing_to_count.reason == "not_enough_models"
+    assert t.nothing_to_count.families == {"gfs": "ok", "icon": "missing"}
+    assert t.runs["icon_eu"].stale is False

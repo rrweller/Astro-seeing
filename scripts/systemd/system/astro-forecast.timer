@@ -1,0 +1,12 @@
+# CT 350: run astro-forecast.service every 15 min, at :00, :15, :30 and :45 UTC (D51
+# item 1). A tick still running when the next is due is not started twice.
+[Unit]
+Description=Forecast tick every 15 minutes (astro-seeing)
+
+[Timer]
+OnCalendar=*-*-* *:00/15:00 UTC
+Persistent=true
+Unit=astro-forecast.service
+
+[Install]
+WantedBy=timers.target
