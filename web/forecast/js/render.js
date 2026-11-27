@@ -194,7 +194,7 @@ const FOG_CAPTION =
 
 /** The fog-signals rows (D49 item 3): each fog signal in the place file, then the
  *  model's own low cloud. */
-function fogRows(place, id) {
+function fogRows() {
   const fog = (key) => (m) => m.fog[key];
   return [
     {
@@ -260,7 +260,7 @@ function rowsFor(place, id) {
     { quantity: "low", label: "Low", value: cloud("low_pct"), format: percent, kind: "cloud" },
     { quantity: "mid", label: "Mid", value: cloud("mid_pct"), format: percent, kind: "cloud" },
     { quantity: "high", label: "High", value: cloud("high_pct"), format: percent, kind: "cloud" },
-    ...fogRows(place, id),
+    ...fogRows(),
     {
       group: "Wind",
       quantity: "wind200",

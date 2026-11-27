@@ -882,6 +882,12 @@ def test_the_fog_rows_terrain_warning_and_missing_column_at_desktop_width(case_b
     night(case_b, now, ground_m={"meps": 120.0})
     b = open_night(case_b, now, width=1440, height=900)
     assert b.eval("document.documentElement.scrollWidth") <= 1440
+    assert b.eval("document.querySelectorAll('#terrain li, tr.fog-head, tr.missing-column')"
+                  ".length") == 3 + 4 + 4  # fmt: skip
+    # drawing them asks nothing of another host
+    requests = b.call("requests")
+    assert requests and all(not r["blocked"] for r in requests), requests
+    assert all(r["url"].startswith(case_b.site.origin + "/") for r in requests)
     save_screenshot(b, "desktop-1440-terrain-fog")
 
 
