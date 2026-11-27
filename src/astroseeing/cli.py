@@ -571,6 +571,22 @@ def cmd_forecast_tick(args, paths: Paths) -> int:
     return 1 if any(r["state"] == "failed" for r in report.runs) else 0  # locked: 0
 
 
+def cmd_web_deploy(args, paths: Paths) -> int:
+    """Put this checkout's committed ``web/`` live, or switch back (F1 spec Module 11)."""
+    from astroseeing.forecast.deploy import DeployError, deploy, rollback
+    from astroseeing.forecast.tick import ForecastPaths
+
+    site, now = ForecastPaths.from_paths(paths).site, dt.datetime.now(dt.UTC)
+    try:
+        r = rollback(site, now=now) if args.rollback else deploy(REPO_ROOT, site, now=now)
+    except DeployError as e:
+        print(f"web deploy: refused, the live page is unchanged: {e}", file=sys.stderr)
+        return 1
+    what = "rolled back to" if args.rollback else ("live" if r.changed else "already live")
+    print(f"{what}: {r.commit} (was {r.previous or 'nothing'}); {site / 'current'}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="astro", description=__doc__)
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -707,6 +723,14 @@ def main(argv: list[str] | None = None) -> int:
                         "files (every 15 min from astro-forecast.timer)")  # fmt: skip
     p.add_argument("--settings", help="settings file (default: configs/forecast.yaml)")
     p.set_defaults(fn=cmd_forecast_tick)
+
+    web = sub.add_parser("web", help="the forecast page's site (F1)")
+    wsub = web.add_subparsers(dest="web_cmd", required=True)
+    p = wsub.add_parser("deploy", help="copy this checkout's committed web/ to "
+                        "/staging/forecast/site/<commit>/ and make it the live page")  # fmt: skip
+    p.add_argument("--rollback", action="store_true",
+                   help="switch back to the commit live before (again: forward)")  # fmt: skip
+    p.set_defaults(fn=cmd_web_deploy)
 
     args = ap.parse_args(argv)
     _setup_logging(args.verbose)

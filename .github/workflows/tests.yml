@@ -37,7 +37,12 @@ jobs:
       # downloaded. Under CI those tests fail rather than skip if this is missing (D73).
       - name: Playwright for the page's browser tests
         run: npm ci --prefix tests/browser --ignore-scripts
+      # The web server config tests run conda-forge's nginx, the same build the CT uses
+      # (D83); under CI they fail rather than skip if it is missing.
+      - name: nginx for the web server config tests
+        run: PIXI_HOME="$RUNNER_TEMP/nginx-pixi" pixi global install "nginx==1.31.10"
       - name: Tests (pytest, full suite)
         run: pixi run test
         env:
           PAGE_TEST_BROWSER_CHANNEL: chrome
+          ASTRO_TEST_NGINX: ${{ runner.temp }}/nginx-pixi/bin/nginx

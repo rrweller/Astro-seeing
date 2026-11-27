@@ -229,3 +229,59 @@ PY
 While only held requests remain, `run_boxes.sh` exits and the watcher may send
 "Finished (N on hold)"; that is expected. Once the timings are recorded, the raw file
 can be deleted by hand from `/staging/grib`.
+
+## 8. Forecast page: web server, tick timer and deploy (F1-13, ticket #62; D52, D83)
+
+The page is served by nginx (conda-forge) on LAN port 8350, as a throwaway systemd
+user that can only read `/staging/forecast/site/` and `/staging/forecast/products/`.
+The site is a copy of a commit's `web/` made by `astro web deploy`, never the checkout,
+so switching branches here can't change the live page. The tick runs every 15 min from
+`astro-forecast.timer`, on at most two cores at normal priority.
+
+Install (as root, repo at `/home/astro-seeing`; F1-21 does this with the live checks):
+
+```bash
+cd /home/astro-seeing
+# 1. nginx, outside /root so the web server's dynamic user can run it (D83)
+PIXI_HOME=/opt/astro-web/pixi pixi global install "nginx==1.31.10"
+/opt/astro-web/pixi/bin/nginx -v
+# 2. Units (installed, not enabled), /etc/astro-web/nginx.conf, the two served folders
+bash scripts/install_services.sh
+# 3. Put the page live, then start the web server (it starts again at boot)
+pixi run astro web deploy
+systemctl enable --now astro-web.service
+curl -sI http://127.0.0.1:8350/forecast/ | head -n 1        # HTTP/1.1 200 OK
+curl -sI http://127.0.0.1:8350/data/latest.json | grep -i cache-control   # no-cache (after a tick)
+# 4. The tick every 15 min, once the forecast is meant to run unattended
+systemctl enable --now astro-forecast.timer
+systemctl list-timers astro-forecast.timer
+```
+
+Day to day:
+
+```bash
+pixi run astro web deploy              # this checkout's committed web/ goes live
+pixi run astro web deploy --rollback   # back to the commit before; again to go forward
+cat /staging/forecast/site/deploys.jsonl                 # what was live when
+journalctl -u astro-web -n 20; tail /var/log/astro-web/access.log
+journalctl -u astro-forecast -n 20; tail logs/forecast_tick.log
+```
+
+Live checks (F1-21): `astro-web` starts (if it fails with `226/NAMESPACE`, the
+unprivileged CT can't set up the sandbox: tell Riley, don't loosen the unit);
+`systemd-analyze security astro-web` for the record; the page and `latest.json` load
+through Nginx Proxy Manager; a tick's run time against the timer's 15 min and
+`TimeoutStartSec=3h`.
+
+**Riley's step: the Nginx Proxy Manager host** (D52 item 8):
+
+- **Proxy host, Details:** Domain Names: a name in your local DNS scheme; Scheme:
+  `http`; Forward Hostname / IP: CT 350's LAN address; Forward Port: `8350`; Cache
+  Assets: off (nginx sets the caching itself); Block Common Exploits: on; Websockets
+  Support: off.
+- **SSL:** your usual certificate for that name; Force SSL: on; HTTP/2 Support: on.
+- **Access list** (choose it on the proxy host's Details tab): a new list, e.g.
+  "LAN + tailnet". Authorization: no users (no login). Access: Allow your LAN subnet
+  (for example `192.168.1.0/24`), Allow `100.64.0.0/10` (the tailnet); NPM denies
+  every other address after the Allow lines. Satisfy Any: off; Pass Auth to Upstream:
+  off.
