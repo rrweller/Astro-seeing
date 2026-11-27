@@ -163,6 +163,46 @@ def cmd_cleanup_raw(args, paths: Paths) -> int:
     return 1 if out["failed"] or out["skipped"] else 0
 
 
+def cmd_archive_raw(args, paths: Paths) -> int:
+    """Kept raw GRIB from /staging to the write-once archive on the NAS (D55 item 7, D64)."""
+    from astroseeing.rawarchive import (
+        ArchiveSettings,
+        PlanRefused,
+        archive_raw,
+        format_plan,
+        plan_archive,
+        run_lock,
+    )
+
+    settings = ArchiveSettings.from_config(paths.data_root)
+    m = _manifest(paths)
+    if args.dry_run:
+        plan = plan_archive(m, paths.staging, settings)
+        print(format_plan(plan, settings, args.delete_measured, files=args.files))
+        return 0
+    try:
+        with run_lock(paths.state_dir):
+            s = archive_raw(m, paths.staging, settings, delete_measured=args.delete_measured,
+                            max_copy_gb=args.max_gb)  # fmt: skip
+    except PlanRefused as e:
+        log.error("archive-raw refused: %s", e)
+        return 2
+    log.info(
+        "archive-raw: %d copied (%.2f GB), %d already there, %d /staging copies deleted, "
+        "%d recovered, %d measurement(s) kept on /staging, %d refused, %d failed",
+        s.copied, s.copied_bytes / 1e9, s.present, s.staging_deleted, s.recovered,
+        s.measured_kept, s.refused, s.failed,
+    )  # fmt: skip
+    for t in s.stale_temps:
+        log.warning("temp file left by an earlier run (not deleted): %s", t)
+    for p in s.problems:
+        log.error("  %s", p)
+    if s.hung:
+        log.error("stopped: the NAS stopped answering (%s); run again once it answers", s.hung)
+        return 3
+    return 0 if s.ok else 1
+
+
 def cmd_retry_failed(args, paths: Paths) -> int:
     log.info(
         "moved %d failed requests back to planned", _manifest(paths).retry_failed(args.max_attempts)
@@ -765,6 +805,21 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("cleanup-raw", help="delete raw GRIB after verified ingest").set_defaults(
         fn=cmd_cleanup_raw
     )
+
+    p = sub.add_parser(
+        "archive-raw",
+        help="copy kept raw GRIB from /staging to the write-once archive on the NAS, verify "
+        "it, then delete the /staging copy (D55 item 7, D64)",
+    )
+    p.add_argument("--dry-run", action="store_true", help="print sizes and the plan only")
+    p.add_argument("--files", action="store_true", help="with --dry-run: list every file")
+    p.add_argument(
+        "--delete-measured",
+        action="store_true",
+        help="also delete the /staging copy of measurement-only files (Riley's call)",
+    )
+    p.add_argument("--max-gb", type=float, help="size limit for this run (default: config)")
+    p.set_defaults(fn=cmd_archive_raw)
 
     p = sub.add_parser("retry-failed", help="move failed requests back to planned")
     p.add_argument("--max-attempts", type=int, default=5)

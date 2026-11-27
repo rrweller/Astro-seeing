@@ -257,6 +257,27 @@ CREATE TABLE IF NOT EXISTS ts_stores (
 """
 
 
+#: Raw GRIB copied to the write-once archive on the NAS (``rawarchive``, D55 item 7, D64).
+#: One row per archived file: where it went, its size and SHA-256 (the manifest's own
+#: checksum, which the copy was verified against), whether it was copied by this
+#: command or found already there, and when the /staging copy was removed (NULL while
+#: it is kept, e.g. a measurement file). Created on every open; older manifests gain
+#: it unchanged.
+ARCHIVE_SCHEMA = """
+CREATE TABLE IF NOT EXISTS raw_archives (
+    id                 INTEGER PRIMARY KEY,
+    request_id         INTEGER NOT NULL REFERENCES requests(id),
+    file_id            INTEGER NOT NULL UNIQUE REFERENCES files(id),
+    archive_path       TEXT NOT NULL UNIQUE,
+    size               INTEGER NOT NULL,
+    sha256             TEXT NOT NULL,
+    outcome            TEXT NOT NULL,
+    archived_at        TEXT NOT NULL,
+    staging_deleted_at TEXT
+);
+"""
+
+
 #: Event detail that marks a job the CDS lost (expired, deleted, HTTP 404).
 LOST_PREFIX = "lost at the CDS"
 
@@ -318,7 +339,7 @@ class Manifest:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.execute("PRAGMA busy_timeout=60000")
-        self.conn.executescript(SCHEMA + FORECAST_SCHEMA + TS_SCHEMA)
+        self.conn.executescript(SCHEMA + FORECAST_SCHEMA + TS_SCHEMA + ARCHIVE_SCHEMA)
         self._upgrade()
 
     def _upgrade(self) -> None:
@@ -641,6 +662,85 @@ class Manifest:
         return self.conn.execute(
             "SELECT * FROM files WHERE request_id=? ORDER BY id DESC LIMIT 1", (request_id,)
         ).fetchone()
+
+    # --- raw GRIB archive (D64) ----------------------------------------------------
+    def raw_archive(self, file_id: int) -> sqlite3.Row | None:
+        """The archive record of a file row, if it was archived."""
+        return self.conn.execute(
+            "SELECT * FROM raw_archives WHERE file_id=?", (file_id,)
+        ).fetchone()
+
+    def record_raw_archive(
+        self, request_id: int, file_id: int, path: Path, size: int, sha256: str, outcome: str
+    ) -> None:
+        """Record a verified archive copy of a file (``copied`` or ``present``).
+
+        Idempotent for the same file, path and checksum; anything else already recorded
+        for that file or path raises instead of being replaced.
+        """
+        if outcome not in ("copied", "present"):
+            raise ValueError(outcome)
+        now = utcnow()
+        with self.tx() as c:
+            row = c.execute(
+                "SELECT * FROM raw_archives WHERE file_id=? OR archive_path=?",
+                (file_id, str(path)),
+            ).fetchone()
+            if row is not None:
+                same = (row["file_id"], row["archive_path"], row["sha256"]) == (
+                    file_id, str(path), sha256,
+                )  # fmt: skip
+                if not same:
+                    raise ValueError(
+                        f"file {file_id} -> {path}: conflicts with archive record {dict(row)}"
+                    )
+                return
+            c.execute(
+                "INSERT INTO raw_archives (request_id, file_id, archive_path, size, sha256,"
+                " outcome, archived_at) VALUES (?,?,?,?,?,?,?)",
+                (request_id, file_id, str(path), size, sha256, outcome, now),
+            )
+            c.execute(
+                "INSERT INTO events (request_id, at, event, detail) VALUES (?,?,?,?)",
+                (request_id, now, "raw_archived", f"{outcome}: {path}"),
+            )
+
+    def mark_staging_deleted_after_archive(
+        self, request_id: int, file_id: int, detail: str
+    ) -> None:
+        """Record that a file's /staging copy is gone, its archive copy being verified.
+
+        In one transaction: the file row is marked deleted, the archive record gets its
+        ``staging_deleted_at``, and an ``ingested`` request moves to ``raw_deleted``
+        (a ``measured`` request keeps its terminal state; the event still records it).
+        """
+        now = utcnow()
+        with self.tx() as c:
+            cur = c.execute(
+                "UPDATE raw_archives SET staging_deleted_at=? WHERE file_id=?"
+                " AND staging_deleted_at IS NULL",
+                (now, file_id),
+            )
+            if cur.rowcount != 1:
+                raise StateError(f"file {file_id}: no archive record awaiting deletion")
+            c.execute(
+                "UPDATE files SET deleted_at=? WHERE id=? AND deleted_at IS NULL", (now, file_id)
+            )
+            state = c.execute("SELECT state FROM requests WHERE id=?", (request_id,)).fetchone()
+            if state and state[0] == "ingested":
+                self._transition(c, request_id, ("ingested",), "raw_deleted", detail, False, {})
+            else:
+                c.execute(
+                    "INSERT INTO events (request_id, at, event, detail) VALUES (?,?,?,?)",
+                    (request_id, now, "staging_deleted", detail),
+                )
+
+    def archive_event(self, request_id: int, event: str, detail: str) -> None:
+        """Log an archive problem (a refusal) against a request; no state change."""
+        self.conn.execute(
+            "INSERT INTO events (request_id, at, event, detail) VALUES (?,?,?,?)",
+            (request_id, utcnow(), event, detail[:1000]),
+        )
 
     # --- export ------------------------------------------------------------------
     def export(self, dest_dir: Path) -> Path:

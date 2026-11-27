@@ -285,3 +285,28 @@ through Nginx Proxy Manager; a tick's run time against the timer's 15 min and
   (for example `192.168.1.0/24`), Allow `100.64.0.0/10` (the tailnet); NPM denies
   every other address after the Allow lines. Satisfy Any: off; Pass Auth to Upstream:
   off.
+
+## 9. Moving the kept raw GRIB to the NAS (C7/K6, ticket #100; D55 item 7, D64)
+
+`astro archive-raw` copies the raw GRIB of `ingested` requests from `/staging` to
+`/data/astro/raw-archive/era5/<kind>/<region>/<period>.grib`, checks each copy's
+SHA-256 against the manifest, records it, and only then deletes the `/staging` copy.
+Measurement files (state `measured`) are copied too, but their `/staging` copy stays
+unless you add `--delete-measured`. Nothing on `/data` is ever overwritten or deleted.
+It can be stopped (Ctrl-C) and run again at any time; it carries on where it stopped.
+
+```bash
+cd /home/astro-seeing && export PATH=/root/.pixi/bin:$PATH
+pixi run astro archive-raw --dry-run              # sizes and the plan; touches nothing
+pixi run astro archive-raw --dry-run --files | less   # every file and where it goes
+tmux new -s archive 'pixi run astro archive-raw 2>&1 | tee -a logs/archive_raw.log'
+pixi run astro archive-raw --dry-run              # afterwards: part 1 shows 0 files
+df -h /staging
+```
+
+Exit codes: 0 done; 1 a file was refused or failed (the log says which; its `/staging`
+copy is kept); 2 refused before starting (size limit, no room on the NAS, `/data/astro`
+missing, or another run active); 3 the NAS stopped answering (run it again once it
+answers). Temp files a dead or hung run left beside a destination
+(`.<name>.tmp-<pid>-<random>`) are listed on every run and never deleted by the code.
+
