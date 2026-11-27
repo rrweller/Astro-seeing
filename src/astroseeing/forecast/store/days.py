@@ -61,6 +61,7 @@ from astroseeing.provenance import canonical_json
 
 if TYPE_CHECKING:
     from astroseeing.forecast.store import PlaceStore
+    from astroseeing.forecast.tick import BuildInfo
 
 log = logging.getLogger(__name__)
 
@@ -204,6 +205,10 @@ class DayStores:
                 f"the SSD holds {digest}); it is never replaced"
             )
         path.parent.mkdir(parents=True, exist_ok=True)
+        left = sorted(p.name for p in path.parent.glob(f".{path.name}.*.tmp"))
+        if left:  # from a write that hung and died: never content, never deleted here
+            log.warning("%s: %d unfinished temp folder(s) from earlier writes beside it: %s",
+                        path, len(left), ", ".join(left))  # fmt: skip
         tmp = Path(tempfile.mkdtemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"))
         try:
             store = tmp / "store"  # mkdtemp's folder is private (0700); the store isn't
@@ -336,8 +341,8 @@ def _model_arrays(docs: Sequence[dict]) -> tuple[np.ndarray, np.ndarray, dict]:
         raise ValueError(f"a step field may not be called {_STORED!r}")
     values = {k: [s.get(k) for runs in flat_steps for s in runs] for k in step_fields}
     step_kinds = {k: _kind(k, values[k]) for k in step_fields}
-    run_values = {k: [_flatten(d)[k] for d in docs] for k in _RUN_FIELDS}
-    run_kinds = {k: _kind(k, run_values[k]) for k in _RUN_FIELDS}
+    per_run = {k: [_flatten(d)[k] for d in docs] for k in _RUN_FIELDS}
+    run_kinds = {k: _kind(k, per_run[k]) for k in _RUN_FIELDS}
     codes = {
         k: sorted({v for v in values[k] if v is not None})
         for k, kind in step_kinds.items()
@@ -345,9 +350,9 @@ def _model_arrays(docs: Sequence[dict]) -> tuple[np.ndarray, np.ndarray, dict]:
     }
 
     fields = [_STORED, *step_fields]
-    sv = np.full((len(docs), len(steps), len(fields)), np.nan)
-    sv[..., 0] = 0.0
-    rv = np.full((len(docs), len(_RUN_FIELDS)), np.nan)
+    step_values = np.full((len(docs), len(steps), len(fields)), np.nan)
+    step_values[..., 0] = 0.0
+    run_values = np.full((len(docs), len(_RUN_FIELDS)), np.nan)
     fog_absent, rest = [], []
     for r, (doc, runs) in enumerate(zip(docs, flat_steps, strict=True)):
         for step, flat in zip(doc["steps"], runs, strict=True):
@@ -355,16 +360,16 @@ def _model_arrays(docs: Sequence[dict]) -> tuple[np.ndarray, np.ndarray, dict]:
                 raise ValueError(f"{doc['model']} {doc['run_time']}: step {step['step']} "
                                  "is not one it expects")  # fmt: skip
             k = steps.index(step["step"])
-            sv[r, k, 0] = 1.0
+            step_values[r, k, 0] = 1.0
             for f, key in enumerate(step_fields, start=1):
                 if key not in flat:
                     raise ValueError(f"{doc['model']} {doc['run_time']} step {step['step']}"
                                      f" lacks {key}")  # fmt: skip
-                sv[r, k, f] = _encode(flat[key], step_kinds[key], codes.get(key))
+                step_values[r, k, f] = _encode(flat[key], step_kinds[key], codes.get(key))
         fog_absent.append(sorted({k[4:] for s in runs for k, v in s.items()
                                   if k.startswith("fog.") and v == "absent"}))  # fmt: skip
         for f, key in enumerate(_RUN_FIELDS):
-            rv[r, f] = _encode(run_values[key][r], run_kinds[key], None)
+            run_values[r, f] = _encode(per_run[key][r], run_kinds[key], None)
         left = copy.deepcopy({k: v for k, v in doc.items() if k != "steps"})
         for key in _RUN_FIELDS:
             _pop(left, key)
@@ -379,10 +384,10 @@ def _model_arrays(docs: Sequence[dict]) -> tuple[np.ndarray, np.ndarray, dict]:
         "fog_absent": fog_absent,
         "runs": rest,
     }
-    return sv, rv, attrs
+    return step_values, run_values, attrs
 
 
-def _model_docs(sv: np.ndarray, rv: np.ndarray, attrs: Mapping) -> list[dict]:
+def _model_docs(step_values: np.ndarray, run_values: np.ndarray, attrs: Mapping) -> list[dict]:
     """The inverse of :func:`_model_arrays`."""
     steps, fields = attrs["steps"], attrs["step_fields"]
     kinds, codes = attrs["step_kinds"], attrs["codes"]
@@ -390,16 +395,16 @@ def _model_docs(sv: np.ndarray, rv: np.ndarray, attrs: Mapping) -> list[dict]:
     for r, left in enumerate(attrs["runs"]):
         doc = copy.deepcopy(dict(left))
         for f, key in enumerate(attrs["run_fields"]):
-            _put(doc, key, _decode(rv[r, f], attrs["run_kinds"][key], None, False))
+            _put(doc, key, _decode(run_values[r, f], attrs["run_kinds"][key], None, False))
         absent = set(attrs["fog_absent"][r])
         doc["steps"] = []
         for k, step in enumerate(steps):
-            if sv[r, k, 0] != 1.0:
+            if step_values[r, k, 0] != 1.0:
                 continue
             s: dict[str, Any] = {"step": step}
             for f, key in enumerate(fields[1:], start=1):
                 is_absent = key.startswith("fog.") and key[4:] in absent
-                _put(s, key, _decode(sv[r, k, f], kinds[key], codes.get(key), is_absent))
+                _put(s, key, _decode(step_values[r, k, f], kinds[key], codes.get(key), is_absent))
             doc["steps"].append(s)
         docs.append(doc)
     return docs
@@ -415,11 +420,11 @@ def _write_store(path: Path, content: DayContent) -> None:
     for doc in sorted(content.runs, key=lambda d: (d["model"], d["run_time"])):
         by_model.setdefault(doc["model"], []).append(doc)
     for model, docs in by_model.items():
-        sv, rv, attrs = _model_arrays(docs)
+        step_values, run_values, attrs = _model_arrays(docs)
         g = root.create_group(model, attributes=attrs)
         for name, arr, dims in (
-            ("step_values", sv, ("run", "step", "field")),
-            ("run_values", rv, ("run", "field")),
+            ("step_values", step_values, ("run", "step", "field")),
+            ("run_values", run_values, ("run", "field")),
         ):
             a = g.create_array(name, shape=arr.shape, dtype=arr.dtype, chunks=arr.shape,
                                compressors=comp, fill_value=np.nan,
@@ -519,7 +524,7 @@ def finalise_days(
     settings: ForecastSettings,
     records: ForecastRecords,
     store: PlaceStore,
-    build,
+    build: BuildInfo,
 ) -> list[dict]:
     """Write each saved place's final UTC days from the SSD to ``/data``, once
     (idempotent; safe to call every tick). ``build`` has the ``commit`` and

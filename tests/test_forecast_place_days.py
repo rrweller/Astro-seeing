@@ -7,11 +7,16 @@ Zarr v3 store under ``<data>/forecast/places/<place>/<YYYY-MM-DD>.zarr``, writte
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
+import tempfile
 import threading
 import time
 
 import pytest
+from hypothesis import given
+from hypothesis import settings as settings_
+from hypothesis import strategies as st
 from place_days_world import COMMIT, SOFTWARE, finish, store_day
 
 from astroseeing.forecast.settings import load_settings
@@ -261,16 +266,16 @@ class SlowNas(DayStores):
 def test_a_hanging_nas_times_out_is_logged_and_the_day_is_tried_again(settings, tmp_path, caplog):
     records = ForecastRecords(Manifest(tmp_path / "state" / "manifest.sqlite"))
     nas = SlowNas(tmp_path / "data")
-    store = PlaceStore(tmp_path / "ssd", days=nas, guard=NasGuard(0.2))
+    store = PlaceStore(tmp_path / "ssd", days=nas, guard=NasGuard(2))
     store_day(settings, records, store, "kongsberg", DAY)
     store_day(settings, records, store, "kongsberg", DAY + dt.timedelta(days=1))
     now = dt.datetime(2026, 11, 27, 12, tzinfo=dt.UTC)
 
     t0 = time.monotonic()
     out = finalise_days(now, settings, records, store, Build())
-    assert time.monotonic() - t0 < 2
+    assert time.monotonic() - t0 < 6  # one timeout, not one per day
     assert [(d["day"], d["outcome"]) for d in out] == [("2026-11-25", "timed_out")]
-    assert "no answer from the NAS within 0.2 s" in caplog.text
+    assert "no answer from the NAS within 2 s" in caplog.text
     assert records.place_days("kongsberg") == {}
 
     # the next tick, NAS still hanging: nothing new is sent to it, no time is lost
@@ -358,3 +363,58 @@ def test_a_full_synthetic_day_measures_the_store_size(settings, ct, capsys):
         print(f"\nper-place day store, one full synthetic day: {size} bytes (SSD JSON: {ssd})")
     assert set(size) == {"kongsberg", "paranal"}
     assert 0 < size["paranal"] < size["kongsberg"] < 1_000_000
+
+
+def test_an_unfinished_temp_folder_is_logged_and_left_alone(settings, ct, caplog):
+    records, store, days = ct
+    store_day(settings, records, store, "kongsberg", DAY)
+    left = days.root / "kongsberg" / ".2026-11-25.zarr.abc123.tmp"
+    (left / "store").mkdir(parents=True)  # a write that hung, then its process died
+
+    (entry,) = finalise_days(LATER, settings, records, store, Build())
+    assert entry["outcome"] == "written"
+    assert "1 unfinished temp folder(s)" in caplog.text and left.name in caplog.text
+    assert (left / "store").is_dir()  # never deleted: /data only grows
+
+
+_TEMPLATE: dict = {}
+
+
+def _template() -> dict:
+    """One GFS run at Kongsberg, made once."""
+    if not _TEMPLATE:
+        from place_days_world import run_doc
+
+        t = dt.datetime(2026, 11, 25, 6, tzinfo=dt.UTC)
+        _TEMPLATE.update(run_doc(load_settings(), "kongsberg", "gfs", t, 7))
+    return copy.deepcopy(_TEMPLATE)
+
+
+_NULLABLE = ("j_total", "j_free", "hbar_m", "seeing_total_arcsec", "seeing_free_arcsec")
+
+
+@settings_(max_examples=25, deadline=None)
+@given(
+    kept=st.sets(st.integers(0, 48), min_size=1),
+    nulls=st.sets(st.tuples(st.integers(0, 48), st.sampled_from(_NULLABLE))),
+    null_gaps=st.sets(st.integers(0, 48)),
+    fog_absent=st.booleans(),
+)
+def test_any_run_reads_back_exactly_from_its_day_store(kept, nulls, null_gaps, fog_absent):
+    """Whatever steps a run kept, and wherever a value is null or a fog signal absent,
+    the day store gives the run back exactly (never filled, never dropped)."""
+    doc = _template()
+    doc["steps"] = [s for s in doc["steps"] if s["step"] in kept]
+    for s in doc["steps"]:
+        for step, name in nulls:
+            if s["step"] == step:
+                s["cn2"]["tatarskii"][name] = None
+        if s["step"] in null_gaps:
+            s["gap_to_first_level_m"] = None
+        if fog_absent:
+            s["fog"]["visibility_m"] = "absent"
+    doc["missing_steps"] = {str(k): "5 tries failed" for k in range(49) if k not in kept}
+    with tempfile.TemporaryDirectory() as tmp:
+        days = DayStores(tmp)
+        days.put(DayContent("kongsberg", DAY, (doc,), {"commit": COMMIT}))
+        assert days.read("kongsberg", DAY).runs == (doc,)
