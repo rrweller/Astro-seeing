@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING
 
 from astroseeing.forecast.column import column_products
 from astroseeing.forecast.grid import nearest_point
+from astroseeing.forecast.publish.place_file import VERDICT_CN2
 from astroseeing.forecast.settings import Area, ForecastSettings, Model, Place
 from astroseeing.forecast.sources.interface import (
     FetchedFile,
@@ -40,6 +41,7 @@ from astroseeing.forecast.sources.interface import (
     SourceAdapter,
 )
 from astroseeing.forecast.store import PlaceStore, run_document, utc_text
+from astroseeing.forecast.store.areas import AreaStore, area_run
 from astroseeing.forecast.tick.hosts import HostPick
 from astroseeing.forecast.verify import ForecastRecords, ForecastRun, verify_run
 from astroseeing.forecast.verify.records import OPEN_STATES
@@ -71,6 +73,8 @@ class RunWork:
     staging: Path  # where free space is measured
     build: BuildInfo
     free_bytes: Callable[[Path], float]
+    areas: AreaStore  # the latest area grids, for the map (ticket #65)
+    map_area: str  # the area on the map (the default saved place's)
 
     def work_model(
         self, model: Model, area: Area, places: list[Place], pick: HostPick
@@ -225,6 +229,21 @@ class RunWork:
                     run.id, ref, area, places, f"stored values for {place.id} did not read back"
                 )
             derived += stored
+        if self._on_map(model, area):
+            grid = area_run(
+                fields,
+                area.id,
+                report.verified_steps,
+                run.id,
+                VERDICT_CN2,
+                self._provenance(run.id),
+            )
+            stored = self.areas.put_run(grid)
+            if stored is None:
+                return self._fail(
+                    run.id, ref, area, places, f"stored area grid for {area.id} did not read back"
+                )
+            derived += stored.bytes
         state = "processed" if len(report.verified_steps) == len(steps) else "partial"
         rec.transition(
             run.id,
@@ -256,12 +275,7 @@ class RunWork:
         i, j = nearest_point(fields.lat, fields.lon, place.lat, place.lon)
         at = _at_point(fields, i, j)
         products = column_products(at, observer_height_m=place.height.metres)
-        provenance = {
-            "commit": self.build.commit,
-            "config_hash": self.settings.config_hash,
-            "manifest_run_id": run_id,
-            "software": dict(self.build.software),
-        }
+        provenance = self._provenance(run_id)
         doc = run_document(
             place,
             at,
@@ -279,6 +293,19 @@ class RunWork:
             return None
         return stored.bytes
 
+    def _provenance(self, run_id: int) -> dict:
+        return {
+            "commit": self.build.commit,
+            "config_hash": self.settings.config_hash,
+            "manifest_run_id": run_id,
+            "software": dict(self.build.software),
+        }
+
+    def _on_map(self, model: Model, area: Area) -> bool:
+        """Whether the run's values go on the map: a global model in the map's area
+        (MEPS is not on the map, D60 item 2)."""
+        return area.id == self.map_area and not model.regional
+
     # -- endings --------------------------------------------------------------------
     def _fail(self, run_id: int, ref: RunRef, area: Area, places: list[Place], error: str):
         rec = self.records
@@ -287,6 +314,7 @@ class RunWork:
         if run.derived_bytes is not None:  # an earlier partial store must not stay shown
             for place in places:
                 self.store.remove_run(place.id, ref.model, ref.run_time)
+            self.areas.remove_run(area.id, ref.model, ref.run_time)
         log.error("%s %s %s failed: %s", ref.model, area.id, ref.label, error)
         return self._entry(ref, area, "failed", error)
 

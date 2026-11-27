@@ -72,7 +72,9 @@ def week(tmp_path_factory, ephemeris):
     w = World(base / "ct", ephemeris, publish=schedule)
     w.server.fail("/", status=503, contains=FAILING_48B)  # 27 Nov step 48, every try
     w.folders = folders
-    w.stored_bytes = {}  # each run's SSD file, measured the day it was stored (later purged)
+    # each run's SSD files, measured the day they were stored (later purged): its place
+    # file and its map area grid (ticket #65), both counted in its derived bytes
+    w.stored_bytes = {}
     for d in range(7):
         day = DAY + dt.timedelta(days=d)
         if d == 6:
@@ -86,8 +88,9 @@ def week(tmp_path_factory, ephemeris):
         run_time = day + dt.timedelta(hours=6)
         stored = w.paths.places / "kongsberg" / f"{run_time:%Y-%m-%d}"
         stored = stored / f"gfs-{run_time:%Y%m%dT%HZ}.json"
+        area = w.paths.areas / "kongsberg" / f"gfs-{run_time:%Y%m%dT%HZ}.npz"
         if stored.exists():
-            w.stored_bytes[run_time] = stored.stat().st_size
+            w.stored_bytes[run_time] = stored.stat().st_size + area.stat().st_size
     yield w
     w.close()
 

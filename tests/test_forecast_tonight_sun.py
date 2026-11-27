@@ -13,7 +13,7 @@ from skyfield.api import wgs84
 
 from astroseeing.forecast.settings import CloudClasses
 from astroseeing.forecast.tonight import HourTable, HourValue, ModelHours, RunInfo, tonight
-from astroseeing.forecast.tonight.sun import sun_track
+from astroseeing.forecast.tonight.sun import cell_suns, sun_track
 
 UTC = dt.UTC
 KONGSBERG = (59.669, 9.652)
@@ -86,3 +86,60 @@ def test_kongsberg_from_dark_time_to_its_fallbacks(ephemeris):
     assert basis_on(ephemeris, utc(2026, 4, 10, 18)) == "dark"
     assert basis_on(ephemeris, utc(2026, 5, 5, 18)) == "sun_below_12"
     assert basis_on(ephemeris, utc(2026, 6, 21, 18)) == "sun_down"
+
+
+# -- every map cell's Sun (ticket #65) ---------------------------------------------------
+
+#: Map-cell latitudes and longitudes across the Kongsberg box (edges and middle).
+CELL_LATS = (64.625, 59.6875, 54.6875)
+CELL_LONS = (4.6875, 9.6875, 9.75, 14.625)
+
+
+def test_each_map_cell_gets_exactly_the_sun_track_of_its_own_place(ephemeris):
+    for now in (utc(2026, 11, 26, 10), utc(2026, 11, 26, 18), utc(2026, 6, 21, 23)):
+        cells = cell_suns(CELL_LATS, CELL_LONS, now, *ephemeris)
+        assert [len(row) for row in cells] == [len(CELL_LONS)] * len(CELL_LATS)
+        for lat, row in zip(CELL_LATS, cells, strict=True):
+            for lon, cell in zip(CELL_LONS, row, strict=True):
+                assert cell.track == sun_track(lat, lon, now, *ephemeris)
+
+
+def test_cells_past_their_own_sunrise_have_moved_to_the_next_night(ephemeris):
+    # 08:00 UTC on 27 November at 9.6875° E: the Sun has risen at 54.7° N (about
+    # 07:15 UTC) but not yet at 64.6° N (about 08:40 UTC), so one meridian holds two
+    # Nights
+    now = utc(2026, 11, 27, 8)
+    (north,), _, (south,) = cell_suns(CELL_LATS, (9.6875,), now, *ephemeris)
+    assert south.track.night == dt.date(2026, 11, 27)
+    assert north.track.night == dt.date(2026, 11, 26)
+    assert north.track == sun_track(CELL_LATS[0], 9.6875, now, *ephemeris)
+    assert south.track == sun_track(CELL_LATS[2], 9.6875, now, *ephemeris)
+    assert south.dark_left_min > 600 and north.dark_left_min == 0
+
+
+def _skyfield_dark_spans(ephemeris, lat, lon, start, end):
+    """Skyfield's own spans of astronomical darkness (Sun below -18°) within start-end."""
+    eph, ts = ephemeris
+    f = almanac.dark_twilight_day(eph, wgs84.latlon(lat, lon))
+    times, states = almanac.find_discrete(ts.from_datetime(start), ts.from_datetime(end), f)
+    edges = [start, *(t.utc_datetime() for t in times), end]
+    dark = [f(ts.from_datetime(start)) == 0, *(s == 0 for s in states)]
+    return [(a, b) for a, b, d in zip(edges[:-1], edges[1:], dark, strict=True) if d]
+
+
+def test_dark_minutes_left_match_skyfields_almanac(ephemeris):
+    lat, lon = KONGSBERG
+    for now in (utc(2026, 11, 26, 10), utc(2026, 11, 26, 22, 17)):
+        ((cell,),) = cell_suns((lat,), (lon,), now, *ephemeris)
+        spans = _skyfield_dark_spans(ephemeris, lat, lon, cell.track.start, cell.track.end)
+        left = sum((b - max(a, now)).total_seconds() / 60 for a, b in spans if b > now)
+        assert left > 400  # a long November night, before and after it starts
+        assert abs(cell.dark_left_min - left) <= 2  # a 1-minute scan, geocentric
+
+
+def test_no_dark_time_left_after_it_ends_or_on_a_june_night(ephemeris):
+    lat, lon = KONGSBERG
+    ((dawn,),) = cell_suns((lat,), (lon,), utc(2026, 11, 27, 7), *ephemeris)
+    ((june,),) = cell_suns((lat,), (lon,), utc(2026, 6, 21, 18), *ephemeris)
+    assert dawn.track.night == dt.date(2026, 11, 26) and dawn.dark_left_min == 0
+    assert june.dark_left_min == 0

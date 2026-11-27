@@ -32,8 +32,10 @@ def run_doc(
     run_time: dt.datetime,
     run_id: int,
     missing: dict[int, str] | None = None,
+    ground_m: float | None = None,
 ) -> dict:
-    """One run's stored values at a saved place, as the tick would store them."""
+    """One run's stored values at a saved place, as the tick would store them. The
+    model's ground is ``ground_m``, or 60 m below the place by default."""
     missing = missing or {}
     model, place = settings.models[model_id], settings.places[place_id]
     steps = model.steps_h
@@ -42,7 +44,7 @@ def run_doc(
     ns, nl = len(steps), len(levels)
     z = std_atmosphere_height(levels) + rng.normal(0, 20, (ns, 1, 1, nl))
     u, v = jet_wind(z)
-    ground = place.height.metres - 60.0
+    ground = place.height.metres - 60.0 if ground_m is None else ground_m
     sp = 1013.25 * (1 - 2.25577e-5 * ground) ** 5.25588
     sfc = (ns, 1, 1)
     run = RunRef(model_id, run_time)

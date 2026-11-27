@@ -7,7 +7,7 @@
   "default_place": "kongsberg",
   "places": [{"id": "kongsberg", "name": "Kongsberg", "file": "place-kongsberg.json"}],
   "grid": {"crs": "EPSG:4326", "lat_north": 64.625, "lon_west": 4.6875, "dlat": 0.0625, "dlon": 0.0625, "nlat": 160, "nlon": 160, "order": "row-major, north to south, west to east"},
-  "layers": {"clear_left": {"file": "clear_left.u8", "dtype": "uint8", "codes": {"254": "all incomplete", "255": "no counted hours"}, "sha256": "9e1c3a5d7b9f0e2c4a6b8d0f1e3c5a7b9d0f5f2b0c8e6a1d4f3b9c7e2a0d8b6f"}},
+  "layers": {"clear_left": {"file": "clear_left.u8", "dtype": "uint8", "shape": [160, 160], "codes": {"254": "all incomplete", "255": "no counted hours"}, "sha256": "9e1c3a5d7b9f0e2c4a6b8d0f1e3c5a7b9d0f5f2b0c8e6a1d4f3b9c7e2a0d8b6f"}},
   "runs": {"gfs": {"run_id": 1234, "run_time": "2026-11-26T12:00:00Z", "state": "processed", "stale": false}},
   "sunset_maps": [{"night": "2026-11-25", "path": "sunset/2026-11-25/"}],
   "paranal_check": {"file": "paranal-check.json"}

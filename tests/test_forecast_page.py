@@ -514,9 +514,9 @@ def all_clear(model: str, t: dt.datetime) -> float:
     return 2.0
 
 
-def night(case: Case, now: dt.datetime, runs=RUNS_26, cloud=normal_cloud) -> dict:
+def night(case: Case, now: dt.datetime, runs=RUNS_26, cloud=normal_cloud, ground_m=None) -> dict:
     """Serve the hand-made night at ``now`` as the current set's place file."""
-    doc = place_file(now, case.ephemeris, runs, cloud)
+    doc = place_file(now, case.ephemeris, runs, cloud, ground_m)
     validate(doc, "f1-place/1")
     case.place_path().write_text(json.dumps(doc))
     latest = case.latest()
@@ -753,3 +753,182 @@ def test_the_verdict_fits_a_390px_phone(case_b):
     )
     assert widths["page"] <= 390 and widths["strip"] <= widths["verdict"] <= 390 - 2 * 16
     save_screenshot(b, "verdict-phone-390")
+
+
+# -- fog signals, terrain and the missing column (ticket #64) ----------------------------
+#
+# The same hand-made nights: each model's fog signals are the ones its settings list
+# (D49 item 3), with a foggy hour at 06 UTC, and "absent" for the signals it lacks.
+
+FOGGY, CLEARER = "2026-11-27T06:00:00Z", "2026-11-26T21:00:00Z"
+
+#: What each fog row shows for each model at 06 UTC and at 21 UTC (None: the model has
+#: no such field), written out by hand from forecast_nights and normal_cloud.
+FOG_ROWS = {
+    "fog_fraction": {"gfs": None, "icon_eu": None, "meps": ("82.5", "0"), "ifs": None},
+    "visibility": {
+        "gfs": ("0.35", "24.0"),
+        "icon_eu": ("0.35", "24.0"),
+        "meps": ("0.35", "24.0"),
+        "ifs": None,
+    },
+    "weather_code": {"gfs": None, "icon_eu": ("45", "0"), "meps": None, "ifs": None},
+    "dewpoint_depression": {"gfs": None, "icon_eu": None, "meps": None, "ifs": ("0.2", "3.1")},
+    "fog_low_cloud": {
+        "gfs": ("3", "3"),
+        "icon_eu": ("3", "3"),
+        "meps": ("0", "0"),
+        "ifs": ("3", "80"),
+    },
+}
+
+
+def test_the_fog_row_shows_each_models_signals_and_absent_for_a_field_it_lacks(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    doc = night(case_b, now)
+    b = open_night(case_b, now)
+    for quantity, per_model in FOG_ROWS.items():
+        for model, expected in per_model.items():
+            shown = {c["time"]: c for c in cells(b, model, quantity)}
+            assert list(shown) == [h["time"] for h in doc["hours"]], (quantity, model)
+            if expected is None:
+                # the model has no such field: "absent" on every hour it has values,
+                # never blank and never 0
+                for h in doc["hours"]:
+                    if "missing" in h["models"][model]:
+                        continue
+                    c = shown[h["time"]]
+                    assert c["text"] == "absent" and c["value"] is None, (quantity, model, c)
+                    assert "has no such field" in c["title"]
+            else:
+                got = (shown[FOGGY]["text"], shown[CLEARER]["text"])
+                assert got == expected, (quantity, model)
+                assert shown[FOGGY]["value"] is not None
+    # an hour a model has no value for stays blank, never "absent": IFS's off-steps and
+    # ICON-EU's partial 02 UTC
+    ifs_off = {c["time"]: c for c in cells(b, "ifs", "visibility")}["2026-11-26T19:00:00Z"]
+    icon_02 = {c["time"]: c for c in cells(b, "icon_eu", "weather_code")}["2026-11-27T02:00:00Z"]
+    for c in (ifs_off, icon_02):
+        assert c["text"] == "" and c["value"] is None
+    caps = b.eval("[...document.querySelectorAll('tr.fog-head .cap')].map(c => c.textContent)")
+    assert len(caps) == 4
+    assert all("experimental" in t and "not counted" in t for t in caps)
+
+
+def terrain_warnings(b: Browser) -> dict[str, str] | None:
+    """The terrain warnings by model, or None while the list is hidden."""
+    return b.eval(
+        """document.getElementById('terrain').hidden ? null : Object.fromEntries(
+            [...document.querySelectorAll('#terrain li')]
+            .map(li => [li.dataset.model, li.textContent]))"""
+    )
+
+
+def test_a_place_below_a_models_ground_gets_the_terrain_warning_with_the_metres(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    # Kongsberg's ground is 162.28 m: below GFS's 327.4 m, ICON-EU's 346.9 m and IFS's
+    # 301.2 m, above MEPS's 120 m here
+    doc = night(case_b, now, ground_m={"meps": 120.0})
+    assert doc["models"]["meps"]["terrain_caveat_m"] is None
+    b = open_night(case_b, now)
+    warnings = terrain_warnings(b)
+    assert set(warnings) == {"gfs", "icon_eu", "ifs"}  # none for MEPS
+    tail = (
+        "fog or cold air pooling in terrain below the model's ground is not forecast by this model."
+    )
+    assert warnings["gfs"] == (
+        f"Kongsberg (162 m) is 165 m below GFS 0.25°'s ground (327 m): {tail}"
+    )
+    assert warnings["icon_eu"] == (
+        f"Kongsberg (162 m) is 185 m below ICON-EU's ground (347 m): {tail}"
+    )
+    assert warnings["ifs"] == (
+        f"Kongsberg (162 m) is 139 m below ECMWF IFS 0.25°'s ground (301 m): {tail}"
+    )
+
+
+def test_the_fog_rows_and_terrain_warning_fit_a_390px_phone(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    night(case_b, now, ground_m={"meps": 120.0})
+    b = open_night(case_b, now, width=390, height=844)
+    widths = b.eval(
+        """({ page: document.documentElement.scrollWidth,
+              terrain: document.getElementById('terrain').getBoundingClientRect().right,
+              wrap: document.querySelector('.table-wrap').clientWidth,
+              caps: Math.max(...[...document.querySelectorAll(
+                  'tr.fog-head .cap, tr.missing-column .cap')]
+                  .map(c => c.getBoundingClientRect().width)) })"""
+    )
+    assert widths["page"] <= 390 and widths["terrain"] <= 390 - 16, widths
+    # the fog and missing-column captions wrap inside the table's box
+    assert widths["caps"] <= widths["wrap"], widths
+    save_screenshot(b, "phone-390-terrain-fog")
+    # the ICON-EU block's fog rows and missing column, scrolled to the foggy hour
+    b.eval(
+        f"""(() => {{
+            document.querySelector('tr.fog-head[data-model=icon_eu]').scrollIntoView();
+            const wrap = document.querySelector('.table-wrap');
+            const corner = document.querySelector('thead th.corner').offsetWidth;
+            wrap.scrollLeft = document.querySelector('thead th[data-time="{FOGGY}"]')
+                .offsetLeft - corner - 80;
+        }})()"""
+    )
+    if (d := screenshot_dir()) is not None:
+        b.call("screenshot", path=str(d / "phone-390-icon-eu-fog-gap.png"))
+
+
+def test_the_fog_rows_terrain_warning_and_missing_column_at_desktop_width(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    night(case_b, now, ground_m={"meps": 120.0})
+    b = open_night(case_b, now, width=1440, height=900)
+    assert b.eval("document.documentElement.scrollWidth") <= 1440
+    assert b.eval("document.querySelectorAll('#terrain li, tr.fog-head, tr.missing-column')"
+                  ".length") == 3 + 4 + 4  # fmt: skip
+    # drawing them asks nothing of another host
+    requests = b.call("requests")
+    assert requests and all(not r["blocked"] for r in requests), requests
+    assert all(r["url"].startswith(case_b.site.origin + "/") for r in requests)
+    save_screenshot(b, "desktop-1440-terrain-fog")
+
+
+def test_each_models_missing_column_is_shown_beside_its_seeing(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    doc = night(case_b, now)
+    b = open_night(case_b, now)
+    lines = b.eval(
+        """Object.fromEntries([...document.querySelectorAll('tr.missing-column')]
+            .map(tr => [tr.dataset.model, tr.textContent]))"""
+    )
+    # the gaps written into the night: GFS 137 m, ICON-EU 352, MEPS 548, IFS 561
+    expected = {
+        "gfs": ("0.14 km", "GFS 0.25°", "327 m"),
+        "icon_eu": ("0.35 km", "ICON-EU", "347 m"),
+        "meps": ("0.55 km", "MEPS", "255 m"),
+        "ifs": ("0.56 km", "ECMWF IFS 0.25°", "301 m"),
+    }
+    assert set(lines) == set(expected)
+    for model, (gap, name, ground) in expected.items():
+        assert lines[model] == (
+            f"Missing column: the {gap} from {name}'s ground ({ground}) up to its first "
+            "usable pressure level is not in its seeing (the deepest gap over tonight's "
+            "hours)."
+        )
+    # every seeing value points at its model's line, as at its D47 labels
+    for model in expected:
+        for quantity in ("fa_osborn_sarazin", "total_seeing_tatarskii", "hbar_osborn_sarazin"):
+            described = b.eval(
+                f"""[...document.querySelectorAll(
+                    'td[data-model="{model}"][data-quantity="{quantity}"]')].map(td =>
+                    td.getAttribute('aria-describedby').split(' ')
+                      .map(id => document.getElementById(id).textContent).join(' | '))"""
+            )
+            assert len(described) == len(doc["hours"])
+            assert all(lines[model] in d for d in described), (model, quantity)
+
+
+def test_a_place_above_every_models_ground_shows_no_terrain_warning(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    night(case_b, now, ground_m={"gfs": 150.0, "icon_eu": 100.0, "meps": 120.0, "ifs": 162.28})
+    b = open_night(case_b, now)
+    assert terrain_warnings(b) is None
+    assert b.eval("document.querySelectorAll('#terrain li').length") == 0
