@@ -201,11 +201,19 @@ def test_a_page_not_being_served_alerts_once_and_clears_once(tmp_path, ephemeris
             assert w.phone.titles()[1:] == ["astro-seeing: forecast page not served cleared"]
 
             web.route("/products/latest.json", old)
-            ticks(w, DAY + dt.timedelta(hours=11), DAY + dt.timedelta(hours=11, minutes=45))
+            ticks(w, DAY + dt.timedelta(hours=11), DAY + dt.timedelta(hours=11))
+            # the alert names the set written when it started: each tick now writes a
+            # new set, as the verdict's run ages move on (ticket #63, D84 item 5)
+            written = w.latest()["set_id"]
+            ticks(
+                w,
+                DAY + dt.timedelta(hours=11, minutes=15),
+                DAY + dt.timedelta(hours=11, minutes=45),
+            )
             assert w.phone.titles()[2:] == ["astro-seeing: forecast page not served"]
             message = w.phone.sent[2][2]
             assert "different latest.json" in message
-            assert json.loads(old)["set_id"] in message and w.latest()["set_id"] in message
+            assert json.loads(old)["set_id"] in message and written in message
 
             del web.routes["/products/latest.json"]
             ticks(w, DAY + dt.timedelta(hours=12), DAY + dt.timedelta(hours=12, minutes=30))

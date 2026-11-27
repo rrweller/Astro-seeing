@@ -27,6 +27,16 @@
 
     <section id="tonight" class="tonight" hidden>
       <h2 id="night-title"></h2>
+      <div id="verdict" class="verdict" hidden>
+        <p id="headline" class="headline"></p>
+        <p id="basis-note" class="basis-note" hidden></p>
+        <ol id="strip" class="strip" aria-label="Counted hours, in local time"></ol>
+        <p id="meps-line" class="meps-line" hidden></p>
+        <ul class="verdict-meta">
+          <li id="seeing-line"></li>
+          <li id="moon-line"></li>
+        </ul>
+      </div>
       <p class="note">Seeing is how much the air blurs a star, in arcseconds (″); smaller is
         sharper. Every seeing value here is <strong>uncalibrated</strong>: computed straight from
         the forecast model's temperature and wind with a published research formula, not yet
@@ -42,6 +52,7 @@
         <li><span class="swatch sun-astronomical_twilight"></span>Astronomical twilight (12–18° down)</li>
         <li><span class="swatch sun-dark"></span>Dark time (Sun more than 18° down)</li>
         <li><span class="swatch past"></span>Past hour</li>
+        <li><span class="swatch counted"></span>Counted in the verdict</li>
       </ul>
       <ul id="credits" class="credits"></ul>
     </section>

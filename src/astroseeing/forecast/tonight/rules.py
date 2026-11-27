@@ -315,8 +315,12 @@ def _nothing_to_count(
             families[m.family] = "stale"
         elif any(isinstance(v, HourValue) for v in values):
             families[m.family] = "ok"
+        elif "partial" in reasons:
+            families[m.family] = "partial"
+        elif "no_run" in reasons:  # its run ends before these hours (D84)
+            families[m.family] = "missing"
         else:
-            families[m.family] = "partial" if "partial" in reasons else "off_step"
+            families[m.family] = "off_step"
     return NothingToCount("not_enough_models", None, families)
 
 

@@ -82,6 +82,20 @@ export function percent(value) {
   return text.endsWith(".0") ? text.slice(0, -2) : text;
 }
 
+/** A percentage to whole numbers: "72". A trace is never shown as 0, and a nearly
+ *  full value never as 100. */
+export function wholePercent(value) {
+  if (value > 0 && value < 0.5) return "<1";
+  if (value > 99.5 && value < 100) return ">99";
+  return String(Math.round(value));
+}
+
+/** Degrees to whole numbers with a true minus sign: "−12". */
+export function degrees(value) {
+  const rounded = Math.round(value);
+  return rounded === 0 ? "0" : String(rounded).replace("-", "−");
+}
+
 /** Whole metres: "327 m". */
 export function metres(value) {
   return `${Math.round(value)} m`;

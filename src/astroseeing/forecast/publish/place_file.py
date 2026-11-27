@@ -2,10 +2,11 @@
 serialisation of ``Tonight`` plus the hourly rows, the models and the Moon.
 
 Ticket #51 fills the place, the 24 hourly rows (time, the Sun's altitude and class, and
-every model's values or the reason it has none), the models and provenance. The verdict
-(``tonight``), the Moon and each hour's agreement, past and counted flags and Moon
-altitude come from ``forecast.tonight`` and are null until ticket #63 (F1-14) wires it
-in (D72): nothing here re-derives a verdict rule.
+every model's values or the reason it has none), the models and provenance. Ticket #63
+adds the verdict: :func:`hour_table` turns the store's hours into ``tonight()``'s
+``HourTable``, and the file's ``tonight``, ``moon`` and each hour's agreement, past and
+counted flags and Moon altitude are ``tonight()``'s and ``moon_track``'s results as
+they are (D84): nothing here re-derives a verdict rule.
 
 Tonight's 24 hours and the Sun's altitude at each come from ``forecast.tonight``'s
 ``sun_track`` (ticket #53), which also decides which Night is Tonight.
@@ -13,11 +14,22 @@ Tonight's 24 hours and the Sun's altitude at each come from ``forecast.tonight``
 
 from __future__ import annotations
 
+import datetime as dt
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from astroseeing.forecast.settings import Model, Place
+from astroseeing.forecast.settings import ForecastSettings, Model, Place
 from astroseeing.forecast.store import PlaceHours, utc_text
+from astroseeing.forecast.tonight import (
+    HourTable,
+    HourValue,
+    Missing,
+    ModelHours,
+    RunInfo,
+    SunTrack,
+    moon_track,
+    tonight,
+)
 from astroseeing.forecast.tonight.sun import SUNRISE_ALTITUDE_DEG
 
 SCHEMA = "f1-place/1"
@@ -37,29 +49,70 @@ def sun_class(altitude_deg: float) -> str:
     return "dark"
 
 
+#: The Cₙ² model whose free-atmosphere J the verdict uses (D47's headline, D48 item 7).
+VERDICT_CN2 = "osborn_sarazin"
+
+
+def hour_table(night: dt.date, hours: PlaceHours, models: Sequence[Model]) -> HourTable:
+    """``tonight()``'s input from the store's hours: each model's unrounded total cloud and
+    O&S free-atmosphere J per hour, or the stored reason it has none, and its run."""
+    table = []
+    for m in models:
+        run = hours.runs[m.id]
+        info = None
+        if run is not None:
+            run_time = dt.datetime.fromisoformat(run["run_time"].replace("Z", "+00:00"))
+            info = RunInfo(run["run_id"], run_time)
+        values = tuple(_hour_value(v) for v in hours.values[m.id])
+        table.append(ModelHours(m.id, m.family, m.regional, info, values))
+    return HourTable(night, tuple(hours.hours), tuple(table))
+
+
+def _hour_value(value: Mapping) -> HourValue | Missing:
+    if "missing" in value:
+        return Missing(value["missing"])
+    return HourValue(value["cloud"]["total_pct"], value["cn2"][VERDICT_CN2]["j_free"])
+
+
 def build_place_file(
     place: Place,
     models: Sequence[Model],
     hours: PlaceHours,
-    sun_altitude_deg: Sequence[float],
-    config_hash: str,
+    sun: SunTrack,
+    now: dt.datetime,
+    *,
+    settings: ForecastSettings,
+    ephemeris,
     commit: str,
 ) -> dict[str, Any]:
-    """The place file for ``hours`` (Tonight's 24 hours, from ``PlaceStore.hours_for``)."""
+    """The place file at ``now`` for ``hours`` (Tonight's 24 hours, from
+    ``PlaceStore.hours_for`` on ``sun.hours``), with ``tonight()``'s verdict and the
+    Moon. ``ephemeris`` is ``solar.sun.load_ephemeris()``'s (eph, ts)."""
     if place.height is None:
         raise ValueError(f"{place.id} has no ground height")
+    if tuple(hours.hours) != sun.hours:
+        raise ValueError("the stored hours and the Sun are for different rows")
+    verdict = tonight(
+        hour_table(sun.night, hours, models),
+        sun,
+        now,
+        cloud_classes=settings.cloud_classes,
+        stale_after_h=settings.run_rules.stale_after_h,
+    )
+    moon = moon_track(place.lat, place.lon, sun, *ephemeris)
     rows = []
     for k, t in enumerate(hours.hours):
-        alt = float(sun_altitude_deg[k])
+        alt = float(sun.altitude_deg[k])
+        row = verdict.hours[k]
         rows.append(
             {
                 "time": utc_text(t),
                 "sun_altitude_deg": alt,
                 "sun_class": sun_class(alt),
-                "moon_altitude_deg": None,
-                "past": None,
-                "counted": None,
-                "agreement": None,
+                "moon_altitude_deg": moon.altitude_deg[k],
+                "past": row.past,
+                "counted": row.counted,
+                "agreement": row.agreement._asdict(),
                 "models": {
                     m.id: _model_hour(hours.runs[m.id], hours.values[m.id][k]) for m in models
                 },
@@ -83,11 +136,15 @@ def build_place_file(
             "height_m": place.height.metres,
             "height_source": place.height.source,
         },
-        "tonight": None,
+        "tonight": verdict.to_json(),
         "hours": rows,
         "models": model_info,
-        "moon": None,
-        "provenance": {"commit": commit, "config_hash": config_hash, "run_ids": run_ids},
+        "moon": moon.to_json(),
+        "provenance": {
+            "commit": commit,
+            "config_hash": settings.config_hash,
+            "run_ids": run_ids,
+        },
     }
 
 

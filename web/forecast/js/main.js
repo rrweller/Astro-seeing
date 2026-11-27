@@ -4,7 +4,7 @@
 // more than an hour old.
 
 import { clockLabel } from "./format.js";
-import { refreshAges, renderAbout, renderCredits, renderHeader, renderRuns, renderSources, renderTable, renderUpdated } from "./render.js";
+import { refreshAges, renderAbout, renderCredits, renderHeader, renderRuns, renderSources, renderTable, renderUpdated, renderVerdict } from "./render.js";
 
 const CHECK_EVERY_MS = 5 * 60 * 1000;
 const NOT_UPDATING_AFTER_MS = 60 * 60 * 1000;
@@ -48,6 +48,7 @@ async function show(latest) {
   state.place = place;
   renderHeader(place);
   renderUpdated(latest, place.place.time_zone);
+  renderVerdict(place);
   renderRuns(latest, place, Date.now());
   renderTable(place);
   renderCredits(place);
