@@ -20,7 +20,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C6` · **in-progress** · cloud · Multi-month surface requests and per-kind planning rates · [#99](https://github.com/rrweller/Astro-seeing/issues/99)
 
-- `C7` · **ready** · cloud · Code to move the kept raw GRIB to the NAS · ticket: none yet
+- `C7` · **in-progress** · cloud · Code to move the kept raw GRIB to the NAS · [#100](https://github.com/rrweller/Astro-seeing/issues/100)
 
 - `C8` · **ready** · cloud · ESO seeing-monitor fetcher · ticket: none yet
 
@@ -138,7 +138,7 @@ flowchart LR
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
   class C6 inprogress
   %% ---
-  class C7 ready
+  class C7 inprogress
   %% ---
   class C8 ready
   %% ---
