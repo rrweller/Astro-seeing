@@ -108,6 +108,32 @@ class MapCase:
                        units="percent", hours=hours)  # fmt: skip
         self.put_layer(f"model_ground_{family}", np.full(shape, -32768), **ground, units="m")
 
+    def add_sunset_map(self, night: str, written_at: str, clear: np.ndarray) -> str:
+        """A sunset map as the tick keeps it (ticket #67): the current set's layers and
+        its ``latest.json`` under ``sunset/<night>/``, as if written at ``written_at``,
+        with ``clear`` as its clear layer; listed in ``latest.json``, newest first.
+        Returns its set id."""
+        latest = self.latest()
+        folder = self.data / "sunset" / night
+        shutil.copytree(self.set_folder(), folder)
+        (folder / "content.sha256").unlink()
+        stamp = written_at.replace("-", "").replace(":", "")[:15] + "Z"
+        set_id = f"{stamp}-{hashlib.sha256(night.encode()).hexdigest()[:8]}"
+        own = {**latest, "set_id": set_id, "set_path": f"sets/{set_id}/",
+               "written_at": written_at, "layers": dict(latest["layers"])}  # fmt: skip
+        data = np.ascontiguousarray(clear, dtype=np.uint8).tobytes()
+        e = own["layers"]["clear_left"] = dict(latest["layers"]["clear_left"])
+        (folder / e["file"]).write_bytes(data)
+        e["sha256"] = hashlib.sha256(data).hexdigest()
+        for f in folder.iterdir():  # only the layers and latest.json are kept
+            if f.name not in {x["file"] for x in own["layers"].values()}:
+                f.unlink()
+        (folder / "latest.json").write_text(json.dumps(own))
+        entries = [*latest["sunset_maps"], {"night": night, "path": f"sunset/{night}/"}]
+        latest["sunset_maps"] = sorted(entries, key=lambda m: m["night"], reverse=True)
+        (self.data / "latest.json").write_text(json.dumps(latest))
+        return set_id
+
     # the browser -----------------------------------------------------------------
     def open(self, path: str = MAP, clock: str = CLOCK, **viewport) -> Browser:
         self.browser = Browser(self.site.origin, **viewport)
@@ -139,6 +165,12 @@ def wait_drawn(b: Browser) -> str:
     body = "document.body.dataset"
     b.wait_for(f"{body}.mapDrawn && {body}.mapDrawn === {body}.mapKey", timeout_ms=20000)
     return b.eval("document.body.dataset.mapKey")
+
+
+def wait_set(b: Browser, set_id: str) -> str:
+    """Wait until the map has drawn a layer of set ``set_id``; return the layer's key."""
+    b.wait_for(f"(document.body.dataset.mapKey || '').startsWith('{set_id}/')", timeout_ms=20000)
+    return wait_drawn(b)
 
 
 def cell_point(b: Browser, i: int, j: int, dy: float = 0.0, dx: float = 0.0) -> dict:
@@ -400,8 +432,13 @@ def test_the_dark_hours_layer_shows_the_minutes_left_and_none_as_its_own_colour(
 
 def test_no_request_leaves_the_host(case):
     case.add_family_without_run("ifs")
+    ids = sunset_case(case)
     b = case.open()
     wait_drawn(b)
+    b.call("selectOption", selector="#night", value="2026-11-25")  # a past night's map
+    wait_set(b, ids["2026-11-25"])
+    b.call("selectOption", selector="#night", value="")
+    wait_set(b, ids["live"])
     for layer in ("seeing", "dark", "cloud"):
         b.call("click", selector=f"input[name=layer][value={layer}]")
         wait_drawn(b)
@@ -441,6 +478,24 @@ def test_a_390px_phone_width_works(case):
     assert b.eval("document.documentElement.scrollWidth") <= 390
 
 
+def test_the_night_picker_and_label_fit_a_390px_phone(case):
+    ids = sunset_case(case)
+    b = case.open(width=390, height=844, scale=2, touch=True)
+    wait_drawn(b)
+    b.call("selectOption", selector="#night", value="2026-11-25")
+    wait_set(b, ids["2026-11-25"])
+    # also with a wider font than this machine's (CI's Chrome measured the picker 6 px
+    # wider than here and it ran into the gutter): the picker shrinks, never overflows
+    for spacing in ("normal", "0.12em"):
+        b.eval(f"document.getElementById('night').style.letterSpacing = '{spacing}'")
+        assert b.eval("document.documentElement.scrollWidth") <= 390
+        for box in ("night-pick", "night", "night-label"):
+            r = b.eval(f"document.getElementById('{box}').getBoundingClientRect().toJSON()")
+            assert r["width"] > 0 and r["left"] >= 16 and r["right"] <= 390 - 16 + 0.5, (
+                spacing, box, r,
+            )  # fmt: skip
+
+
 def test_a_new_set_redraws_the_map_and_the_open_card(case):
     b = case.open()
     first = wait_drawn(b)
@@ -465,6 +520,135 @@ def test_a_new_set_redraws_the_map_and_the_open_card(case):
     key = wait_drawn(b)
     assert key != first and key.startswith(new_id + "/")
     b.wait_for("document.querySelector('#cell-card [data-field=clear_left]').dataset.value === '3'")
+
+
+# -- sunset maps: the last 7 nights' map as forecast at sunset (ticket #67) --------------
+
+NIGHT = "document.getElementById('night')"
+
+
+def sunset_case(case: MapCase) -> dict[str, str]:
+    """Tonight's clear layer with a 0 and a 6, and two kept sunset maps whose clear
+    layers differ from it: 25 November (all 3, a 12 at (0, 2)) and 24 November (all 9).
+    Returns each night's set id, and Tonight's under "live"."""
+    clear = case.layer("clear_left").copy()
+    clear[0, 2], clear[0, 3] = 0, 6
+    case.put_layer("clear_left", clear)
+    ids = {"live": case.latest()["set_id"]}
+    old = np.full(clear.shape, 9)
+    ids["2026-11-24"] = case.add_sunset_map("2026-11-24", "2026-11-24T14:30:04Z", old)
+    old = np.full(clear.shape, 3)
+    old[0, 2] = 12
+    ids["2026-11-25"] = case.add_sunset_map("2026-11-25", "2026-11-25T14:30:03Z", old)
+    return ids
+
+
+def night_label(b: Browser) -> dict:
+    return b.eval(
+        """(() => { const l = document.getElementById('night-label');
+                    return { hidden: l.hidden, text: l.textContent }; })()"""
+    )
+
+
+def test_a_past_night_shows_its_sunset_map_and_label_and_tonight_restores_the_live_map(case):
+    ids = sunset_case(case)
+    b = case.open()
+    live_key = wait_drawn(b)
+    assert live_key.startswith(ids["live"] + "/")
+    assert night_label(b)["hidden"] is True
+    options = b.eval(f"[...{NIGHT}.options].map(o => [o.value, o.textContent])")
+    assert options == [
+        ["", "Tonight"],
+        ["2026-11-25", "Wed 25 Nov, as forecast at sunset"],
+        ["2026-11-24", "Tue 24 Nov, as forecast at sunset"],
+    ]
+    live = [colours(case, b, 0, j) for j in (0, 2, 3)]
+
+    b.call("selectOption", selector="#night", value="2026-11-25")
+    key = wait_set(b, ids["2026-11-25"])
+    assert key.startswith(ids["2026-11-25"] + "/clear_left/")
+    assert b.eval("location.hash") == "#night/2026-11-25"
+    assert b.eval("document.body.dataset.night") == "2026-11-25"
+    label = night_label(b)
+    assert label["hidden"] is False
+    assert "Wed 25 Nov" in label["text"] and "as forecast at sunset" in label["text"]
+    assert "15:30" in label["text"]  # the set's write time, in Kongsberg time
+    assert "Sunset map" in b.eval("document.getElementById('place-name').textContent")
+    past = [colours(case, b, 0, j) for j in (0, 2, 3)]
+    assert all(len(s) == 1 for s in past)  # flat colours: 3, 12, 3; Tonight had 254 there
+    assert past[0] == past[2] != past[1]
+    assert not past[0] & live[0] and past[1] != live[1]
+    click_cell(b, 0, 2)
+    c = card(b)
+    assert c["clear_left"][0] == "12"
+    assert "Wed 25 Nov" in c["text"] and "as forecast at sunset" in c["text"].lower()
+    served = {r.path for r in case.site.requests}
+    assert "/data/sunset/2026-11-25/latest.json" in served
+    assert "/data/sunset/2026-11-25/clear_left.u8" in served
+
+    b.call("selectOption", selector="#night", value="2026-11-24")
+    wait_set(b, ids["2026-11-24"])
+    assert card(b)["clear_left"][0] == "9"  # the open card follows the night shown
+    assert "Tue 24 Nov" in night_label(b)["text"]
+
+    b.call("selectOption", selector="#night", value="")
+    key = wait_set(b, ids["live"])
+    assert key.startswith(ids["live"] + "/clear_left/")
+    assert b.eval("location.hash") == "#map"
+    assert night_label(b)["hidden"] is True
+    assert b.eval("document.body.dataset.night") == ""
+    assert b.eval("document.getElementById('place-name').textContent") == "Tonight's sky"
+    assert [colours(case, b, 0, j) for j in (0, 2, 3)] == live
+    assert card(b)["clear_left"][0] == "0"
+    assert "This spot tonight" in card(b)["text"]
+
+
+def test_the_back_button_and_a_nights_link_work_and_an_unknown_night_shows_tonight(case):
+    ids = sunset_case(case)
+    b = case.open("/forecast/#night/2026-11-24")
+    wait_set(b, ids["2026-11-24"])
+    assert b.eval(f"{NIGHT}.value") == "2026-11-24"
+    b.call("selectOption", selector="#night", value="2026-11-25")
+    wait_set(b, ids["2026-11-25"])
+    b.eval("history.back()")
+    b.wait_for("location.hash === '#night/2026-11-24'")
+    wait_set(b, ids["2026-11-24"])
+    assert b.eval(f"{NIGHT}.value") == "2026-11-24"
+
+    b.eval("location.hash = '#night/2026-11-01'")  # not kept (or never taken)
+    b.wait_for("document.body.dataset.night === ''")
+    wait_set(b, ids["live"])
+    status = b.eval("document.getElementById('status').textContent")
+    assert "no sunset map for the night of 2026-11-01" in status.lower()
+    assert b.eval(f"{NIGHT}.value") == ""
+
+
+def test_a_new_set_keeps_the_past_night_shown_and_lists_the_new_nights(case):
+    ids = sunset_case(case)
+    b = case.open("/forecast/#night/2026-11-24")
+    first = wait_set(b, ids["2026-11-24"])
+    # the tick writes a new set, with tonight's sunset map now kept too
+    old = case.latest()
+    new_id = "20261126T151500Z-0123abcd"
+    shutil.copytree(case.set_folder(), case.data / f"sets/{new_id}")
+    latest = {**old, "set_id": new_id, "set_path": f"sets/{new_id}/",
+              "written_at": "2026-11-26T15:15:00Z"}  # fmt: skip
+    (case.data / "latest.json").write_text(json.dumps(latest))
+    case.add_sunset_map("2026-11-26", "2026-11-26T14:30:02Z", np.full((5, 5), 1))
+    b.run_clock(5 * 60 * 1000)
+    b.wait_for(f"document.body.dataset.setId === '{new_id}'")
+    assert wait_drawn(b) == first  # still the night chosen
+    assert b.eval(f"[...{NIGHT}.options].map(o => o.value)") == [
+        "", "2026-11-26", "2026-11-25", "2026-11-24",
+    ]  # fmt: skip
+    assert b.eval(f"{NIGHT}.value") == "2026-11-24"
+
+
+def test_without_sunset_maps_there_is_no_night_picker(case):
+    assert case.latest()["sunset_maps"] == []
+    b = case.open()
+    wait_drawn(b)
+    assert b.eval("document.getElementById('night-pick').hidden") is True
 
 
 # -- with ICON-EU: the map grid is ICON-EU's, GFS shows as coarser blocks ----------------
@@ -574,6 +758,35 @@ def test_screenshots(tmp_path, icon_products, width):
         b.call("click", selector="input[name=layer][value=dark]")
         wait_drawn(b)
         b.call("screenshot", path=str(d / f"{width}-dark-hours-left.png"), fullPage=not phone)
+    finally:
+        case.close()
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(
+    not os.environ.get("ASTRO_PAGE_SCREENSHOTS"), reason="only for the PR's screenshots"
+)
+@pytest.mark.parametrize("width", [1440, 390])
+def test_sunset_map_screenshots(tmp_path, icon_products, width):
+    """The PR's screenshots of the night picker and a past night's sunset map (ticket
+    #67): the tick's GFS and ICON-EU output, with two kept nights whose clear layers
+    are hand-set test values (a clear band crossing the area), not a forecast."""
+    case = MapCase(tmp_path, icon_products)
+    try:
+        shape = case.layer("clear_left").shape
+        i, j = np.indices(shape)
+        band = np.clip(12 - 2 * np.abs(i - j - 2), 0, 12)
+        case.add_sunset_map("2026-11-24", "2026-11-24T14:30:04Z", np.full(shape, 255))
+        sid = case.add_sunset_map("2026-11-25", "2026-11-25T14:30:03Z", band)
+        d = screenshot_dir()
+        phone = width == 390
+        b = case.open(width=width, height=844 if phone else 900, scale=2, touch=phone)
+        wait_drawn(b)
+        b.call("screenshot", path=str(d / f"{width}-night-picker-tonight.png"), fullPage=True)
+        b.call("selectOption", selector="#night", value="2026-11-25")
+        wait_set(b, sid)
+        click_cell(b, 8, 6)
+        b.call("screenshot", path=str(d / f"{width}-sunset-map-25-nov.png"), fullPage=True)
     finally:
         case.close()
 
