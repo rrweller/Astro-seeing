@@ -18,7 +18,7 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C5` · **in-progress** · cloud · Surface-pressure point fetcher for Haslebacher (b) · [#93](https://github.com/rrweller/Astro-seeing/issues/93)
+- `C5` · **review** · cloud · Surface-pressure point fetcher for Haslebacher (b) · [#93](https://github.com/rrweller/Astro-seeing/issues/93) · PR [#94](https://github.com/rrweller/Astro-seeing/pull/94)
 
 - `C6` · **ready** · cloud · Multi-month surface requests and per-kind planning rates · ticket: none yet
 
@@ -153,7 +153,7 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C5 inprogress
+  class C5 review
   %% ---
   class C6 ready
   %% ---
