@@ -4,7 +4,7 @@
 // model's missing hour or null value stays a blank cell. The verdict's wording is
 // verdict.js's, from the file's `tonight` and `moon`.
 
-import { ageText, clockLabel, dayLabel, degrees, fixed, hourLabel, km, metres, percent, runLabel } from "./format.js";
+import { ageText, clockLabel, dayLabel, degrees, fixed, hourLabel, km, metres, percent, runLabel, visibilityKm } from "./format.js";
 import { SOURCES } from "./sources.js";
 import { MAJORITY_WORDS, basisNote, chips, headline, mepsLine, moonLine, seeingLine } from "./verdict.js";
 
@@ -128,6 +128,32 @@ export function renderRuns(latest, place, nowMs) {
   }
 }
 
+// -- terrain ------------------------------------------------------------------------
+
+/** The terrain caveat (D49 item 4) for each model whose ground lies above the place,
+ *  by the metres the place file gives; nothing for a model with none. */
+export function renderTerrain(place) {
+  const p = place.place;
+  const items = [];
+  for (const id of modelIds(place)) {
+    const info = place.models[id];
+    if (!info || info.terrain_caveat_m === null) continue;
+    items.push(
+      el(
+        "li",
+        { dataset: { model: id, value: String(info.terrain_caveat_m) } },
+        `${p.name} (${metres(p.height_m)}) is `,
+        el("strong", { text: `${metres(info.terrain_caveat_m)} below` }),
+        ` ${modelName(place, id)}'s ground (${metres(info.model_ground_m)}): fog or cold air ` +
+          "pooling in terrain below the model's ground is not forecast by this model.",
+      ),
+    );
+  }
+  const list = document.getElementById("terrain");
+  list.replaceChildren(...items);
+  list.hidden = items.length === 0;
+}
+
 /** Refreshes the run ages shown, as time passes. */
 export function refreshAges(nowMs) {
   for (const span of document.querySelectorAll(".run-age")) span.textContent = ageText(span.dataset.runTime, nowMs);
@@ -158,6 +184,75 @@ function totalNote(place, id) {
   return `no ground layer; the column starts ${km(gap)} above the model ground`;
 }
 
+/** The value the place file writes for a fog signal the model has no field for (D49
+ *  item 3): shown as such, never blank and never 0. */
+const ABSENT = "absent";
+
+const FOG_CAPTION =
+  "Fog signals, experimental and not counted in the verdict: the model's own fog, " +
+  "visibility and low-cloud outputs. “absent”: the model has no such field.";
+
+/** The fog-signals rows (D49 item 3): each fog signal in the place file, then the
+ *  model's own low cloud. */
+function fogRows() {
+  const fog = (key) => (m) => m.fog[key];
+  return [
+    {
+      group: FOG_CAPTION,
+      groupClass: "fog-head",
+      quantity: "fog_fraction",
+      label: "Fog (%)",
+      note: "share of the model's grid box in fog",
+      value: fog("fog_fraction_pct"),
+      format: percent,
+    },
+    {
+      quantity: "visibility",
+      label: "Visibility (km)",
+      note: "near the ground; it drops in fog",
+      value: fog("visibility_m"),
+      format: visibilityKm,
+    },
+    {
+      quantity: "weather_code",
+      label: "Weather code",
+      note: "the model's present-weather code; 45 and 48 are fog",
+      value: fog("weather_code"),
+      format: (v) => fixed(v, 0),
+    },
+    {
+      quantity: "dewpoint_depression",
+      label: "Dewpoint depression (K)",
+      note: "2 m air temperature minus dewpoint; near 0, the air is saturated",
+      value: fog("dewpoint_depression_2m_k"),
+      format: (v) => fixed(v, 1),
+    },
+    {
+      quantity: "fog_low_cloud",
+      label: "Low cloud (%)",
+      note: "the model's low cloud, as in its cloud rows",
+      value: (m) => m.cloud.low_pct,
+      format: percent,
+    },
+  ];
+}
+
+/** The model's missing column (D47 item 2): the gap between its ground and its first
+ *  usable pressure level, which none of its seeing values include. */
+function missingColumn(place, id) {
+  const info = place.models[id];
+  if (!info) return null;
+  const name = modelName(place, id);
+  const gap = info.gap_to_first_level_m;
+  if (gap === null) {
+    return `Missing column: where ${name}'s first usable pressure level lies above its ground is not known.`;
+  }
+  return (
+    `Missing column: the ${km(gap)} from ${name}'s ground (${metres(info.model_ground_m)}) up to ` +
+    "its first usable pressure level is not in its seeing (the deepest gap over tonight's hours)."
+  );
+}
+
 function rowsFor(place, id) {
   const cloud = (key) => (m) => m.cloud[key];
   const rows = [
@@ -165,6 +260,7 @@ function rowsFor(place, id) {
     { quantity: "low", label: "Low", value: cloud("low_pct"), format: percent, kind: "cloud" },
     { quantity: "mid", label: "Mid", value: cloud("mid_pct"), format: percent, kind: "cloud" },
     { quantity: "high", label: "High", value: cloud("high_pct"), format: percent, kind: "cloud" },
+    ...fogRows(),
     {
       group: "Wind",
       quantity: "wind200",
@@ -298,10 +394,19 @@ export function renderTable(place) {
       el("tr", { class: "model-head", dataset: { model: id } }, el("th", { colspan: span, scope: "colgroup" }, el("div", { class: "cap" }, name, regional))),
     );
     let groupId = null;
+    // the missing column heads the seeing rows, and every seeing value points at it
+    const gap = missingColumn(place, id);
+    let gapId = null;
     for (const row of rowsFor(place, id)) {
+      if (row.seeing && gap !== null && gapId === null) {
+        gapId = `m${++uid}`;
+        body.append(
+          el("tr", { class: "group-head missing-column", dataset: { model: id } }, el("th", { colspan: span, scope: "colgroup" }, el("div", { class: "cap", id: gapId, text: gap }))),
+        );
+      }
       if (row.group) {
         groupId = `g${++uid}`;
-        body.append(el("tr", { class: `group-head ${row.groupClass ?? ""}` }, el("th", { colspan: span, scope: "colgroup" }, el("div", { class: "cap", id: groupId, text: row.group }))));
+        body.append(el("tr", { class: `group-head ${row.groupClass ?? ""}`, dataset: { model: id } }, el("th", { colspan: span, scope: "colgroup" }, el("div", { class: "cap", id: groupId, text: row.group }))));
       }
       const labelId = `r${++uid}`;
       const tr = el(
@@ -312,19 +417,23 @@ export function renderTable(place) {
       for (const hour of place.hours) {
         const m = hour.models[id];
         const value = !m || "missing" in m ? null : row.value(m);
+        const absent = value === ABSENT;
+        const state = value === null ? "missing" : absent ? "absent" : null;
         const attrs = {
-          class: [hourClasses(hour), value === null ? "missing" : null].filter(Boolean).join(" "),
+          class: [hourClasses(hour), state].filter(Boolean).join(" "),
           dataset: { model: id, quantity: row.quantity, time: hour.time },
-          "aria-describedby": row.seeing ? `${groupId} ${labelId}` : null,
+          "aria-describedby": row.seeing ? [gapId, groupId, labelId].filter(Boolean).join(" ") : null,
         };
         if (value === null) {
           attrs.title = m && "missing" in m ? MISSING_REASONS[m.missing] ?? `no value: ${m.missing}` : "no value";
+        } else if (absent) {
+          attrs.title = `absent: ${modelName(place, id)} has no such field`;
         } else {
           attrs.dataset.value = String(value);
           // the veil's thickness only: the text and data-value keep the file's value
           if (row.kind === "cloud") attrs.style = `--cover:${Math.min(Math.max(value, 0), 100) / 100}`;
         }
-        tr.append(el("td", attrs, value === null ? "" : row.format(value)));
+        tr.append(el("td", attrs, value === null ? "" : absent ? ABSENT : row.format(value)));
       }
       body.append(tr);
     }

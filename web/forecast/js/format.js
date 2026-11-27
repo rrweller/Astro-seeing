@@ -101,6 +101,12 @@ export function metres(value) {
   return `${Math.round(value)} m`;
 }
 
+/** A visibility in metres as kilometres: to 0.01 km below 1 km, so "0.35" (a short
+ *  visibility keeps its detail); to 0.1 km from there, so "24.0". */
+export function visibilityKm(valueM) {
+  return fixed(valueM / 1000, valueM < 1000 ? 2 : 1);
+}
+
 /** Metres as kilometres to 0.01 km: "0.14 km". */
 export function km(valueM) {
   return `${fixed(valueM / 1000, 2)} km`;
