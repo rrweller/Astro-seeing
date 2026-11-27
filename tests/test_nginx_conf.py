@@ -18,11 +18,13 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from git_repo import commit_files, new_repo
 
 from astroseeing.forecast.deploy import deploy, rollback
+from astroseeing.forecast.settings import load_settings
 from astroseeing.provenance import REPO_ROOT
 
 CONF = REPO_ROOT / "scripts" / "nginx" / "astro-web.conf"
@@ -123,6 +125,7 @@ def served(tmp_path):
             return e.code, dict(e.headers), e.read()
 
     try:
+        get.products = products
         yield get
     finally:
         proc.terminate()
@@ -150,6 +153,17 @@ def test_latest_json_is_never_cached_and_answers_304_to_its_etag(served):
     assert gzip.decompress(body).startswith(b'{"set_id": "x"')
     assert served("/data/latest.json", **{"If-None-Match": headers["ETag"],
                                           "Accept-Encoding": "gzip"})[0] == 304  # fmt: skip
+
+
+def test_latest_json_is_where_the_page_not_served_alert_looks_for_it(served):
+    # F1-12's alert fetches this URL after each tick (alerts.served_latest_url, D52 item 10).
+    url = urlsplit(load_settings().alerts.served_latest_url)
+    assert (url.hostname, url.port) == ("127.0.0.1", 8350)
+    assert "listen 8350;" in CONF.read_text()  # all addresses, so 127.0.0.1 too
+
+    status, _, body = served(url.path)
+
+    assert (status, body) == (200, (served.products / "latest.json").read_bytes())
 
 
 def test_set_files_are_cached_long_and_layers_are_sent_gzip_compressed(served):
