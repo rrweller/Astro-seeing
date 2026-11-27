@@ -165,12 +165,23 @@ class Alerts:
     no_complete_run_h: float
     no_tick_h: float
     staging_min_free_gb: float
+    served_latest_url: str  # the page's latest.json as served (D52 item 10)
 
 
 @dataclass(frozen=True)
 class Eso:
     fetch_time_utc: str
     refetch_after_days: int
+
+
+@dataclass(frozen=True)
+class PlaceStores:
+    """The per-place daily stores on ``/data`` (D51 item 12, ticket #59): how long a call
+    to the NAS may take before it counts as hung, and how many finalised days stay on
+    the SSD as well."""
+
+    nas_timeout_s: float
+    ssd_keep_days: int
 
 
 @dataclass(frozen=True)
@@ -184,6 +195,7 @@ class ForecastSettings:
     run_rules: RunRules
     alerts: Alerts
     eso: Eso
+    place_stores: PlaceStores
     config_hash: str
     raw: Mapping[str, Any]  # the file's data, as hashed: treat as read-only
 
@@ -236,13 +248,24 @@ def _parse_settings(raw: Any, source: str) -> ForecastSettings:
         no_complete_run_h=al.number("no_complete_run_h", positive=True),
         no_tick_h=al.number("no_tick_h", positive=True),
         staging_min_free_gb=al.number("staging_min_free_gb", positive=True),
+        served_latest_url=al.text("served_latest_url"),
     )
+    if not re.fullmatch(r"https?://\S+", alerts.served_latest_url):
+        raise al.error(
+            f"served_latest_url must be an http(s) URL, got {alerts.served_latest_url!r}"
+        )
     al.done()
     es = root.node("eso")
     eso = Eso(es.text("fetch_time_utc"), es.integer("refetch_after_days", minimum=1))
     if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", eso.fetch_time_utc):
         raise es.error(f"fetch_time_utc must be HH:MM (UTC), got {eso.fetch_time_utc!r}")
     es.done()
+    ps = root.node("place_stores")
+    place_stores = PlaceStores(
+        nas_timeout_s=ps.number("nas_timeout_s", positive=True),
+        ssd_keep_days=ps.integer("ssd_keep_days", minimum=1),
+    )
+    ps.done()
     root.done()
     return ForecastSettings(
         models=models,
@@ -254,6 +277,7 @@ def _parse_settings(raw: Any, source: str) -> ForecastSettings:
         run_rules=run_rules,
         alerts=alerts,
         eso=eso,
+        place_stores=place_stores,
         config_hash=config_hash(raw),
         raw=raw,
     )

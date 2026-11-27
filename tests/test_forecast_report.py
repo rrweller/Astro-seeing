@@ -13,6 +13,9 @@ those runs every kind of record the report must show:
 - 1 Dec: processed;
 - 2 Dec: seen only, the tick found /staging short of space (nothing fetched).
 
+The same ticks write the real heartbeat (ticket #61) and the per-place day stores on
+/data (ticket #59) that the commands read.
+
 Expected numbers come from the sample files' own sizes and the fake clock, never from
 the manifest the commands read.
 """
@@ -24,12 +27,13 @@ import multiprocessing
 import os
 import sqlite3
 from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
 
 import pytest
 
 from astroseeing import cli
+from astroseeing.forecast.alerts import write_heartbeat
 from astroseeing.forecast.report import ReadOnlyManifest
-from astroseeing.forecast.report.readonly import HEARTBEAT_TABLE
 from astroseeing.forecast.sources import RunRef
 from astroseeing.forecast.verify import ForecastRecords
 from astroseeing.manifest import Manifest
@@ -68,6 +72,7 @@ def week(tmp_path_factory, ephemeris):
     w = World(base / "ct", ephemeris, publish=schedule)
     w.server.fail("/", status=503, contains=FAILING_48B)  # 27 Nov step 48, every try
     w.folders = folders
+    w.stored_bytes = {}  # each run's SSD file, measured the day it was stored (later purged)
     for d in range(7):
         day = DAY + dt.timedelta(days=d)
         if d == 6:
@@ -78,31 +83,21 @@ def week(tmp_path_factory, ephemeris):
             times += [first + dt.timedelta(minutes=5 * k) for k in range(1, 5)]
         for t in times:
             w.at(t)
-    _fake_day_stores(base / "ct" / "data" / "forecast" / "places" / "kongsberg")
+        run_time = day + dt.timedelta(hours=6)
+        stored = w.paths.places / "kongsberg" / f"{run_time:%Y-%m-%d}"
+        stored = stored / f"gfs-{run_time:%Y%m%dT%HZ}.json"
+        if stored.exists():
+            w.stored_bytes[run_time] = stored.stat().st_size
     yield w
     w.close()
 
 
-#: Kongsberg's per-place day stores on /data (ticket #59 writes the real ones): the days
-#: and the bytes of each store's files.
-DAY_STORES = {
-    "2026-11-20": (300, 200),  # before the week: counted in "all stores" only
-    "2026-11-26": (1_000, 3_000),
-    "2026-11-27": (1_000, 3_500),
-    "2026-11-28": (1_000, 2_500),
-}
-
-
-def _fake_day_stores(root) -> None:
-    for day, sizes in DAY_STORES.items():
-        store = root / f"{day}.zarr"
-        (store / "c").mkdir(parents=True)
-        (store / "zarr.json").write_bytes(b"x" * sizes[0])
-        (store / "c" / "0").write_bytes(b"y" * sizes[1])
-
-
 def _size(path) -> int:
     return path.stat().st_size
+
+
+def _tree_bytes(path) -> int:
+    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
 
 
 def _folder_bytes(folder) -> int:
@@ -140,7 +135,8 @@ def test_status_lists_each_models_latest_runs_with_state_age_steps_and_staleness
         ["2026-11-30T06:00:00Z", "processed", "54.0", "49/49"],
         ["2026-11-29T06:00:00Z", "processed", "78.0", "49/49"],
     ]
-    assert "last tick: not recorded" in out
+    # the heartbeat the tick itself wrote: its last tick was 2 Dec 10:00
+    assert "last tick: 2026-12-02T10:00:00Z, 120 min ago" in out
 
 
 def _table(text: str, heading: str) -> list[list[str]]:
@@ -174,14 +170,13 @@ def _expected_week(w: World) -> dict[str, dict]:
         ]
     ):
         run_time = DAY + dt.timedelta(days=d, hours=6)
-        stored = w.paths.places / "kongsberg" / f"{run_time:%Y-%m-%d}"
-        stored = stored / f"gfs-{run_time:%Y%m%dT%HZ}.json"
+        stored = w.stored_bytes.get(run_time)
         exp[f"{run_time:%Y-%m-%dT%H:%M:%SZ}"] = {
             "state": state,
             "delay": "7.00" if d == 4 else "4.00",
             "bytes": "missing" if nbytes is None else str(nbytes),
             "steps": steps,
-            "derived": str(_size(stored)) if state in ("processed", "partial") else "missing",
+            "derived": str(stored) if state in ("processed", "partial") else "missing",
         }
     return exp
 
@@ -267,13 +262,25 @@ def test_size_report_prints_and_writes_each_runs_numbers_and_the_totals(env, tmp
     assert cells["derived bytes"] == f"{total_derived} (5 of 7 runs)"
     assert (cells["median delay h"], cells["max delay h"]) == ("4.00", "7.00")
 
-    # the day stores on /data: three days in the week, four in all
+    # the day stores the tick wrote to /data (ticket #59): 26 Nov to 1 Dec are final (2
+    # Dec's 12 and 18z runs could still come), but 28 Nov's only run failed and stored
+    # nothing, so it has no store; each is measured on disk
+    days = env.manifest.conn.execute(
+        "SELECT day, outcome, path, bytes FROM forecast_place_days ORDER BY day"
+    ).fetchall()
+    assert [(d["day"], d["outcome"]) for d in days] == [
+        (day, "written")
+        for day in ("2026-11-26", "2026-11-27", "2026-11-29", "2026-11-30", "2026-12-01")
+    ]
+    on_disk = sum(_tree_bytes(Path(d["path"])) for d in days)
+    assert on_disk == sum(d["bytes"] for d in days)  # as F1-10 recorded them
     (store,) = _table(report, "Saved places' day stores on /data")
-    assert store == ["kongsberg", "3", "12000", "4000", "4", "12500"]
+    assert store == ["kongsberg", "5", str(on_disk), str(round(on_disk / 5)), "5", str(on_disk)]
 
     # the comparison with the estimates (D45 item 5, D51 item 3)
     estimates = {r[0]: r for r in _table(report, "Against the estimates")}
-    assert estimates["Store per saved place per day"][2:4] == ["~46 KB", "4.0 KB (3 days)"]
+    assert estimates["Store per saved place per day"][2] == "~46 KB"
+    assert estimates["Store per saved place per day"][3].endswith(" KB (5 days)")
     assert "missing" in estimates["ICON-EU raw per 48 h run"][3]  # no ICON-EU in this week
 
 
@@ -444,11 +451,11 @@ def test_status_shows_a_model_with_no_runs_and_a_fresh_one_as_not_stale(small, c
 
 
 def test_status_shows_the_last_tick_from_the_heartbeat(small, capsys):
-    con = sqlite3.connect(small / "state" / "manifest.sqlite")
-    con.execute(f"CREATE TABLE {HEARTBEAT_TABLE} (id INTEGER PRIMARY KEY, at TEXT NOT NULL)")
-    con.execute(f"INSERT INTO {HEARTBEAT_TABLE} (at) VALUES ('2026-11-26T11:45:00+00:00')")
-    con.commit()
-    con.close()
+    """The heartbeat in the manifest's real table, written as the tick writes it."""
+    m = Manifest(small / "state" / "manifest.sqlite")
+    write_heartbeat(m, DAY + dt.timedelta(hours=11), no_tick_h=1.0, health=[])
+    write_heartbeat(m, DAY + dt.timedelta(hours=11, minutes=45), no_tick_h=1.0, health=[])
+    m.close()
     cli.main(["forecast", "status", *_small_settings(small), "--now", "2026-11-26T12:00:00Z"])
     assert "last tick: 2026-11-26T11:45:00Z, 15 min ago" in capsys.readouterr().out
 
@@ -569,14 +576,22 @@ def test_size_report_measures_the_ssd_products_folder(small, tmp_path):
     assert estimates["F1 area grids"] == ["under 1 GB", "1.1 KB"]
 
 
-def test_size_report_lists_what_is_not_a_day_store_and_records_its_provenance(small, tmp_path):
+def test_size_report_reads_the_recorded_day_stores_and_records_its_provenance(small, tmp_path):
     import astroseeing
 
     places = small / "data" / "forecast" / "places" / "kongsberg"
     (places / "2026-11-26.zarr").mkdir(parents=True)
     (places / "2026-11-26.zarr" / "zarr.json").write_bytes(b"0" * 700)
-    (places / "2026-13-01.zarr").mkdir()  # no such day
+    (places / "2026-11-25.zarr").mkdir()  # another store's content: refused
     (places / ".2026-11-27.zarr.tmp").mkdir()  # a write in progress
+    m = Manifest(small / "state" / "manifest.sqlite")
+    rec = ForecastRecords(m)
+    for day, outcome, nbytes in [("2026-11-26", "written", 700), ("2026-11-25", "refused", None),
+                                 ("2026-11-24", "written", 900)]:  # fmt: skip
+        rec.record_place_day("kongsberg", dt.date.fromisoformat(day), outcome,
+                             str(places / f"{day}.zarr"), nbytes, "0" * 64, None,
+                             at=DAY)  # fmt: skip
+    m.close()
     out_file = tmp_path / "prov.md"
     cli.main(["forecast", "size-report", *_small_settings(small), "--now",
               "2026-11-27T00:00:00Z", "--out", str(out_file)])  # fmt: skip
@@ -584,7 +599,9 @@ def test_size_report_lists_what_is_not_a_day_store_and_records_its_provenance(sm
     assert _table(report, "Saved places' day stores on /data") == [
         ["kongsberg", "1", "700", "700", "1", "700"]
     ]
-    assert "Not counted for kongsberg: .2026-11-27.zarr.tmp, 2026-13-01.zarr." in report
+    assert "Recorded as stored but not on disk, kongsberg: 2026-11-24." in report
+    assert "Refused (another store with other content is there), kongsberg: 2026-11-25." in report
+    assert "Not counted (not in the manifest), kongsberg: .2026-11-27.zarr.tmp." in report
     settings = small_box_settings(
         tmp_path / "again", **{"areas.kongsberg.models": ["gfs", "icon_eu"]}
     )

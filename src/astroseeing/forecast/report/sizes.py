@@ -1,6 +1,7 @@
 """``astro forecast size-report`` (ticket #60; D51 item 11): what each forecast run
-really cost, read from the manifest, and how big the stores are, read from the folders,
-set against the estimates of D45 item 5 and D51 (evidence and item 3).
+really cost, read from the manifest, and how big the stores are, set against the
+estimates of D45 item 5 and D51 (evidence and item 3). The per-place day stores are the
+ones the manifest records as settled (``forecast_place_days``, D80), measured on disk.
 
 Read only: the manifest is opened with ``mode=ro`` and the folders are only listed and
 measured. A value the manifest doesn't hold is shown as ``missing``, never as zero, and
@@ -11,19 +12,23 @@ from __future__ import annotations
 
 import datetime as dt
 import os
-import re
 import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 import astroseeing
-from astroseeing.forecast.report.readonly import ReadOnlyManifest, RunRecord
+from astroseeing.forecast.report.readonly import (
+    PlaceDayRecord,
+    ReadOnlyManifest,
+    RunRecord,
+)
 from astroseeing.forecast.settings import ForecastSettings
 from astroseeing.forecast.store import utc_text
 
 MISSING = "missing"
-_DAY_STORE = re.compile(r"^(\d{4}-\d{2}-\d{2})\.zarr$")
+#: A settled day whose store is on /data (``refused`` keeps the other store there).
+STORED_OUTCOMES = ("written", "exists")
 
 
 @dataclass(frozen=True)
@@ -94,12 +99,15 @@ class FolderSize:
 
 @dataclass(frozen=True)
 class PlaceStores:
-    """One saved place's day stores on /data; None when its folder doesn't exist."""
+    """One saved place's day stores on /data, as measured on disk (``files`` = days);
+    ``None`` when the manifest records none for it."""
 
     place: str
-    in_range: FolderSize | None  # files = number of day stores
+    in_range: FolderSize | None
     all: FolderSize | None
-    not_counted: tuple[str, ...]  # entries in the folder that aren't day stores
+    not_on_disk: tuple[str, ...]  # days recorded as stored whose store isn't there
+    refused: tuple[str, ...]  # days refused: another store with other content is there
+    not_counted: tuple[str, ...]  # entries in the place's folder the manifest doesn't record
 
 
 @dataclass(frozen=True)
@@ -131,35 +139,36 @@ def _measure(path: Path) -> FolderSize:
     return FolderSize(files, size)
 
 
-def _store_day(entry: Path) -> dt.datetime | None:
-    """00 UTC of a day store's day (``<YYYY-MM-DD>.zarr``, a folder), else None."""
-    m = _DAY_STORE.match(entry.name)
-    if m is None or not entry.is_dir():
-        return None
-    try:
-        return dt.datetime.fromisoformat(m.group(1)).replace(tzinfo=dt.UTC)
-    except ValueError:  # 2026-13-01: not a day
-        return None
-
-
-def _place_stores(root: Path, place: str, start: dt.datetime, end: dt.datetime) -> PlaceStores:
-    folder = root / place
-    if not folder.is_dir():
-        return PlaceStores(place, None, None, ())
-    days_in = bytes_in = days_all = bytes_all = 0
-    other = []
-    for entry in sorted(folder.iterdir()):
-        day = _store_day(entry)
-        if day is None:
-            other.append(entry.name)
+def _place_stores(
+    folder: Path,
+    place: str,
+    days: Sequence[PlaceDayRecord],
+    start: dt.datetime,
+    end: dt.datetime,
+) -> PlaceStores:
+    """Measure the place's recorded day stores (each at its recorded path); a day is in
+    the range when its 00 UTC is."""
+    on_disk = sorted(e.name for e in folder.iterdir()) if folder.is_dir() else []
+    recorded = {d.path.name for d in days}
+    not_counted = tuple(n for n in on_disk if n not in recorded)
+    stored = [d for d in days if d.outcome in STORED_OUTCOMES]
+    refused = tuple(d.day.isoformat() for d in days if d.outcome not in STORED_OUTCOMES)
+    if not stored:
+        return PlaceStores(place, None, None, (), refused, not_counted)
+    n_in = b_in = n_all = b_all = 0
+    missing = []
+    for d in stored:
+        if not d.path.exists():
+            missing.append(d.day.isoformat())
             continue
-        size = _measure(entry).bytes
-        days_all, bytes_all = days_all + 1, bytes_all + size
-        if start <= day < end:
-            days_in, bytes_in = days_in + 1, bytes_in + size
+        size = _measure(d.path).bytes
+        n_all, b_all = n_all + 1, b_all + size
+        if start <= dt.datetime.combine(d.day, dt.time(), dt.UTC) < end:
+            n_in, b_in = n_in + 1, b_in + size
     return PlaceStores(
-        place, FolderSize(days_in, bytes_in), FolderSize(days_all, bytes_all), tuple(other)
-    )
+        place, FolderSize(n_in, b_in), FolderSize(n_all, b_all), tuple(missing), refused,
+        not_counted,
+    )  # fmt: skip
 
 
 def size_report(
@@ -173,10 +182,11 @@ def size_report(
     commit: str,
 ) -> SizeReport:
     """Gather the runs with ``start <= run time < end``, the day stores whose day starts
-    in that range (and all of them), and the SSD products as they are now."""
+    in that range (and all of them), and the SSD products as they are now.
+    ``places_root`` is ``ForecastPaths.place_days``."""
+    days = manifest.place_days()
     places = list(settings.places)
-    if places_root.is_dir():
-        places += sorted(p.name for p in places_root.iterdir() if p.name not in places)
+    places += sorted({d.place for d in days} - set(places))
     runs = manifest.runs(start, end)
     pairs = [(m, a.id) for a in settings.areas.values() for m in a.models]
     pairs += [p for p in dict.fromkeys((r.model, r.area) for r in runs) if p not in pairs]
@@ -195,7 +205,10 @@ def size_report(
         default_area=settings.places[settings.default_place].area,
         pairs=pairs,
         runs=runs,
-        stores=[_place_stores(places_root, p, start, end) for p in places],
+        stores=[
+            _place_stores(places_root / p, p, [d for d in days if d.place == p], start, end)
+            for p in places
+        ],
         products=products,
     )
 
@@ -394,7 +407,8 @@ def render_size_report(rep: SizeReport) -> str:
         "",
         "## Saved places' day stores on /data",
         "",
-        f"Under `{rep.places_root}`; a day is in the range when its 00 UTC is.",
+        f"The day stores the manifest records as settled, measured on disk under "
+        f"`{rep.places_root}`; a day is in the range when its 00 UTC is.",
         "",
     ]
     store_rows = []
@@ -418,8 +432,13 @@ def render_size_report(rep: SizeReport) -> str:
         store_rows,
     )
     for s in rep.stores:
-        if s.not_counted:
-            out.append(f"\nNot counted for {s.place}: {', '.join(s.not_counted)}.")
+        for what, names in (
+            ("Recorded as stored but not on disk", s.not_on_disk),
+            ("Refused (another store with other content is there)", s.refused),
+            ("Not counted (not in the manifest)", s.not_counted),
+        ):
+            if names:
+                out.append(f"\n{what}, {s.place}: {', '.join(names)}.")
     out += ["", "## SSD products", "", f"Under `{rep.products_root}`, as they are now.", ""]
     if rep.products is None:
         out += _table(["entry", "files", "bytes"], [[MISSING, MISSING, MISSING]])

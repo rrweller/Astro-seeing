@@ -15,9 +15,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-#: The table the tick's heartbeat goes in (the tick writes it from ticket #61, F1-12).
-#: Until a manifest has it, the last tick time is shown as not recorded.
-HEARTBEAT_TABLE = "forecast_heartbeat"
+from astroseeing.forecast.alerts import read_heartbeat
 
 
 class ManifestMissing(FileNotFoundError):
@@ -52,6 +50,17 @@ class RunRecord:
     def publishing_delay_h(self) -> float:
         """Hours from run time to when we first saw the run published."""
         return (self.first_seen_at - self.run_time) / dt.timedelta(hours=1)
+
+
+@dataclass(frozen=True)
+class PlaceDayRecord:
+    """One ``forecast_place_days`` row: a per-place day store settled on /data (D80)."""
+
+    place: str
+    day: dt.date
+    outcome: str  # written, exists (already there, same content) or refused
+    path: Path
+    bytes: int | None
 
 
 def _time(text: str) -> dt.datetime:
@@ -127,9 +136,25 @@ class ReadOnlyManifest:
         rows = self.conn.execute(q + " ORDER BY model, area, run_time", args).fetchall()
         return [_record(r) for r in rows]
 
+    def place_days(self) -> list[PlaceDayRecord]:
+        """Every settled per-place day store, by place and day (D80)."""
+        if not self._has_table("forecast_place_days"):
+            return []
+        rows = self.conn.execute(
+            "SELECT place, day, outcome, path, bytes FROM forecast_place_days ORDER BY place, day"
+        ).fetchall()
+        return [
+            PlaceDayRecord(
+                r["place"], dt.date.fromisoformat(r["day"]), r["outcome"], Path(r["path"]),
+                r["bytes"],
+            )
+            for r in rows
+        ]  # fmt: skip
+
     def last_tick(self) -> dt.datetime | None:
-        """When the tick last ran, from its heartbeat; None if none is recorded."""
-        if not self._has_table(HEARTBEAT_TABLE):
+        """When the last tick finished, from its heartbeat (``forecast.alerts``, D82);
+        None if no tick has finished, or the manifest predates the heartbeat."""
+        if not self._has_table("forecast_heartbeat"):
             return None
-        row = self.conn.execute(f"SELECT max(at) FROM {HEARTBEAT_TABLE}").fetchone()
-        return None if row is None or row[0] is None else _time(row[0])
+        beat = read_heartbeat(self)  # it only reads ``.conn``, which is read only here
+        return None if beat is None else beat.last_at

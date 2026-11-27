@@ -556,12 +556,15 @@ def cmd_forecast_tick(args, paths: Paths) -> int:
     except PlaceHeightMissing as e:
         print(f"forecast tick: refused: {e}", file=sys.stderr)
         return 1
+    from astroseeing.forecast.alerts import phone_notifier
+
     manifest = _manifest(paths)
     try:
         report = tick(dt.datetime.now(dt.UTC), settings,
                       default_adapters(settings, HttpClient()), manifest,
                       ForecastPaths.from_paths(paths), ephemeris=load_ephemeris(),
-                      build=BuildInfo.current())  # fmt: skip
+                      build=BuildInfo.current(), http=HttpClient(),
+                      notify=phone_notifier())  # fmt: skip
     finally:
         manifest.close()
     print(json.dumps(report.as_dict(), indent=2))
@@ -615,9 +618,8 @@ def cmd_forecast_size_report(args, paths: Paths) -> int:
     commit = f"{state['commit'] or 'unknown'}{' (dirty)' if state['dirty'] else ''}"
     try:
         with ReadOnlyManifest(paths.manifest) as m:
-            rep = size_report(m, settings, paths.data_root / "forecast" / "places",
-                              ForecastPaths.from_paths(paths).products, start, end, now,
-                              commit)  # fmt: skip
+            fp = ForecastPaths.from_paths(paths)
+            rep = size_report(m, settings, fp.place_days, fp.products, start, end, now, commit)
     except ManifestMissing as e:
         print(f"forecast size-report: {e}", file=sys.stderr)
         return 1
