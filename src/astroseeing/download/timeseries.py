@@ -44,9 +44,15 @@ import numpy as np
 
 from astroseeing.config import load_config
 from astroseeing.download.cds import DONE, FAILED, GONE, PENDING, RemoteInfo
-from astroseeing.download.downloader import MAX_LOST_RESUBMITS, safe_name, sha256_file
+from astroseeing.download.downloader import (
+    MAX_LOST_RESUBMITS,
+    REJECTION_WINDOW,
+    REJECTIONS_TO_PAUSE,
+    safe_name,
+    sha256_file,
+)
 from astroseeing.manifest import LOST_PREFIX, Manifest, StateError, utcnow
-from astroseeing.provenance import ERA5_ATTRIBUTION, canonical_json, provenance
+from astroseeing.provenance import canonical_json, era5_attribution, provenance
 
 log = logging.getLogger(__name__)
 
@@ -168,7 +174,10 @@ def verify_point_file(path: Path, want: PointExpectation) -> PointCheck:
         return PointCheck(False, problems)
     var = ds[want.short_name]
     units = var.attrs.get("units")
-    if units is not None and units != want.units:
+    if units is None:
+        log.warning("%s: %s has no units attribute; values not checked for units",
+                    Path(path).name, want.short_name)  # fmt: skip
+    elif units != want.units:
         problems.append(f"{want.short_name} units {units!r}, expected {want.units!r}")
 
     lat, lon = _coord(ds, LAT_NAMES), _coord(ds, LON_NAMES)
@@ -187,6 +196,7 @@ def verify_point_file(path: Path, want: PointExpectation) -> PointCheck:
         return PointCheck(False, problems)
     times = tcoord.values.astype("datetime64[s]").astype(np.int64)
     values = var.squeeze().values.astype(np.float32)
+    out_of_order = int((np.diff(times) < 0).sum())
     order = np.argsort(times, kind="stable")
     times, values = times[order], values[order]
 
@@ -197,6 +207,7 @@ def verify_point_file(path: Path, want: PointExpectation) -> PointCheck:
         "extra_hours": int(np.setdiff1d(unique, expected).size),
         "duplicate_hours": int(times.size - unique.size),
         "nan": int(np.isnan(values).sum()),
+        "out_of_order": out_of_order,
     }
     if counts["missing_hours"]:
         problems.append(f"{counts['missing_hours']} of {expected.size} hours missing")
@@ -206,6 +217,8 @@ def verify_point_file(path: Path, want: PointExpectation) -> PointCheck:
         problems.append(f"{counts['duplicate_hours']} duplicate hours")
     if counts["nan"]:
         problems.append(f"{counts['nan']} NaN values in {want.short_name}")
+    if counts["out_of_order"]:
+        problems.append(f"time axis out of order at {counts['out_of_order']} places")
     return PointCheck(not problems, problems, counts, times, values)
 
 
@@ -419,6 +432,20 @@ class TimeseriesRecords:
         ).fetchone()
         return int(row[0])
 
+    def record_rejection(self, rid: int, error: str, at: str) -> None:
+        """A time-series rejection or submit error: an event here, never in ``cds_rejections``."""
+        with self.m.tx() as c:
+            c.execute("INSERT INTO ts_events (ts_request_id, at, event, detail) VALUES (?,?,?,?)",
+                      (rid, at, "cds_rejection", error[:500]))  # fmt: skip
+
+    def rejections_since(self, since: str) -> list[str]:
+        """Times (ISO, oldest first) of time-series rejections after ``since``."""
+        rows = self.m.conn.execute(
+            "SELECT at FROM ts_events WHERE event='cds_rejection' AND at > ? ORDER BY at",
+            (since,),
+        )
+        return [r["at"] for r in rows]
+
     def add_store(self, rows: list[TsRequest], path: Path, content_sha256: str) -> None:
         """Record a written store and move its chunks verified → stored, in one transaction."""
         first = rows[0]
@@ -521,7 +548,8 @@ class PointFetcher:
         years = chunk_years or cfg.chunk_years
         chunks = plan_chunks(cfg.start, cfg.end, years)
         out = PlanResult()
-        for p in points:
+        todo: list[tuple[PointSite, list[TsRequest]]] = []
+        for p in points:  # check every site first, so a conflict changes nothing
             if self.rec.store_for(p.group, p.site, cfg.short_name, cfg.start, cfg.end):
                 out.already_stored.append(p.site)
                 continue
@@ -536,6 +564,8 @@ class PointFetcher:
                 )
             if any(r.state == "submitted" for r in stale):
                 raise PlanConflict(f"{p.site} has a chunk at the CDS; replan once it is back")
+            todo.append((p, stale))
+        for p, stale in todo:
             for r in stale:
                 self.rec.transition(r.id, ["planned", "verified", "failed"], "cancelled",
                                     detail=f"replanned with {years}-year chunks")  # fmt: skip
@@ -600,6 +630,15 @@ class PointFetcher:
     def _gate_open(self, s: FetchSummary) -> bool:
         if self.stopped:
             return False
+        since = (self.now() - REJECTION_WINDOW).isoformat(timespec="seconds")
+        recent = self.rec.rejections_since(since)
+        if len(recent) >= REJECTIONS_TO_PAUSE:
+            # Repeated invalid requests are what gets accounts disabled (D39), so the
+            # time-series slot has the same ceiling, on its own count: it waits until the
+            # oldest of them is 24 h old. No resume command; time lifts it.
+            self._stop(f"{len(recent)} time-series rejections within 24 h (last {recent[-1]}); "
+                       "no time-series request until the oldest is 24 h old")  # fmt: skip
+            return False
         if self.m.cds_control().get("paused_at"):
             # The account's pause (D39) holds this slot too: a paused account is one to
             # leave alone. The reverse never happens: these jobs don't touch that gate.
@@ -617,6 +656,9 @@ class PointFetcher:
             return False
         return True
 
+    def _now_iso(self) -> str:
+        return self.now().astimezone(dt.UTC).isoformat(timespec="seconds")
+
     def _stop(self, why: str) -> None:
         self.stopped = why
         log.error("time-series submissions stopped for this run: %s", why)
@@ -628,11 +670,12 @@ class PointFetcher:
         except Exception as e:
             s.rejected += 1
             s.failed += 1
+            self.rec.record_rejection(r.id, f"submit: {e}", self._now_iso())
             self.rec.fail(r.id, ["planned"], f"submit: {e}")
             self._stop(f"submit of {r.key} failed: {e}")
             return
         self.rec.transition(r.id, ["planned"], "submitted", detail=rid, cds_request_id=rid,
-                            submitted_at=self.now().isoformat(timespec="seconds"))  # fmt: skip
+                            submitted_at=self._now_iso())  # fmt: skip
         s.submitted += 1
         log.info("submitted %s as %s", r.key, rid)
 
@@ -648,26 +691,27 @@ class PointFetcher:
             error = f"cds {info.status}: {info.error}"
             s.rejected += 1
             s.failed += 1
+            self.rec.record_rejection(r.id, error, self._now_iso())
             self.rec.fail(r.id, ["submitted"], error)
             self._stop(f"{r.key} {error}")
-            return "done", info
+            return "done_with", info
         if info.status in GONE:
             why = f"cds {info.status}" + (f": {info.error}" if info.error else "")
             lost = self.rec.lost_count(r.id)
             if lost >= MAX_LOST_RESUBMITS:
                 s.failed += 1
                 self.rec.fail(r.id, ["submitted"], f"{LOST_PREFIX} {lost + 1} times ({why})")
-                return "done", info
+                return "done_with", info
             s.resubmitted += 1
             self.rec.transition(r.id, ["submitted"], "planned", detail=f"{LOST_PREFIX} ({why})",
                                 cds_request_id=None)  # fmt: skip
             log.warning("%s: %s; planned again (%d of %d)", r.key, why, lost + 1,
                         MAX_LOST_RESUBMITS)  # fmt: skip
-            return "done", info
+            return "done_with", info
         if info.status != DONE:
             s.failed += 1
             self.rec.fail(r.id, ["submitted"], f"unknown cds status {info.status!r}")
-            return "done", info
+            return "done_with", info
         return "finished", info
 
     def _fetch(self, r: TsRequest, info: RemoteInfo, s: FetchSummary) -> None:
@@ -698,6 +742,11 @@ class PointFetcher:
             s.verified += 1
             log.info("verified %s: %d hours, sha256 %s", r.key, check.times.size, digest[:12])
         else:
+            # Kept under its own name, so a retry's download never replaces the evidence.
+            kept = final.with_name(f"{final.stem}.failed-{r.attempts + 1}{final.suffix}")
+            os.replace(final, kept)
+            final = kept
+            files["file_path"] = str(kept)
             s.failed += 1
             s.verification_failed += 1
             self.rec.fail(r.id, ["submitted"], "verification: " + "; ".join(check.problems),
@@ -739,6 +788,7 @@ class PointFetcher:
             if b.start != a.end + dt.timedelta(days=1):
                 raise ValueError(f"chunks {a.key} and {b.key} are not contiguous")
         times, values = [], []
+        qc = QCCounts()
         for r in rows:  # read again: the staging file must still be the verified one
             if sha256_file(Path(r.file_path)) != r.file_sha256:
                 raise OSError(f"{r.file_path} changed since it was verified")
@@ -747,14 +797,13 @@ class PointFetcher:
                 raise ValueError(f"{r.key} no longer verifies: {check.problems}")
             times.append(check.times)
             values.append(check.values)
+            for name, n in check.counts.items():
+                qc.add(name, n, check.times.size)
         t, v = np.concatenate(times), np.concatenate(values)
         whole = PointExpectation(rows[0].short_name, rows[0].units, rows[0].lon, rows[0].lat,
                                  rows[0].start, rows[-1].end)  # fmt: skip
         if not np.array_equal(t, whole.hours()) or np.isnan(v).any():
             raise ValueError("the joined series is not every hour once without NaN")
-        qc = QCCounts()
-        for name in ("missing_hours", "duplicate_hours", "nan_values"):
-            qc.add(name, 0, t.size)
         first = rows[0]
         site_cfg = load_config("sites")[first.site_group][first.site]
         settings = {"dataset": first.dataset, "requests": [r.request for r in rows]}
@@ -770,12 +819,13 @@ class PointFetcher:
             "period": [first.start.isoformat(), rows[-1].end.isoformat()],
             "time_axis": "every hour, seconds since 1970-01-01 UTC",
             "chunk_files_sha256": {r.key: r.file_sha256 for r in rows},
-            "attribution": ERA5_ATTRIBUTION.format(year=dt.datetime.now(dt.UTC).year),
+            **era5_attribution(first.dataset),
             "provenance": provenance(settings, {"ts_request_ids": [r.id for r in rows]}),
         }
         prep = Prepared(dims=("time",), coords={"time": (("time",), t)},
                         data={first.short_name: v}, qc=qc)  # fmt: skip
         path = self.store_path(rows)
+        _probe_nas(self.store_root)  # a hung NAS must not hang the write (AGENTS.md)
         result = write_store_atomic(path, prep, attrs)
         self.rec.add_store(rows, path, result.content_sha256)
         log.info("stored %s: %d hours (%s)", path, t.size,
@@ -790,3 +840,13 @@ def read_point_store(path: Path) -> tuple[np.ndarray, np.ndarray, dict[str, Any]
     times = arrays.pop("time")
     (values,) = arrays.values()
     return times, values, attrs
+
+
+def _probe_nas(root: Path, timeout_s: float = 30.0) -> None:
+    """``stat`` the nearest existing parent of ``root`` in a child process, with a timeout."""
+    from astroseeing.paths import probe_responsive
+
+    p = Path(root)
+    while not p.exists() and p != p.parent:
+        p = p.parent
+    probe_responsive(p, timeout_s)

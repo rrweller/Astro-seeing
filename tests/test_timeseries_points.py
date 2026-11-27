@@ -8,6 +8,8 @@ pressure-level gate's job list (D29, D39); and the ``astro fetch-sp`` command.
 from __future__ import annotations
 
 import datetime as dt
+import itertools
+from pathlib import Path
 
 import pytest
 
@@ -62,7 +64,10 @@ def test_a_complete_year_passes_verification(tmp_path):
     check = verify_point_file(f, expect_1979())
     assert check.ok, check.problems
     assert check.values.size == 8760  # 365 days x 24 h
-    assert check.counts == {"missing_hours": 0, "extra_hours": 0, "duplicate_hours": 0, "nan": 0}
+    assert set(check.counts) == {
+        "missing_hours", "extra_hours", "duplicate_hours", "nan", "out_of_order"
+    }  # fmt: skip
+    assert not any(check.counts.values())
 
 
 def test_a_partial_year_fails_and_counts_the_missing_hours(tmp_path):
@@ -333,8 +338,8 @@ def test_time_series_jobs_never_count_for_the_pressure_level_gate():
         {"jobID": "ts-2", "processID": "reanalysis-era5-pressure-levels-timeseries"},
         {"jobID": "unknown-1"},  # no dataset given: counts for both gates
     ])  # fmt: skip
-    assert b.active_jobs() == ["pl-1", "unknown-1"]
-    assert b.active_timeseries_jobs() == ["ts-1", "ts-2", "unknown-1"]
+    assert b.active_jobs() == ["pl-1", "ts-2", "unknown-1"]
+    assert b.active_timeseries_jobs() == ["ts-1", "unknown-1"]
     assert b.client.calls[0] == {"limit": 100, "status": ["accepted", "running"]}
 
 
@@ -395,3 +400,114 @@ def TimeseriesRecordsFor(ct):
     from astroseeing.download.timeseries import TimeseriesRecords
 
     return TimeseriesRecords(Manifest(ct / "state" / "manifest.sqlite"))
+
+
+# --- after review ------------------------------------------------------------------------
+
+
+def test_three_rejections_in_24_hours_hold_time_series_submissions_for_a_day(tmp_path):
+    from fakes import Clock
+
+    m = Manifest(tmp_path / "state" / "manifest.sqlite")
+    fake, clock = FakeTimeseriesBackend(), Clock()
+    f = PointFetcher(m, fake, tmp_path / "staging", tmp_path / "data", now=clock)
+    f.plan(cfg(), two_sites())
+    for key in planned_keys(f).values():
+        fake.behaviour[key] = "reject"
+    for _ in range(3):  # each run stops after its first rejection; a person retries
+        PointFetcher(m, fake, tmp_path / "staging", tmp_path / "data", now=clock).run(0)
+        clock.advance(hours=1)
+    assert len(fake.submitted) == 3
+    f = PointFetcher(m, fake, tmp_path / "staging", tmp_path / "data", now=clock)
+    s = f.run(poll_seconds=0)
+    assert len(fake.submitted) == 3 and "3 time-series rejections" in s.stopped
+    clock.advance(hours=22)  # 24 h after the first rejection
+    PointFetcher(m, fake, tmp_path / "staging", tmp_path / "data", now=clock).run(0)
+    assert len(fake.submitted) == 4
+    assert m.rejections_since("1970") == []  # never in the pressure-level gate's table
+
+
+def test_a_failed_file_is_kept_under_its_own_name_through_a_retry(tmp_path):
+    _, fake, f = make(tmp_path)
+    f.plan(cfg(), two_sites()[:1])
+    fake.behaviour[next(iter(planned_keys(f).values()))] = "partial"
+    f.run(poll_seconds=0)
+    (failed,) = f.rec.by_state("failed")
+    kept = failed.file_path
+    assert ".failed-1" in kept
+    f.retry_failed()
+    f.run(poll_seconds=0)
+    (failed,) = f.rec.by_state("failed")
+    assert ".failed-2" in failed.file_path and Path(kept).exists()
+
+
+def test_a_replan_conflict_on_any_site_changes_no_site(tmp_path):
+    _, _, f = make(tmp_path, polls_to_finish=5)
+    f.plan(cfg(chunk_years=2), two_sites())
+    f.step()  # Paranal's chunk is now at the CDS
+    with pytest.raises(ValueError, match="at the CDS"):
+        f.plan(cfg(chunk_years=1), list(reversed(two_sites())), replan=True)
+    assert f.rec.counts() == {"planned": 1, "submitted": 1}
+
+
+def test_out_of_order_times_fail_and_are_counted(tmp_path):
+    import numpy as np
+    import xarray as xr
+
+    f = tmp_path / "chunk.nc"
+    write_point_netcdf(f, **PARANAL, **YEAR_1979, zipped=False)
+    ds = xr.load_dataset(f, engine="netcdf4")
+    ds = ds.isel(valid_time=np.r_[1, 0, 2 : ds.sizes["valid_time"]])
+    g = tmp_path / "swapped.nc"
+    ds.to_netcdf(g, engine="netcdf4")
+    check = verify_point_file(g, expect_1979())
+    assert not check.ok and check.counts["out_of_order"] == 1
+
+
+def test_the_store_carries_the_era5_licence_and_attribution(tmp_path):
+    _, _, f = make(tmp_path)
+    f.plan(cfg(), two_sites()[:1])
+    f.run(poll_seconds=0)
+    _, _, attrs = read_point_store(f.rec.stores()[0]["path"])
+    assert attrs["licence"] == "CC-BY-4.0" and "Copernicus" in attrs["attribution"]
+
+
+def test_only_the_single_level_time_series_product_has_its_own_slot():
+    b = backend_with([
+        {"jobID": "ts-1", "processID": "reanalysis-era5-single-levels-timeseries"},
+        {"jobID": "pts-1", "processID": "reanalysis-era5-pressure-levels-timeseries"},
+    ])  # fmt: skip
+    # The pressure-level time-series product's slot was never measured (D29): it counts.
+    assert b.active_jobs() == ["pts-1"]
+
+
+# --- properties ---------------------------------------------------------------------------
+
+from hypothesis import given  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+
+
+@given(
+    st.dates(dt.date(1940, 1, 1), dt.date(2030, 12, 31)),
+    st.integers(0, 40000),
+    st.integers(1, 50),
+)
+def test_chunks_cover_the_period_exactly_and_in_order(start, ndays, years):
+    end = start + dt.timedelta(days=ndays)
+    chunks = plan_chunks(start, end, years)
+    assert chunks[0][0] == start and chunks[-1][1] == end
+    for (_, e), (s, _) in itertools.pairwise(chunks):
+        assert s == e + dt.timedelta(days=1)
+    for s, e in chunks:
+        assert s <= e and e.year - s.year < years
+        assert e == end or (e.month, e.day) == (12, 31)
+
+
+@given(st.floats(-180, 180), st.floats(-90, 90))
+def test_the_nearest_grid_point_is_within_half_a_step(lon, lat):
+    try:
+        glon, glat = nearest_grid_point(lon, lat)
+    except ValueError:
+        return  # an exact tie, refused
+    assert abs(glon - lon) <= 0.125 + 1e-9 and abs(glat - lat) <= 0.125 + 1e-9
+    assert (glon / 0.25).is_integer() and (glat / 0.25).is_integer()

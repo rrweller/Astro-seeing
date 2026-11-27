@@ -36,12 +36,12 @@ QUEUE_LIMIT_MESSAGES = (
 )
 
 
-#: The CDS time-series products. They run in their own slot (D29, measured 2026-09-27:
-#: one ran while a pressure-level job was running), so their jobs never count for the
-#: pressure-level gate (D39); ``download.timeseries`` keeps to one of them at a time.
-TIMESERIES_DATASETS = frozenset(
-    {"reanalysis-era5-single-levels-timeseries", "reanalysis-era5-pressure-levels-timeseries"}
-)
+#: CDS products measured to run in their own slot (D29, 2026-09-27: a single-level
+#: time-series request ran while a pressure-level job was running), so their jobs never
+#: count for the pressure-level gate (D39, as amended by D62). Only the product that was
+#: measured: the pressure-level time-series product's slot is untested, so it counts.
+#: ``download.timeseries`` keeps to one of these jobs at a time.
+TIMESERIES_DATASETS = frozenset({"reanalysis-era5-single-levels-timeseries"})
 
 
 def is_queue_limit_rejection(error: str | None) -> bool:
