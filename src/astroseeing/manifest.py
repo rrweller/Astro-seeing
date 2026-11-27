@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS events (
 #: (the run rules, ticket #58). ``forecast_alerts`` holds the forecast alerts now active
 #: and ``forecast_heartbeat`` the last finished tick (``forecast.alerts``, ticket #61):
 #: the heartbeat is the one forecast table the download watcher reads (D82).
+#: ``forecast_place_days`` records each per-place daily store written to ``/data`` (D80).
 FORECAST_SCHEMA = """
 CREATE TABLE IF NOT EXISTS forecast_runs (
     id                 INTEGER PRIMARY KEY,
@@ -185,6 +186,17 @@ CREATE TABLE IF NOT EXISTS forecast_heartbeat (
     last_at    TEXT NOT NULL,
     no_tick_h  REAL NOT NULL,
     health     TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS forecast_place_days (
+    place          TEXT NOT NULL,
+    day            TEXT NOT NULL,
+    outcome        TEXT NOT NULL,
+    path           TEXT NOT NULL,
+    bytes          INTEGER,
+    content_sha256 TEXT NOT NULL,
+    detail         TEXT,
+    recorded_at    TEXT NOT NULL,
+    PRIMARY KEY (place, day)
 );
 """
 

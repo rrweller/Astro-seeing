@@ -175,6 +175,16 @@ class Eso:
 
 
 @dataclass(frozen=True)
+class PlaceStores:
+    """The per-place daily stores on ``/data`` (D51 item 12, ticket #59): how long a call
+    to the NAS may take before it counts as hung, and how many finalised days stay on
+    the SSD as well."""
+
+    nas_timeout_s: float
+    ssd_keep_days: int
+
+
+@dataclass(frozen=True)
 class ForecastSettings:
     models: Mapping[str, Model]
     areas: Mapping[str, Area]
@@ -185,6 +195,7 @@ class ForecastSettings:
     run_rules: RunRules
     alerts: Alerts
     eso: Eso
+    place_stores: PlaceStores
     config_hash: str
     raw: Mapping[str, Any]  # the file's data, as hashed: treat as read-only
 
@@ -249,6 +260,12 @@ def _parse_settings(raw: Any, source: str) -> ForecastSettings:
     if not re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", eso.fetch_time_utc):
         raise es.error(f"fetch_time_utc must be HH:MM (UTC), got {eso.fetch_time_utc!r}")
     es.done()
+    ps = root.node("place_stores")
+    place_stores = PlaceStores(
+        nas_timeout_s=ps.number("nas_timeout_s", positive=True),
+        ssd_keep_days=ps.integer("ssd_keep_days", minimum=1),
+    )
+    ps.done()
     root.done()
     return ForecastSettings(
         models=models,
@@ -260,6 +277,7 @@ def _parse_settings(raw: Any, source: str) -> ForecastSettings:
         run_rules=run_rules,
         alerts=alerts,
         eso=eso,
+        place_stores=place_stores,
         config_hash=config_hash(raw),
         raw=raw,
     )
