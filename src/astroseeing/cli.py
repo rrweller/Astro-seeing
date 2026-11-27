@@ -571,6 +571,68 @@ def cmd_forecast_tick(args, paths: Paths) -> int:
     return 1 if any(r["state"] == "failed" for r in report.runs) else 0  # locked: 0
 
 
+def _utc(text: str) -> dt.datetime:
+    """An ISO time (``Z`` or an offset; naive means UTC), for ``--now`` and ranges."""
+    t = dt.datetime.fromisoformat(text)
+    return t.replace(tzinfo=dt.UTC) if t.tzinfo is None else t.astimezone(dt.UTC)
+
+
+def cmd_forecast_status(args, paths: Paths) -> int:
+    """Each forecast model's latest runs and the last tick (read only; ticket #60)."""
+    from astroseeing.forecast.report import (
+        ManifestMissing,
+        ReadOnlyManifest,
+        forecast_status,
+        format_status,
+    )
+    from astroseeing.forecast.settings import load_settings
+
+    settings = load_settings(Path(args.settings) if args.settings else None)
+    try:
+        with ReadOnlyManifest(paths.manifest) as m:
+            status = forecast_status(m, settings, args.now or dt.datetime.now(dt.UTC), args.runs)
+    except ManifestMissing as e:
+        print(f"forecast status: {e}", file=sys.stderr)
+        return 1
+    print(format_status(status), end="")
+    return 0
+
+
+def cmd_forecast_size_report(args, paths: Paths) -> int:
+    """The measured-size report over the last 7 days or a range (read only; ticket #60)."""
+    from astroseeing.forecast.report import (
+        ManifestMissing,
+        ReadOnlyManifest,
+        render_size_report,
+        size_report,
+    )
+    from astroseeing.forecast.settings import load_settings
+    from astroseeing.forecast.store import write_atomic
+    from astroseeing.forecast.tick import ForecastPaths
+
+    settings = load_settings(Path(args.settings) if args.settings else None)
+    now = args.now or dt.datetime.now(dt.UTC)
+    end = args.end or now
+    start = args.start or end - dt.timedelta(days=7)
+    state = git_state()
+    commit = f"{state['commit'] or 'unknown'}{' (dirty)' if state['dirty'] else ''}"
+    try:
+        with ReadOnlyManifest(paths.manifest) as m:
+            fp = ForecastPaths.from_paths(paths)
+            rep = size_report(m, settings, fp.place_days, fp.products, start, end, now, commit)
+    except ManifestMissing as e:
+        print(f"forecast size-report: {e}", file=sys.stderr)
+        return 1
+    text = render_size_report(rep)
+    out = Path(args.out) if args.out else (
+        REPO_ROOT / "reports" / f"forecast_sizes_{start:%Y%m%d}-{end:%Y%m%d}.md"
+    )  # fmt: skip
+    write_atomic(out, text.encode())
+    print(text)
+    print(f"written to {out}")
+    return 0
+
+
 def cmd_web_deploy(args, paths: Paths) -> int:
     """Put this checkout's committed ``web/`` live, or switch back (F1 spec Module 11)."""
     from astroseeing.forecast.deploy import DeployError, deploy, rollback
@@ -723,6 +785,19 @@ def main(argv: list[str] | None = None) -> int:
                         "files (every 15 min from astro-forecast.timer)")  # fmt: skip
     p.add_argument("--settings", help="settings file (default: configs/forecast.yaml)")
     p.set_defaults(fn=cmd_forecast_tick)
+    p = fsub.add_parser("status", help="each model's latest runs and the last tick (read only)")
+    p.add_argument("--settings", help="settings file (default: configs/forecast.yaml)")
+    p.add_argument("--runs", type=int, default=4, help="runs listed per model and area")
+    p.add_argument("--now", type=_utc, help="the time to report at (default: now; tests)")
+    p.set_defaults(fn=cmd_forecast_status)
+    p = fsub.add_parser("size-report", help="measured run and store sizes against the "
+                        "estimates, as Markdown in reports/ (read only)")  # fmt: skip
+    p.add_argument("--settings", help="settings file (default: configs/forecast.yaml)")
+    p.add_argument("--start", type=_utc, help="first run time (default: 7 days before --end)")
+    p.add_argument("--end", type=_utc, help="run times before this (default: now)")
+    p.add_argument("--out", help="report file (default: reports/forecast_sizes_<range>.md)")
+    p.add_argument("--now", type=_utc, help="the time to report at (default: now; tests)")
+    p.set_defaults(fn=cmd_forecast_size_report)
 
     web = sub.add_parser("web", help="the forecast page's site (F1)")
     wsub = web.add_subparsers(dest="web_cmd", required=True)

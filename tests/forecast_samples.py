@@ -131,9 +131,12 @@ def serve_aws_samples(server, steps, folder: Path | None = None, run: RunRef = S
             server.route(f"/gfs.{day}/{hh}/atmos/{name}.idx", idx.encode())
 
 
-def retime_samples(dest: Path, hour: int, sample_set: str = "box1deg") -> Path:
-    """A copy of the samples as if from the run of ``hour`` UTC on the same day: run
-    time and file names changed, values and steps as they are (for a second run)."""
+def retime_samples(
+    dest: Path, hour: int, sample_set: str = "box1deg", day: dt.date | None = None
+) -> Path:
+    """A copy of the samples as if from the run of ``hour`` UTC on the same day (or on
+    ``day``): run time and file names changed, values and steps as they are (for a
+    second run)."""
     import eccodes as ec
 
     copy_samples(dest, sample_set)
@@ -141,6 +144,8 @@ def retime_samples(dest: Path, hour: int, sample_set: str = "box1deg") -> Path:
 
         def change(h, keys):
             ec.codes_set(h, "dataTime", hour * 100)
+            if day is not None:
+                ec.codes_set(h, "dataDate", int(day.strftime("%Y%m%d")))
             return ec.codes_get_message(h), True
 
         _rewrite(f, change)
