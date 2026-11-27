@@ -17,7 +17,12 @@ lives outside git in ``~/.config/astro/notify.env`` (``NTFY_URL=...``, mode 600)
   download loop not running while work remains; the NAS not answering; CDS submissions paused
   after repeated rejections (D39), with what to do next;
 * **daily progress**: once a day after ``daily_hour_utc``: done / left / failed,
-  and an estimated finish from the fields the CDS processed in the last 24 h.
+  and an estimated finish from the fields the CDS processed in the last 24 h; once the
+  forecast has ticked, plus one line with its runs completed per model in the last 24 h
+  and the newest run's age (D51 item 9);
+* **forecast tick stopped**: no forecast tick has finished for the threshold the tick
+  wrote with its heartbeat (1 h, D51 item 9), and once when ticks are back (ticket #61).
+  The heartbeat is the only forecast record the watcher reads (D82).
 
 Its state (what was already reported) is kept in the local state directory so a
 restart doesn't repeat messages.
@@ -36,6 +41,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from astroseeing.forecast.alerts import daily_line, read_heartbeat
 from astroseeing.manifest import Manifest
 from astroseeing.paths import Paths, StorageUnresponsive, probe_responsive
 
@@ -197,6 +203,8 @@ class WatchState:
     loop_alerted_at: str = ""
     nas_alerted_at: str = ""
     finished_reported: bool = False
+    #: The forecast heartbeat's time when "tick stopped" was sent; empty while ticking.
+    tick_alerted_at: str = ""
 
     @classmethod
     def load(cls, path: Path) -> WatchState:
@@ -327,12 +335,28 @@ def check_once(
             emit(msg, "astro-seeing: downloads finished", "high")
         state.finished_reported = True
 
+    beat = read_heartbeat(m)
+    if beat is not None:
+        idle_h = (now - beat.last_at).total_seconds() / 3600
+        last = f"{beat.last_at:%Y-%m-%d %H:%M} UTC"
+        if idle_h >= beat.no_tick_h and not state.tick_alerted_at:
+            emit(f"Problem: no forecast tick has finished for {idle_h:.1f} h (last at {last}). "
+                 "Next: `systemctl status astro-forecast.timer astro-forecast.service` and "
+                 "`journalctl -u astro-forecast` on the CT.", "astro-seeing: forecast tick stopped",
+                 "high")  # fmt: skip
+            state.tick_alerted_at = beat.last_at.isoformat()
+        elif idle_h < beat.no_tick_h and state.tick_alerted_at:
+            emit(f"Cleared: forecast ticks are running again (last at {last}).",
+                 "astro-seeing: forecast tick stopped cleared", "default")  # fmt: skip
+            state.tick_alerted_at = ""
+
     today = now.date().isoformat()
     if now.hour >= daily_hour_utc and state.last_daily != today:
         eta = s.eta(now)
         eta_txt = f"; at the last day's pace, done around {eta:%a %d %b %H:%M} UTC" if eta else ""
+        forecast = "" if beat is None else "\n" + daily_line(beat, now)
         emit(f"Daily: {s.done} requests done, {s.pending} pending, {s.failed} failed"
-             f"{eta_txt}.", "astro-seeing: daily progress", "low")  # fmt: skip
+             f"{eta_txt}.{forecast}", "astro-seeing: daily progress", "low")  # fmt: skip
         state.last_daily = today
     return sent
 
