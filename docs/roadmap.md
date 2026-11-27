@@ -20,7 +20,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C6` · **needs-you** · cloud · Multi-month surface requests and per-kind planning rates · needs you: merge PR #103 · [#99](https://github.com/rrweller/Astro-seeing/issues/99), PR [#103](https://github.com/rrweller/Astro-seeing/pull/103)
 
-- `C7` · **review** · cloud · Code to move the kept raw GRIB to the NAS · [#100](https://github.com/rrweller/Astro-seeing/issues/100) · PR [#105](https://github.com/rrweller/Astro-seeing/pull/105)
+- `C7` · **needs-you** · cloud · Code to move the kept raw GRIB to the NAS · needs you: merge PR #105 · [#100](https://github.com/rrweller/Astro-seeing/issues/100) · PR [#105](https://github.com/rrweller/Astro-seeing/pull/105)
 
 - `C8` · **needs-you** · cloud · ESO seeing-monitor fetcher · needs you: merge PR #104 · [#101](https://github.com/rrweller/Astro-seeing/issues/101) · PR [#104](https://github.com/rrweller/Astro-seeing/pull/104)
 
@@ -138,7 +138,7 @@ flowchart LR
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
   class C6 needsyou
   %% ---
-  class C7 review
+  class C7 needsyou
   %% ---
   class C8 needsyou
   %% ---
