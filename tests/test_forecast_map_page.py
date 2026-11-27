@@ -415,7 +415,8 @@ def test_no_request_leaves_the_host(case):
     http = [r["url"] for r in requests if r["url"].startswith("http")]
     assert all(u.startswith(case.site.origin + "/") for u in http), http
     paths = {r.path for r in case.site.requests}
-    assert {"/vendor/maplibre-gl-5.24.1/maplibre-gl.js", "/vendor/natural-earth/outline-kongsberg-box.json"} <= paths
+    vendored = {"maplibre-gl-5.24.1/maplibre-gl.js", "natural-earth/outline-kongsberg-box.json"}
+    assert {f"/vendor/{f}" for f in vendored} <= paths
     # the map's tiles are painted in the page itself, never fetched
     assert not [p for p in paths if "cells" in p]
 
