@@ -41,15 +41,16 @@ class CostRow:
 
     @property
     def counts(self) -> str | None:
-        """Which count the CDS charged: ``product``, ``real``, ``other``; ``None`` when no
-        estimate or the request names no non-existent date (both counts are equal)."""
-        if self.cds_cost is None or self.real_fields == self.named_fields:
+        """Which count the CDS charged: ``product`` or ``real``; ``same`` when the request
+        names no non-existent date and the CDS agrees; ``other`` when it matches neither
+        count (a surprise to look at); ``None`` without an estimate."""
+        if self.cds_cost is None:
             return None
-        if self.cds_cost == self.named_fields:
-            return "product"
-        if self.cds_cost == self.real_fields:
-            return "real"
-        return "other"
+        if self.cds_cost not in (self.real_fields, self.named_fields):
+            return "other"
+        if self.real_fields == self.named_fields:
+            return "same"
+        return "product" if self.cds_cost == self.named_fields else "real"
 
     @property
     def over_limit(self) -> bool:
@@ -90,10 +91,13 @@ def price_plan(specs: Iterable, estimate: Estimator) -> list[CostRow]:
 
 def verdict(rows: list[CostRow]) -> str | None:
     """``product`` or ``real`` when every request naming a non-existent date agrees and no
-    estimate failed; ``mixed`` when they disagree; ``None`` when there is no verdict."""
+    estimate failed; ``other`` when any CDS cost matches neither of our counts; ``mixed``
+    when they disagree; ``None`` when there is no verdict."""
     if any(r.error for r in rows):
         return None
-    seen = {r.counts for r in rows if r.counts is not None}
+    seen = {r.counts for r in rows} - {"same"}
+    if "other" in seen:
+        return "other"
     if not seen:
         return None
     return seen.pop() if len(seen) == 1 else "mixed"
@@ -105,7 +109,7 @@ VERDICT_TEXT = {
     "real": "the CDS counts only the real dates; planning's limit (the whole product) is "
     "conservative by up to 3 days of fields per request",
     "mixed": "the CDS's counts disagree between requests; read the rows",
-    "other": "the CDS's cost matches neither count; read the rows",
+    "other": "a CDS cost matches neither of our counts; read the rows marked neither",
     None: "no verdict: an estimate failed, or no request names a non-existent date "
     "(plan several months with --months)",
 }

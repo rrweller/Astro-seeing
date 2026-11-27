@@ -63,7 +63,8 @@ def test_april_to_june_has_no_31_april_or_31_june():
 def test_blocks_follow_the_calendar_and_never_cross_a_year():
     specs = _plan(D(2023, 11, 1), D(2024, 7, 31))
     assert [s.period_label for s in specs] == [
-        "2023-11_2023-12",  # the rest of the October–December block
+        "2023-11",  # October is not in the plan: a broken block stays monthly
+        "2023-12",
         "2024-01_2024-03",
         "2024-04_2024-06",
         "2024-07",
@@ -81,6 +82,17 @@ def test_partial_first_and_last_months_stay_on_their_own():
         "2023-07",
         "2023-08-01_2023-08-15",
     ]
+
+
+def test_a_block_merges_the_same_whatever_day_the_plan_starts():
+    """Review finding: a plan starting in February merged February and March, which a
+    January-March plan then overlapped. Only whole calendar blocks merge."""
+    from_jan = {s.key for s in _plan(D(2023, 1, 10), D(2023, 6, 30))}
+    from_feb = {s.key for s in _plan(D(2023, 2, 1), D(2023, 6, 30))}
+    assert from_feb <= from_jan
+    assert {"sl/x/2023-02", "sl/x/2023-03", "sl/x/2023-04_2023-06"} == from_feb
+    ends_feb = {s.key for s in _plan(D(2023, 1, 1), D(2023, 2, 28))}
+    assert ends_feb == {"sl/x/2023-01", "sl/x/2023-02"}
 
 
 def test_every_day_is_requested_exactly_once():

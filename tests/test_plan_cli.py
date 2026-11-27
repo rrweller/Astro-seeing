@@ -177,3 +177,17 @@ def test_a_three_month_request_downloads_verifies_and_ingests_to_its_own_store(c
     assert cli.main(["ingest"]) == 0
     store = ct / "data" / "era5" / "sl" / "chile@vars-lcc" / "2024-01_2024-03.zarr"
     assert (store / "zarr.json").is_file()
+
+
+def test_cost_check_flags_a_cds_cost_that_matches_neither_count(ct, monkeypatch, capsys):
+    """Review finding: a one-month request whose CDS cost differs from our count was shown
+    as "(no non-existent date)" and passed."""
+    fake = _CostingCds("real")
+    real_estimate = fake.estimate_costs
+    fake.estimate_costs = lambda ds, req: {**real_estimate(ds, req), "cost": 12000.0}
+    monkeypatch.setattr(cli, "_backend", lambda: fake)
+    args = ["cost-check", "global", "--kinds", "sl", "--start", "2023-01-01",
+            "--end", "2023-01-31"]  # fmt: skip
+    assert cli.main(args) == 1
+    out = capsys.readouterr().out
+    assert "neither" in out

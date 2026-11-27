@@ -249,21 +249,35 @@ def max_fields(kind: str) -> int:
 
 def max_months(kind: str) -> int:
     """Most consecutive months one request of a kind may span (configs/era5.yaml, D63)."""
-    return int(load_config("era5")["request"]["max_months_per_request"].get(kind, 1))
+    return int(load_config("era5")["request"]["max_months_per_request"][kind])
 
 
-def _merge_months(groups: list[list[dt.date]], n: int) -> list[list[dt.date]]:
-    """Merge consecutive one-month groups into calendar blocks of ``n`` months (D63)."""
+def _merge_months(groups: list[list[dt.date]], n: int, day_step: int) -> list[list[dt.date]]:
+    """Merge one-month groups into calendar blocks of ``n`` months (D63).
+
+    A block merges only when every one of its months is in the plan whole (every day, or
+    every ``day_step``-th day, as planning keeps them). Any other month stays a request of
+    its own, as in a monthly plan, so a block's key never depends on where a plan starts.
+    """
+
+    def whole(year: int, month: int) -> list[dt.date]:
+        days = range(1, calendar.monthrange(year, month)[1] + 1, day_step)
+        return [dt.date(year, month, d) for d in days]
+
+    by_month = {(g[0].year, g[0].month): g for g in groups}
     out: list[list[dt.date]] = []
+    done: set[tuple[int, int]] = set()
     for g in groups:
-        d = g[0]
-        if out:
-            p = out[-1][0]
-            same_block = p.year == d.year and (p.month - 1) // n == (d.month - 1) // n
-            if same_block and _is_product(out[-1] + g):
-                out[-1] = out[-1] + g
-                continue
-        out.append(list(g))
+        y, m = g[0].year, g[0].month
+        if (y, m) in done:
+            continue
+        first = (m - 1) // n * n + 1
+        block = [(y, mm) for mm in range(first, min(first + n, 13))]
+        if len(block) > 1 and all(by_month.get(k) == whole(*k) for k in block):
+            out.append([d for k in block for d in by_month[k]])
+            done.update(block)
+        else:
+            out.append(list(g))
     return out
 
 
@@ -314,10 +328,11 @@ def plan_requests(
     ``months_per_request`` > 1 (with ``granularity="month"``, single levels only, at most
     ``request.max_months_per_request`` in ``configs/era5.yaml``) merges consecutive months
     into one request, in calendar blocks of that many months counted from January, never
-    across a year: with 3, January–March, April–June, … (D63). A month is merged only if
-    the request's dates stay exactly the real dates of its year × month × day product, so
-    a partial first or last month (a plan starting on the 10th) stays a request of its
-    own. A merged request over the CDS cost limit is refused, never split.
+    across a year: with 3, January–March, April–June, … (D63). Only a block whose months
+    are all in the plan whole merges; any other month (a plan starting on the 10th, or in
+    February) stays a request of its own, as in a monthly plan. So a block's key never
+    depends on where a plan starts. A merged request over the CDS cost limit is refused,
+    never split.
 
     With ``split`` (the default), any request over the CDS cost limit for its dataset
     (:func:`max_fields`) is cut into the fewest near-equal runs of days under it; a
@@ -360,7 +375,7 @@ def plan_requests(
             groups[-1].append(d)
     per_day = len(variables) * (len(levels) if kind == "pl" else 1) * len(hours)
     if months_per_request > 1:
-        groups = _merge_months(groups, months_per_request)
+        groups = _merge_months(groups, months_per_request, day_step)
     if split:
         groups = [
             c

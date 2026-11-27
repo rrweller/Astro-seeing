@@ -30,9 +30,9 @@ class KindRates:
     run_overhead_s: float = 0.0
 
     def request_seconds(self, fields: int, idle_s: float) -> tuple[float, float, float]:
-        run = self.run_overhead_s + fields / self.run_fields_per_s + idle_s
+        after_wait = self.run_overhead_s + fields / self.run_fields_per_s + idle_s
         lo, mid, hi = self.queue_wait_h
-        return (lo * 3600 + run, mid * 3600 + run, hi * 3600 + run)
+        return (lo * 3600 + after_wait, mid * 3600 + after_wait, hi * 3600 + after_wait)
 
 
 @dataclass
@@ -82,14 +82,10 @@ def load_rates() -> dict[str, KindRates]:
         k: KindRates(
             queue_wait_h=tuple(float(x) for x in v["queue_wait_h"]),
             run_fields_per_s=float(v["run_fields_per_s"]),
-            run_overhead_s=float(v.get("run_overhead_s", 0.0)),
+            run_overhead_s=float(v["run_overhead_s"]),
         )
         for k, v in kinds.items()
     }
-
-
-def load_idle_s() -> float:
-    return float(load_config("era5")["request"]["planning"]["idle_s"])
 
 
 def estimate_plan(
@@ -103,7 +99,8 @@ def estimate_plan(
     names non-existent dates, but nothing is produced for them.
     """
     rates = load_rates() if rates is None else rates
-    idle_s = load_idle_s() if idle_s is None else idle_s
+    if idle_s is None:
+        idle_s = float(load_config("era5")["request"]["planning"]["idle_s"])
     est = PlanEstimate()
     for spec in specs:
         sec = rates[spec.kind].request_seconds(spec.n_fields, idle_s)

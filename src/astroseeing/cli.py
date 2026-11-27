@@ -212,7 +212,7 @@ def _area_plan(args, allow_global: bool = False):
     from astroseeing.download.requests import plan_requests, static_request
 
     if allow_global and args.name == "global":
-        box = None
+        validation_area = None
         if args.hours == "night":
             raise SystemExit("--hours night needs a validation area, not the globe")
     else:
@@ -220,14 +220,14 @@ def _area_plan(args, allow_global: bool = False):
         if args.name not in areas:
             known = sorted(areas) + (["global"] if allow_global else [])
             raise SystemExit(f"unknown area {args.name!r}; known: {known}")
-        box = areas[args.name]
+        validation_area = areas[args.name]
     if args.hours == "all":
         hours = tuple(range(24))
     elif args.hours == "night":
-        hours = box.night_hours()
+        hours = validation_area.night_hours()
     else:
         hours = tuple(int(h) for h in args.hours.split(","))
-    area = None if box is None else box.area
+    area = None if validation_area is None else validation_area.area
     cfg_pl = load_config("era5")["datasets"]["pl"]
     levels = {"29": None, "37": tuple(cfg_pl["levels_hpa_all"])}.get(args.levels)
     if levels is None and args.levels not in ("29",):
@@ -302,7 +302,9 @@ def cmd_cost_check(args, paths: Paths) -> int:
     for r in rows:
         cost = "-" if r.cds_cost is None else f"{r.cds_cost:.0f}"
         limit = "-" if r.cds_limit is None else f"{r.cds_limit:.0f}"
-        note = r.error or (r.counts or "(no non-existent date)")
+        note = r.error or {"same": "(no non-existent date)", "other": "neither of our counts"}.get(
+            r.counts, r.counts
+        )
         flag = "  OVER the CDS limit" if r.over_limit else ""
         print(f"{r.key:<40} {r.real_fields:>11} {r.named_fields:>8} {cost:>9} {limit:>8}  "
               f"{note}{flag}")  # fmt: skip
@@ -320,7 +322,7 @@ def cmd_cost_check(args, paths: Paths) -> int:
             "git": git_state(),
         })  # fmt: skip
         log.info("cost check written to %s", args.out)
-    return 1 if any(r.error or r.over_limit for r in rows) else 0
+    return 1 if any(r.error or r.over_limit or r.counts == "other" for r in rows) else 0
 
 
 def cmd_plan_measure(args, paths: Paths) -> int:
