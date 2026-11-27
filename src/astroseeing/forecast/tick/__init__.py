@@ -7,7 +7,9 @@ Ticket #51 builds steps 1-5 of the spec's order, ticket #59 step 6:
 2. fetch, verify and compute what's new (one run at a time, in this process: within
    D51 item 4's limit of 2 worker processes, D72);
 3. store each saved place's values (SSD part of Module 6);
-4. build each saved place's file, with ``tonight()``'s verdict and the Moon (ticket #63);
+4. build each saved place's file, with ``tonight()``'s verdict and the Moon (ticket #63),
+   and the map layers of the default saved place's area: ``tonight()`` for every map
+   cell (ticket #65, ``publish.layers``), timed in the report and the log;
 5. publish a product set, if anything changed;
 6. finalise days: each saved place's UTC days whose runs are all final go from the SSD
    to one Zarr store each on ``/data``, written once (``store.days``). Every call to
@@ -22,8 +24,10 @@ model's host (the fallback after the main host has failed for 1 h), ``tick.runs`
 each open run over as many ticks as it needs (each step tried at most 5 times, at least
 1 min apart; abandoned runs; raw files deleted once final), and ``verify.rules`` holds
 the rules themselves. A late run is logged (and listed in the report), never alerted.
-A failed run is not fetched again. An area with no saved place is not fetched yet:
-nothing would use it until the map layers (ticket #65).
+A failed run is not fetched again. An area with no saved place is not fetched: the map
+covers the default saved place's area only (``latest.json`` has one grid). A processed
+run of a global model in that area also stores its latest area grid
+(``store.areas``) for the map.
 
 Alerts (ticket #61, D82; ``forecast.alerts``): the tick checks ``/staging``'s free space
 before any fetch, and after publishing fetches the served ``latest.json`` (spec step 9)
@@ -39,6 +43,7 @@ import fcntl
 import json
 import logging
 import shutil
+import time
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -46,9 +51,10 @@ from pathlib import Path
 
 import astroseeing
 from astroseeing.forecast.alerts import Notifier, TickAlerts
-from astroseeing.forecast.grid import map_grid
+from astroseeing.forecast.grid import MapGrid, map_grid
 from astroseeing.forecast.http import HttpClient
 from astroseeing.forecast.places import PlaceHeightMissing, require_looked_up_heights
+from astroseeing.forecast.publish.layers import MapLayers, build_layers
 from astroseeing.forecast.publish.place_file import build_place_file
 from astroseeing.forecast.publish.sets import publish
 from astroseeing.forecast.schemas import validate
@@ -59,10 +65,11 @@ from astroseeing.forecast.sources.ifs import IfsAdapter
 from astroseeing.forecast.sources.interface import RunRef, SourceAdapter
 from astroseeing.forecast.sources.meps import MepsAdapter
 from astroseeing.forecast.store import PlaceStore, utc_text
+from astroseeing.forecast.store.areas import AreaStore
 from astroseeing.forecast.store.days import DayStores, NasGuard, finalise_days
 from astroseeing.forecast.tick.hosts import pick_host
 from astroseeing.forecast.tick.runs import RunWork
-from astroseeing.forecast.tonight.sun import sun_track
+from astroseeing.forecast.tonight.sun import cell_suns, sun_track
 from astroseeing.forecast.verify import ForecastRecords
 from astroseeing.forecast.verify.rules import late_run
 from astroseeing.manifest import Manifest
@@ -99,6 +106,11 @@ class ForecastPaths:
     @property
     def places(self) -> Path:
         return self.products / "places"
+
+    @property
+    def areas(self) -> Path:
+        """``products/areas``: the latest area grids the map layers read (ticket #65)."""
+        return self.products / "areas"
 
     @property
     def site(self) -> Path:
@@ -145,6 +157,8 @@ class TickReport:
     set_id: str | None = None
     published: bool = False
     days: list[dict] = field(default_factory=list)  # per-place days finalised or tried
+    map_seconds: float | None = None  # time to build the map layers (ticket #65)
+    map_bytes: int | None = None  # the map layers' size, all files
 
     def as_dict(self) -> dict:
         return {
@@ -155,6 +169,8 @@ class TickReport:
             "set_id": self.set_id,
             "published": self.published,
             "days": self.days,
+            "map_seconds": self.map_seconds,
+            "map_bytes": self.map_bytes,
         }
 
 
@@ -258,13 +274,16 @@ def _tick(
     records = ForecastRecords(manifest)
     guard = NasGuard(settings.place_stores.nas_timeout_s)
     store = PlaceStore(paths.places, days=day_stores, guard=guard)
+    areas = AreaStore(paths.areas)
     places = settings.places
+    map_area = settings.areas[places[settings.default_place].area]
     alerts.disk(free_bytes(paths.root))  # the runs below skip fetching while it is low
 
     # 1-3: each model's host and newest run; open runs fetched, verified and stored
     work = RunWork(
-        now, settings, adapters, records, store, paths.raw_dir, paths.root, build, free_bytes
-    )
+        now, settings, adapters, records, store, paths.raw_dir, paths.root, build, free_bytes,
+        areas, map_area.id,
+    )  # fmt: skip
     picks, worked = {}, []
     for area in settings.areas.values():
         area_places = [p for p in places.values() if p.area == area.id]
@@ -281,12 +300,12 @@ def _tick(
             report.runs += work.work_model(model, area, area_places, picks[model_id])
             report.late += _late(model, area.id, records, settings, now)
 
-    # 4-5: the place files and latest.json, published when anything changed
-    files = {}
+    # 4-5: the place files, the map layers and latest.json, published when anything changed
+    files, suns = {}, {}
     for place in places.values():
         area = settings.areas[place.area]
         models = [settings.models[m] for m in area.models]
-        sun = sun_track(place.lat, place.lon, now, *ephemeris)
+        sun = suns[place.id] = sun_track(place.lat, place.lon, now, *ephemeris)
         hours = store.hours_for(place.id, models, sun.hours)
         doc = build_place_file(
             place, models, hours, sun, now,
@@ -294,7 +313,16 @@ def _tick(
         )  # fmt: skip
         validate(doc, "f1-place/1")
         files[f"place-{place.id}.json"] = _json_bytes(doc)
-    latest = _latest_doc(now, settings, places, records, build)
+    t0 = time.monotonic()
+    grid = map_grid(map_area, settings.models[map_area.map_grid_model])
+    layers = _map_layers(grid, map_area, areas, suns[settings.default_place].hours, now,
+                         settings, ephemeris)  # fmt: skip
+    report.map_seconds = time.monotonic() - t0
+    report.map_bytes = sum(len(b) for b in layers.files.values())
+    log.info("map layers: %d × %d cells, %d files, %.0f kB, built in %.1f s", grid.nlat,
+             grid.nlon, len(layers.files), report.map_bytes / 1e3, report.map_seconds)  # fmt: skip
+    files.update(layers.files)
+    latest = _latest_doc(now, settings, places, records, build, grid, layers)
     validate(
         {
             **latest,
@@ -320,6 +348,26 @@ def _tick(
     alerts.beat(worked)  # last: only a finished tick counts for the watcher
 
 
+def _map_layers(
+    grid: MapGrid, area, areas: AreaStore, slider_hours, now, settings, ephemeris
+) -> MapLayers:
+    """The map layers of ``area``: every cell's Sun and each model's newest stored area
+    grid, through ``tonight()`` per cell."""
+    suns = cell_suns(grid.lats, grid.lons, now, *ephemeris)
+    models = [settings.models[m] for m in area.models]
+    runs = {m.id: areas.newest(area.id, m.id) for m in models if not m.regional}
+    return build_layers(
+        grid,
+        models,
+        {k: v for k, v in runs.items() if v is not None},
+        suns,
+        slider_hours,
+        now,
+        cloud_classes=settings.cloud_classes,
+        stale_after_h=settings.run_rules.stale_after_h,
+    )
+
+
 def _late(model, area_id: str, records: ForecastRecords, settings, now) -> list[dict]:
     """The model's newest expected run, if it is late and not yet seen (logged only)."""
     run = late_run(model, settings.run_rules, now)
@@ -337,10 +385,11 @@ def _latest_doc(
     places: Mapping[str, Place],
     records: ForecastRecords,
     build: BuildInfo,
+    grid: MapGrid,
+    layers: MapLayers,
 ) -> dict:
     default = settings.places[settings.default_place]
     area = settings.areas[default.area]
-    grid = map_grid(area, settings.models[area.map_grid_model])
     runs = {}
     for model_id in area.models:
         r = records.latest(model_id, area.id)
@@ -373,7 +422,7 @@ def _latest_doc(
             "nlon": grid.nlon,
             "order": "row-major, north to south, west to east",
         },
-        "layers": {},
+        "layers": dict(layers.entries),
         "runs": runs,
         "sunset_maps": [],
     }
