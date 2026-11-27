@@ -159,7 +159,15 @@ class DriverError(RuntimeError):
 class Browser:
     """One headless Chromium page, driven through ``driver.cjs``."""
 
-    def __init__(self, origin: str, *, width: int = 1280, height: int = 900, scale: float = 1):
+    def __init__(
+        self,
+        origin: str,
+        *,
+        width: int = 1280,
+        height: int = 900,
+        scale: float = 1,
+        touch: bool = False,
+    ):
         self.origin = origin
         self._proc = subprocess.Popen(
             ["node", str(DRIVER)],
@@ -174,6 +182,7 @@ class Browser:
                 origin=origin,
                 viewport={"width": width, "height": height},
                 deviceScaleFactor=scale,
+                hasTouch=touch,
             )
         except BaseException:
             self._proc.kill()

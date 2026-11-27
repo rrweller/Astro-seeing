@@ -9,7 +9,10 @@
   <!-- The file `astro web deploy` writes with the page's own commit (D73). -->
   <meta name="page-version" content="../version.json">
   <link rel="icon" href="data:,">
+  <!-- MapLibre GL JS 5.24.1, vendored (D56 item 1; checksums in ../vendor/README.md). -->
+  <link rel="stylesheet" href="../vendor/maplibre-gl-5.24.1/maplibre-gl.css">
   <link rel="stylesheet" href="style.css">
+  <script src="../vendor/maplibre-gl-5.24.1/maplibre-gl.js" defer></script>
   <script type="module" src="js/main.js"></script>
 </head>
 <body data-state="loading">
@@ -25,7 +28,38 @@
   <main>
     <p id="status" class="status">Loading the forecast…</p>
 
+    <section id="map-view" class="map-view" aria-labelledby="map-title" hidden>
+      <h2 id="map-title" class="visually-hidden">Tonight's map</h2>
+      <div class="map-controls">
+        <fieldset id="layer-choice" class="layer-choice">
+          <legend class="visually-hidden">Show on the map</legend>
+          <label><input type="radio" name="layer" value="clear" checked><span>Clear hours left</span></label>
+          <label><input type="radio" name="layer" value="seeing"><span>Seeing</span></label>
+          <label><input type="radio" name="layer" value="dark"><span>Dark hours left</span></label>
+          <label><input type="radio" name="layer" value="cloud"><span>Cloud by hour</span></label>
+        </fieldset>
+        <label id="model-pick" class="model-pick" hidden>Model
+          <select id="model"></select>
+        </label>
+      </div>
+      <div id="hour-pick" class="hour-pick" hidden>
+        <input id="hour" type="range" min="0" max="23" step="1" value="0" aria-describedby="hour-label">
+        <output id="hour-label" for="hour"></output>
+      </div>
+      <div class="map-body">
+        <div id="map" class="map" role="region" aria-label="Map of the forecast area"></div>
+        <aside id="cell-card" class="cell-card" aria-live="polite" hidden></aside>
+      </div>
+      <div id="legend" class="map-legend"></div>
+      <p id="map-note" class="map-note"></p>
+      <nav class="saved-places" aria-label="Saved places">
+        <span>Saved places, with the full forecast:</span>
+        <ul id="places-list"></ul>
+      </nav>
+    </section>
+
     <section id="tonight" class="tonight" hidden>
+      <p class="back"><a href="#map">Back to the map</a></p>
       <h2 id="night-title"></h2>
       <div id="verdict" class="verdict" hidden>
         <p id="headline" class="headline"></p>
