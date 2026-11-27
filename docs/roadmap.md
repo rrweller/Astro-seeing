@@ -34,7 +34,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C12` · **blocked** · cloud · Experiment spec and CT tickets (needs your approval) · ticket: none yet
 
-- `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · next run: F1-15, F1-16 · ticket: none
+- `C13` · **blocked** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · waits for: F1-19 needs C8 (ESO fetcher) merged; F1-20 needs F1-19 · ticket: none
 
 - `F1-19` · **blocked** · cloud · Paranal scoring: hourly ESO values, matched hours, statistics · waits also for C8's ticket · [#68](https://github.com/rrweller/Astro-seeing/issues/68)
 
@@ -154,7 +154,7 @@ flowchart LR
   %% ---
   class C12 blocked
   %% ---
-  class C13 inprogress
+  class C13 blocked
   %% ---
   class F1_19 blocked
   %% ---
