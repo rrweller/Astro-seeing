@@ -14,10 +14,21 @@ import stat
 import pytest
 
 from astroseeing.forecast.schemas import validate
+from astroseeing.forecast.store import PlaceStore, utc_text
 from astroseeing.forecast.tick import tick_lock
+from astroseeing.forecast.tonight import (
+    HourTable,
+    HourValue,
+    Missing,
+    ModelHours,
+    RunInfo,
+    moon_track,
+    sun_track,
+    tonight,
+)
 
 from forecast_samples import copy_samples, drop_messages, edit_values, small_box_settings
-from forecast_world import DAY, PUBLISHED, World
+from forecast_world import DAY, World
 from icon_eu_samples import IconWorld
 
 
@@ -77,7 +88,9 @@ def test_a_day_of_ticks_publishes_kongsberg_from_the_gfs_run(world):
     assert latest["places"] == [
         {"id": "kongsberg", "name": "Kongsberg", "file": "place-kongsberg.json"}
     ]
-    assert place["tonight"] is None and place["moon"] is None  # F1-14 fills them
+    # the verdict and the Moon (ticket #63; checked against tonight() in their own test)
+    assert place["tonight"]["night"] == "2026-11-26" and place["tonight"]["started"]
+    assert place["moon"]["rise"] is not None or place["moon"]["set"] is not None
     assert place["provenance"]["run_ids"] == {"gfs": run["id"]}
     # Tonight at 23 UTC is the night of 26 November: 12 UTC on the 26th to 11 UTC on the 27th
     times = [h["time"] for h in place["hours"]]
@@ -103,10 +116,13 @@ def test_a_day_of_ticks_publishes_kongsberg_from_the_gfs_run(world):
     assert gfs["level_count"] == 39 and not gfs["regional"] and "NOAA" in gfs["credit"]
     assert 0 < gfs["gap_to_first_level_m"] < 1000
 
-    # set_id changes only when content changes: once the run is in, it stays put
-    first_with_run = set_ids.index(set_ids[-1])
-    assert DAY + dt.timedelta(hours=first_with_run) >= PUBLISHED
-    assert len(set(set_ids)) <= 3  # yesterday's night, today's night, today's with GFS
+    # a new set only when content changes (ticket #63): the verdict's current hour moves
+    # on while Tonight runs, and once the run is in, so does its age. Only 09:00 changes
+    # nothing: like 08:00 it is after sunrise, before the new Tonight starts and before
+    # the run is out. The last 3 sets are kept.
+    changed = [h for h in range(1, 24) if set_ids[h] != set_ids[h - 1]]
+    assert changed == [h for h in range(1, 24) if h != 9]
+    assert place["tonight"]["runs"]["gfs"]["age_h"] == 17.0  # at 23 UTC
     assert sorted(p.name for p in world.paths.sets.iterdir()) == sorted(set(set_ids))[-3:]
 
     # every published file is world-readable (the web server runs as another user)
@@ -341,3 +357,63 @@ def test_cloud_far_over_100_fails_the_run_naming_field_step_and_value(tmp_path, 
         assert all(h["models"]["gfs"] == {"missing": "no_run"} for h in place["hours"])
     finally:
         w.close()
+
+
+def _utc(text: str) -> dt.datetime:
+    return dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+
+
+def _verdict_from_the_store(w: World, now: dt.datetime):
+    """``tonight()`` and ``moon_track`` called directly on the hours the store holds for
+    Kongsberg at ``now`` (ticket #63's acceptance: the tick's ``tonight`` must equal it)."""
+    settings = w.settings
+    place = settings.places["kongsberg"]
+    models = [settings.models[m] for m in settings.areas[place.area].models]
+    sun = sun_track(place.lat, place.lon, now, *w.ephemeris)
+    stored = PlaceStore(w.paths.places).hours_for(place.id, models, sun.hours)
+    table = []
+    for m in models:
+        run = stored.runs[m.id]
+        values = tuple(
+            Missing(v["missing"])
+            if "missing" in v
+            else HourValue(v["cloud"]["total_pct"], v["cn2"]["osborn_sarazin"]["j_free"])
+            for v in stored.values[m.id]
+        )
+        info = None if run is None else RunInfo(run["run_id"], _utc(run["run_time"]))
+        table.append(ModelHours(m.id, m.family, m.regional, info, values))
+    verdict = tonight(
+        HourTable(sun.night, sun.hours, tuple(table)),
+        sun,
+        now,
+        cloud_classes=settings.cloud_classes,
+        stale_after_h=settings.run_rules.stale_after_h,
+    )
+    return verdict, moon_track(place.lat, place.lon, sun, *w.ephemeris)
+
+
+@pytest.mark.parametrize(
+    "hours",
+    [
+        pytest.param((9,), id="no-run-yet"),
+        pytest.param((10,), id="before-tonight-starts"),
+        pytest.param((10, 19), id="tonight-started"),
+        # a day later the 06z run is 28 h old: stale, and it ends before Tonight does
+        pytest.param((10, 34), id="stale-run"),
+    ],
+)
+def test_the_place_files_verdict_and_moon_equal_tonight_called_directly(world, hours):
+    for hour in hours:
+        now = DAY + dt.timedelta(hours=hour)
+        assert world.at(now).skipped is None
+    place = world.place_file()
+    validate(place, "f1-place/1")
+    verdict, moon = _verdict_from_the_store(world, now)
+
+    assert place["tonight"] == verdict.to_json()
+    assert place["moon"] == moon.to_json()
+    assert [h["time"] for h in place["hours"]] == [utc_text(r.time) for r in verdict.hours]
+    for row, v, alt in zip(place["hours"], verdict.hours, moon.altitude_deg, strict=True):
+        assert row["past"] is v.past and row["counted"] is v.counted
+        assert row["agreement"] == v.agreement._asdict()
+        assert row["moon_altitude_deg"] == alt

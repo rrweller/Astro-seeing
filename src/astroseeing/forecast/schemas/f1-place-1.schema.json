@@ -22,7 +22,7 @@
         "height_source": {"enum": ["glo30", "hand-entered"]}
       }
     },
-    "tonight": {"description": "Null until the tick fills it from forecast.tonight (D72: F1-14 fills it; F1-2 leaves it empty).", "anyOf": [{"$ref": "#/$defs/tonight"}, {"type": "null"}]},
+    "tonight": {"description": "The verdict, from forecast.tonight (filled by the tick since ticket #63, D84).", "$ref": "#/$defs/tonight"},
     "hours": {
       "description": "Tonight, local mean solar noon to the next one: 24 hourly rows.",
       "type": "array",
@@ -35,7 +35,7 @@
       "propertyNames": {"$ref": "#/$defs/id"},
       "additionalProperties": {"$ref": "#/$defs/model"}
     },
-    "moon": {"description": "Null until the tick fills it from forecast.tonight's moon_track (D72: F1-14 fills it; F1-2 leaves it empty).", "anyOf": [{"$ref": "#/$defs/moon"}, {"type": "null"}]},
+    "moon": {"description": "From forecast.tonight's moon_track (filled by the tick since ticket #63, D84).", "$ref": "#/$defs/moon"},
     "provenance": {
       "type": "object",
       "required": ["commit", "config_hash", "run_ids"],
@@ -203,10 +203,10 @@
         "time": {"description": "hh:00 UTC; the value stands for hh-0:30 to hh+0:30.", "$ref": "#/$defs/utc_time"},
         "sun_altitude_deg": {"type": "number", "minimum": -90, "maximum": 90},
         "sun_class": {"enum": ["day", "civil_twilight", "nautical_twilight", "astronomical_twilight", "dark"]},
-        "moon_altitude_deg": {"description": "Null until filled with the Moon (D72).", "type": ["number", "null"], "minimum": -90, "maximum": 90},
-        "past": {"description": "Null until filled from forecast.tonight (D72).", "type": ["boolean", "null"]},
-        "counted": {"description": "Null until filled from forecast.tonight (D72).", "type": ["boolean", "null"]},
-        "agreement": {"description": "Model agreement over the global families with a value this hour (D48 item 4); null until filled from forecast.tonight (D72).", "anyOf": [{"$ref": "#/$defs/agreement"}, {"type": "null"}]},
+        "moon_altitude_deg": {"description": "The Moon's topocentric altitude at hh:00, degrees, without refraction.", "type": "number", "minimum": -90, "maximum": 90},
+        "past": {"description": "Before the current hour (D48 item 3): greyed, not counted.", "type": "boolean"},
+        "counted": {"description": "One of the counted hours (D48 items 2-3).", "type": "boolean"},
+        "agreement": {"description": "Model agreement over the global families with a value this hour (D48 item 4).", "$ref": "#/$defs/agreement"},
         "models": {
           "description": "Every forecast model of the place's area: its values this hour, or why it has none (never filled).",
           "type": "object",

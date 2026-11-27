@@ -18,6 +18,10 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
+from forecast_nights import place_file
+
+from astroseeing.forecast.schemas import validate
+from astroseeing.forecast.store import utc_text
 
 from forecast_world import DAY, World
 from icon_eu_samples import IconWorld
@@ -112,8 +116,9 @@ class Case:
 
 
 @pytest.fixture
-def case_b(tmp_path, products):
+def case_b(tmp_path, products, ephemeris):
     c = Case(tmp_path, products, "b")
+    c.ephemeris = ephemeris
     yield c
     c.close()
 
@@ -272,9 +277,8 @@ def test_each_run_shows_its_time_and_age_and_a_stale_run_is_marked(case_b):
     assert "5 h 5 min old" in runs_text(b)
     case_b.close_browser()
 
-    latest = case_b.latest()
-    latest["runs"]["gfs"]["stale"] = True
-    case_b.use_latest(latest)
+    # the stale flag is the place's own verdict's (ticket #63)
+    case_b.edit_place(lambda doc: doc["tonight"]["runs"]["gfs"].update(stale=True))
     b = case_b.open("2026-11-26T10:05:00Z")
     assert "stale, not counted" in runs_text(b)
 
@@ -426,7 +430,7 @@ def test_without_a_recorded_page_commit_the_about_panel_says_so(case_b):
 
 def test_past_hours_are_greyed_only_where_the_place_file_says_so(case_b):
     place = case_b.place()
-    assert {h["past"] for h in place["hours"]} == {None}  # F1-14 fills the flags (D72)
+    assert {h["past"] for h in place["hours"]} == {False}  # written before Tonight started
     b = case_b.open("2026-11-26T19:05:00Z")
     assert b.eval("document.querySelectorAll('#hours .past').length") == 0
     case_b.close_browser()
@@ -472,3 +476,279 @@ def test_icon_eu_shows_in_the_table_beside_gfs_with_no_page_change(tmp_path, eph
         assert "Deutscher Wetterdienst" in credits[1]
     finally:
         case.close()
+
+
+# -- the verdict (ticket #63) ----------------------------------------------------------
+#
+# Hand-made nights at Kongsberg with all four forecast models of its box, built by the
+# tick's own build_place_file (forecast_nights), so each file carries the verdict
+# tonight() really gives. Expected wording is written out here; the numbers in it are
+# checked against the night's construction first.
+
+RUNS_26 = {
+    "gfs": DAY + dt.timedelta(hours=6),
+    "icon_eu": DAY + dt.timedelta(hours=6),
+    "meps": DAY + dt.timedelta(hours=6),
+    "ifs": DAY,
+}
+
+
+def normal_cloud(model: str, t: dt.datetime) -> float | str:
+    """Clear, except: GFS and ICON-EU cloudy at 22 and 23 UTC; at 00 UTC GFS some cloud,
+    ICON-EU cloudy, IFS clear (split); IFS cloudy at 21 UTC (2/3 clear); ICON-EU's run
+    lacks 02 UTC, where IFS has no step either (incomplete). MEPS is clear all night."""
+    if model == "meps":
+        return 0.0
+    if model == "icon_eu" and t.hour == 2:
+        return "partial"
+    if model in ("gfs", "icon_eu") and t.hour in (22, 23):
+        return 80.0
+    if t.hour == 0:
+        return {"gfs": 30.0, "icon_eu": 80.0, "ifs": 5.0}[model]
+    if model == "ifs" and t.hour == 21:
+        return 80.0
+    return 3.0
+
+
+def all_clear(model: str, t: dt.datetime) -> float:
+    return 2.0
+
+
+def night(case: Case, now: dt.datetime, runs=RUNS_26, cloud=normal_cloud) -> dict:
+    """Serve the hand-made night at ``now`` as the current set's place file."""
+    doc = place_file(now, case.ephemeris, runs, cloud)
+    validate(doc, "f1-place/1")
+    case.place_path().write_text(json.dumps(doc))
+    latest = case.latest()
+    latest["written_at"] = utc_text(now.replace(second=0) - dt.timedelta(minutes=5))
+    case.use_latest(latest)
+    return doc
+
+
+def open_night(case: Case, now: dt.datetime, **viewport) -> Browser:
+    return case.open(utc_text(now + dt.timedelta(minutes=1)), **viewport)
+
+
+def verdict_text(b: Browser) -> dict:
+    return b.eval(
+        """({ headline: document.getElementById('headline').textContent,
+              basis: document.getElementById('basis-note').hidden ? null
+                     : document.getElementById('basis-note').textContent,
+              meps: document.getElementById('meps-line').hidden ? null
+                    : document.getElementById('meps-line').textContent,
+              seeing: document.getElementById('seeing-line').hidden ? null
+                      : document.getElementById('seeing-line').textContent,
+              moon: document.getElementById('moon-line').textContent,
+              strip: document.getElementById('strip').textContent,
+              chips: [...document.querySelectorAll('#strip .chip')].map(c => ({
+                  cls: c.dataset.class, label: c.querySelector('.chip-class').textContent,
+                  time: c.querySelector('.chip-time').textContent,
+                  start: c.dataset.start, end: c.dataset.end })) })"""
+    )
+
+
+CHIP_LABELS = {
+    "clear": "Clear",
+    "some_cloud": "Some cloud",
+    "cloudy": "Cloudy",
+    "split": "Split",
+    "incomplete": "Incomplete",
+}
+
+
+def expected_chips(doc: dict) -> list[dict]:
+    out = []
+    for c in doc["tonight"]["chips"]:
+        first, last = oslo_hour(c["start"]), oslo_hour(c["end"])
+        out.append(
+            {
+                "cls": c["class"],
+                "label": CHIP_LABELS[c["class"]],
+                "time": first if c["start"] == c["end"] else f"{first}–{last}",
+                "start": c["start"],
+                "end": c["end"],
+            }
+        )
+    return out
+
+
+def dark_hours(doc: dict, since: str = "") -> list[str]:
+    return [h["time"] for h in doc["hours"] if h["sun_class"] == "dark" and h["time"] >= since]
+
+
+def oslo_clock(utc: str) -> str:
+    t = dt.datetime.fromisoformat(utc.replace("Z", "+00:00"))
+    return t.astimezone(OSLO).strftime("%H:%M")
+
+
+def save_screenshot(b: Browser, name: str) -> None:
+    if (d := screenshot_dir()) is not None:
+        d.mkdir(parents=True, exist_ok=True)
+        b.call("screenshot", path=str(d / f"{name}.png"), fullPage=True)
+
+
+def test_a_normal_night_shows_the_headline_chips_seeing_meps_and_moon(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)  # before Tonight starts (11:21 UTC)
+    doc = night(case_b, now)
+    t = doc["tonight"]
+    dark = dark_hours(doc)
+    cloudy = [h for h in dark if h[11:13] in ("22", "23", "00")]
+    assert len(cloudy) == 3 and "2026-11-27T02:00:00Z" in dark
+    # n = the dark hours; x = n less the three cloudy or split ones and the incomplete one
+    assert (t["counted_hours"], t["clear_hours"], t["incomplete_hours"]) == (
+        len(dark),
+        len(dark) - 4,
+        1,
+    )
+    assert not t["started"] and t["basis"] == "dark"
+
+    b = open_night(case_b, now)
+    v = verdict_text(b)
+    n, x = len(dark), len(dark) - 4
+    assert v["headline"] == f"{x} of {n} dark hours look clear on most models (1 hour incomplete)"
+    assert v["basis"] is None
+    assert v["chips"] == expected_chips(doc)
+    assert [c["cls"] for c in v["chips"]] == [
+        "clear", "cloudy", "split", "clear", "incomplete", "clear",
+    ]  # fmt: skip
+    # MEPS is clear all night: its own line, never in the counts or the strip
+    assert v["meps"] == f"MEPS (regional, not counted): {n} of {n} clear"
+    assert "MEPS" not in v["strip"] and "MEPS" not in v["headline"]
+    assert v["seeing"] == (
+        "Seeing 0.55–0.81″ (free atmosphere, Osborn–Sarazin, 3 models), uncalibrated"
+    )
+    moon = doc["moon"]
+    lit = round(moon["illuminated_fraction"] * 100)
+    waxing = "waxing" if moon["phase_deg"] < 180 else "waning"
+    rise = f"rises {oslo_clock(moon['rise'])}" if moon["rise"] else "does not rise tonight"
+    sets = f"sets {oslo_clock(moon['set'])}" if moon["set"] else "does not set tonight"
+    assert v["moon"] == f"Moon: {rise}, {sets}, {lit} % lit, {waxing}"
+    save_screenshot(b, "verdict-normal")
+
+
+def test_each_hours_agreement_shows_count_denominator_and_majority_or_split(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    doc = night(case_b, now)
+    b = open_night(case_b, now)
+    shown = {c["time"]: c for c in cells(b, "all", "agreement")}
+    assert list(shown) == [h["time"] for h in doc["hours"]]
+    # 21 UTC: GFS, ICON-EU clear, IFS cloudy; 19 UTC: IFS has no step; 00 UTC: one of
+    # each class; 22 UTC: GFS and ICON-EU cloudy, no IFS step; 02 UTC: GFS alone
+    assert shown["2026-11-26T21:00:00Z"]["text"] == "2/3 clearclear"
+    assert shown["2026-11-26T19:00:00Z"]["text"] == "2/2 clearclear"
+    assert shown["2026-11-27T00:00:00Z"]["text"] == "1/3 clearsplit"
+    assert shown["2026-11-26T22:00:00Z"]["text"] == "0/2 clearcloudy"
+    assert shown["2026-11-27T02:00:00Z"]["text"] == "1/1 clearincomplete"
+    moon = {c["time"]: c for c in cells(b, "all", "moon")}
+    for h in doc["hours"]:
+        assert float(moon[h["time"]]["value"]) == h["moon_altitude_deg"]
+        assert moon[h["time"]]["text"] == f"{round(h['moon_altitude_deg'])}".replace("-", "−")
+    counted = b.eval("[...document.querySelectorAll('thead th.counted')].map(t => t.dataset.time)")
+    assert counted == [h["time"] for h in doc["hours"] if h["counted"]]
+    # MEPS is shown in the table, marked as not counted
+    heads = b.eval("[...document.querySelectorAll('.model-head')].map(t => t.textContent)")
+    assert "MEPS (regional, not counted)" in heads
+
+
+def test_a_started_night_counts_the_hours_left_and_greys_the_past(case_b):
+    now = DAY + dt.timedelta(hours=22, minutes=10)  # 22 UTC is the current hour
+    doc = night(case_b, now)
+    left = dark_hours(doc, since="2026-11-26T22:00:00Z")
+    t = doc["tonight"]
+    # left: 22, 23 cloudy, 00 split, 02 incomplete; the rest clear
+    assert (t["counted_hours"], t["clear_hours"], t["incomplete_hours"]) == (
+        len(left),
+        len(left) - 4,
+        1,
+    )
+    b = open_night(case_b, now)
+    v = verdict_text(b)
+    assert v["headline"] == (
+        f"{len(left) - 4} of {len(left)} dark hours left look clear on most models "
+        "(1 hour incomplete)"
+    )
+    assert v["chips"] == expected_chips(doc)
+    assert v["chips"][0]["start"] == "2026-11-26T22:00:00Z"
+    assert v["meps"] == f"MEPS (regional, not counted): {len(left)} of {len(left)} clear"
+    greyed = b.eval("[...document.querySelectorAll('thead th.past')].map(t => t.dataset.time)")
+    assert greyed == [h["time"] for h in doc["hours"] if h["time"] < "2026-11-26T22:00:00Z"]
+    save_screenshot(b, "verdict-started")
+
+
+def test_a_june_night_names_its_fallback_basis(case_b):
+    now = dt.datetime(2026, 6, 20, 10, 5, tzinfo=dt.UTC)
+    run_06z, run_00z = now.replace(hour=6, minute=0), now.replace(hour=0, minute=0)
+    runs = {"gfs": run_06z, "icon_eu": run_06z, "meps": run_06z, "ifs": run_00z}
+    doc = night(case_b, now, runs=runs, cloud=all_clear)
+    t = doc["tonight"]
+    # at 59.7° N on 20 June the Sun gets no lower than about 7° below the horizon
+    assert min(h["sun_altitude_deg"] for h in doc["hours"]) > -12
+    down = [h for h in doc["hours"] if h["sun_altitude_deg"] < -0.833]
+    assert t["basis"] == "sun_down" and t["counted_hours"] == t["clear_hours"] == len(down)
+    b = open_night(case_b, now)
+    v = verdict_text(b)
+    n = len(down)
+    assert v["headline"] == f"{n} of {n} night hours (Sun down) look clear on most models"
+    assert v["basis"] == (
+        "No dark time tonight: the Sun never gets 18° below the horizon, nor 12°, "
+        "so the count uses the hours with the Sun down."
+    )
+    assert v["chips"] == expected_chips(doc)
+    assert [c["cls"] for c in v["chips"]] == ["clear"]
+    save_screenshot(b, "verdict-june")
+
+
+def test_when_dark_time_has_ended_the_page_says_when(case_b):
+    now = DAY + dt.timedelta(days=1, hours=6, minutes=10)  # before sunrise (about 07:20)
+    doc = night(case_b, now)
+    nothing = doc["tonight"]["nothing_to_count"]
+    assert nothing["reason"] == "dark_time_ended" and doc["tonight"]["counted_hours"] == 0
+    last_dark = dark_hours(doc)[-1]
+    assert nothing["dark_time_ended_at"] == last_dark.replace(":00:00Z", ":30:00Z")
+    b = open_night(case_b, now)
+    v = verdict_text(b)
+    assert v["headline"] == f"Dark time ended at {oslo_clock(nothing['dark_time_ended_at'])}"
+    assert v["chips"] == [] and v["meps"] is None and v["seeing"] is None
+    # the table stays
+    assert len(cells(b, "gfs", "total")) == 24
+    save_screenshot(b, "verdict-dark-time-ended")
+
+
+def test_not_enough_models_names_each_models_state(case_b):
+    now = DAY + dt.timedelta(hours=19, minutes=5)
+    runs = {
+        "gfs": DAY + dt.timedelta(hours=12),
+        "meps": DAY + dt.timedelta(hours=12),
+        "ifs": DAY - dt.timedelta(hours=24),  # 43 h old: stale
+    }  # no ICON-EU run
+    doc = night(case_b, now, runs=runs, cloud=all_clear)
+    nothing = doc["tonight"]["nothing_to_count"]
+    assert nothing["families"] == {"gfs": "ok", "icon": "missing", "ifs": "stale"}
+    b = open_night(case_b, now)
+    v = verdict_text(b)
+    assert v["headline"] == (
+        "Not enough models for a verdict: GFS 0.25° has values; ICON has no run for "
+        "these hours; ECMWF IFS 0.25° has a stale run (not counted)"
+    )
+    assert v["chips"] == expected_chips(doc)
+    assert {c["cls"] for c in v["chips"]} == {"incomplete"}
+    runs_shown = b.eval(
+        "Object.fromEntries([...document.querySelectorAll('#runs li')]"
+        ".map(li => [li.dataset.model, li.textContent]))"
+    )
+    assert "stale, not counted" in runs_shown["ifs"] and "43 h 6 min old" in runs_shown["ifs"]
+    assert "stale" not in runs_shown["gfs"] and "no run yet" in runs_shown["icon_eu"]
+    save_screenshot(b, "verdict-not-enough-models")
+
+
+def test_the_verdict_fits_a_390px_phone(case_b):
+    now = DAY + dt.timedelta(hours=10, minutes=5)
+    night(case_b, now)
+    b = open_night(case_b, now, width=390, height=844, scale=2)
+    widths = b.eval(
+        """({ page: document.documentElement.scrollWidth,
+              strip: document.getElementById('strip').scrollWidth,
+              verdict: document.getElementById('verdict').clientWidth })"""
+    )
+    assert widths["page"] <= 390 and widths["strip"] <= widths["verdict"] <= 390 - 2 * 16
+    save_screenshot(b, "verdict-phone-390")

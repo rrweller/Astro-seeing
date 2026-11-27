@@ -7,7 +7,7 @@ Ticket #51 builds steps 1-5 of the spec's order:
 2. fetch, verify and compute what's new (one run at a time, in this process: within
    D51 item 4's limit of 2 worker processes, D72);
 3. store each saved place's values (SSD part of Module 6);
-4. build each saved place's file (the verdict comes with ticket #63);
+4. build each saved place's file, with ``tonight()``'s verdict and the Moon (ticket #63);
 5. publish a product set, if anything changed.
 
 A run's manifest row moves ``seen`` → ``fetching`` → ``fetched`` → ``verified`` →
@@ -233,15 +233,8 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
         area = settings.areas[place.area]
         models = [settings.models[m] for m in area.models]
         sun = sun_track(place.lat, place.lon, now, *ephemeris)
-        hours = sun.hours
-        doc = build_place_file(
-            place,
-            models,
-            store.hours_for(place.id, models, hours),
-            sun.altitude_deg,
-            settings.config_hash,
-            build.commit,
-        )
+        hours = store.hours_for(place.id, models, sun.hours)
+        doc = build_place_file(place, models, hours, sun, now, settings, ephemeris, build.commit)
         validate(doc, "f1-place/1")
         files[f"place-{place.id}.json"] = _json_bytes(doc)
     latest = _latest_doc(now, settings, places, records, build)

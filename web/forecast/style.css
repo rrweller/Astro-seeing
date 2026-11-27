@@ -81,6 +81,44 @@ h2 {
   font: 400 1.6rem/1.2 var(--serif);
 }
 
+/* -- the verdict: one sentence, then the strip of counted hours ----------------------- */
+
+.verdict { margin: 0.6rem 0 1.4rem; max-width: 60rem; }
+.headline { margin: 0 0 0.35rem; font: 400 1.45rem/1.3 var(--serif); max-width: 46ch; }
+.basis-note { margin: 0 0 0.6rem; color: var(--lamp); max-width: 72ch; }
+
+/* Chips as wide as the hours they cover; they wrap rather than push the page sideways. */
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin: 0.7rem 0 0.7rem;
+  padding: 0;
+  list-style: none;
+}
+.chip {
+  flex-basis: 0;
+  min-width: max-content;
+  padding: 0.35rem 0.55rem 0.3rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+.chip-class { display: block; font-weight: 600; font-size: 0.9rem; }
+.chip-time { display: block; font-size: 0.8rem; opacity: 0.85; }
+/* Clear is the sky itself; cloud is grey veil; split and incomplete are outlines only,
+   so "not known" never looks like weather. */
+.chip-clear { background: var(--sky-dark); border-color: #3c5288; color: #dfe7f7; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04); }
+.chip-some_cloud { background: #4b5873; color: #eef1f7; }
+.chip-cloudy { background: #8a93a6; color: #151b29; }
+.chip-split { background: repeating-linear-gradient(135deg, #3a4560 0 6px, #2b3550 6px 12px); color: var(--ink); }
+.chip-incomplete { background: transparent; border: 1px dashed var(--muted); color: var(--muted); }
+
+.meps-line { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.9rem; }
+.verdict-meta { margin: 0; padding: 0; list-style: none; }
+.verdict-meta li { margin: 0.1rem 0; }
+.caution { color: var(--lamp); font-weight: 600; }
+
 .note { margin: 0 0 1rem; max-width: 72ch; color: var(--muted); }
 .note strong { color: var(--lamp); font-weight: 600; }
 
@@ -168,6 +206,18 @@ tr.cloud td:not(.missing) {
 
 td.missing { color: transparent; }
 
+/* Counted hours: a lamp-coloured bar under the hour, so the strip and the table line up. */
+thead th.counted { box-shadow: inset 0 -3px 0 var(--lamp); }
+
+/* The agreement row: the count, and the majority class under it. */
+tr.agreement td { font-size: 0.8rem; line-height: 1.15; }
+.agree-count { display: block; white-space: nowrap; }
+.agree-class { display: block; color: var(--muted); font-size: 0.72rem; }
+td.agree-mostly_clear .agree-count { font-weight: 600; }
+td.agree-incomplete { font-style: italic; }
+tr.moon td.below { color: var(--muted); }
+.not-counted { color: var(--muted); font-size: 0.9rem; }
+
 .past { opacity: 0.38; }
 thead th.past { filter: grayscale(0.8); }
 
@@ -208,6 +258,7 @@ tr.seeing-head .cap { color: var(--ink); font-size: 0.85rem; }
 .swatch { display: inline-block; width: 1.1rem; height: 0.8rem; border-radius: 2px; border: 1px solid var(--rule); }
 .swatch[class*="sun-"] { background: var(--sky); }
 .swatch.past { background: var(--sky-civil_twilight); opacity: 0.38; }
+.swatch.counted { background: var(--panel); box-shadow: inset 0 -3px 0 var(--lamp); }
 
 .credits { margin: 0.8rem 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 0.85rem; }
 

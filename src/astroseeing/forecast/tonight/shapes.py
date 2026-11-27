@@ -15,9 +15,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 #: Why a model has no value for an hour (never filled, D48 item 4). ``off_step``: the
-#: model has no step at this hour (IFS's in-between hours); ``no_run``: no usable run;
-#: ``partial``: its run lacks this step. A stale run is not a reason here: its values
-#: stay in the table and ``tonight()`` leaves them out of the counts (D48 item 5).
+#: model has no step at this hour (IFS's in-between hours); ``no_run``: no usable run
+#: for this hour (the model has none, or its run doesn't reach the hour: D84, as the
+#: store writes it); ``partial``: its run lacks this step. A stale run is not a reason
+#: here: its values stay in the table and ``tonight()`` leaves them out of the counts
+#: (D48 item 5).
 MissingReason = Literal["off_step", "no_run", "partial"]
 MISSING_REASONS: tuple[str, ...] = ("off_step", "no_run", "partial")
 
@@ -109,8 +111,6 @@ class ModelHours:
             if self.run is None and not (isinstance(v, Missing) and v.reason == "no_run"):
                 raise ValueError(f"{self.model} has no run, so every hour must be "
                                  f"Missing('no_run')")  # fmt: skip
-            if self.run is not None and isinstance(v, Missing) and v.reason == "no_run":
-                raise ValueError(f"{self.model} has a run, so no hour can be Missing('no_run')")
 
 
 @dataclass(frozen=True)
