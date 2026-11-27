@@ -4,6 +4,7 @@
 // more than an hour old.
 
 import { clockLabel } from "./format.js";
+import { MapView } from "./mapview.js";
 import { refreshAges, renderAbout, renderCredits, renderHeader, renderRuns, renderSources, renderTable, renderTerrain, renderUpdated, renderVerdict } from "./render.js";
 
 const CHECK_EVERY_MS = 5 * 60 * 1000;
@@ -13,7 +14,8 @@ const CLOCK_EVERY_MS = 60 * 1000;
 const dataBase = new URL(document.querySelector('meta[name="forecast-data"]').content, location.href);
 const versionUrl = new URL(document.querySelector('meta[name="page-version"]').content, location.href);
 
-const state = { etag: null, latest: null, place: null, pageCommit: null };
+const state = { etag: null, latest: null, places: [], place: null, pageCommit: null };
+const mapView = new MapView(dataBase);
 
 async function getJson(url) {
   const response = await fetch(url, { cache: "no-store" });
@@ -40,23 +42,68 @@ async function loadPageCommit() {
   }
 }
 
+/** Which view the address asks for: `#place/<id>` is a saved place's full view;
+ *  anything else is the map (the landing view, D44 item 9). */
+function route() {
+  const m = /^#place\/([a-z][a-z0-9_]*)$/.exec(location.hash);
+  return m ? { view: "place", id: m[1] } : { view: "map" };
+}
+
+/** Load set `latest`: every saved place's file, the default place's first. */
 async function show(latest) {
-  const entry = latest.places.find((p) => p.id === latest.default_place);
-  if (!entry) throw new Error(`latest.json names no file for ${latest.default_place}`);
-  const place = await getJson(new URL(latest.set_path + entry.file, dataBase));
+  if (!latest.places.some((p) => p.id === latest.default_place)) {
+    throw new Error(`latest.json names no file for ${latest.default_place}`);
+  }
+  const entries = [...latest.places].sort((a, b) => (b.id === latest.default_place) - (a.id === latest.default_place));
+  const files = await Promise.all(entries.map((e) => getJson(new URL(latest.set_path + e.file, dataBase))));
   state.latest = latest;
-  state.place = place;
-  renderHeader(place);
-  renderUpdated(latest, place.place.time_zone);
-  renderVerdict(place);
-  renderRuns(latest, place, Date.now());
-  renderTerrain(place);
-  renderTable(place);
-  renderCredits(place);
-  renderAbout(latest, place, state.pageCommit);
-  document.getElementById("status").hidden = true;
-  document.getElementById("tonight").hidden = false;
+  state.places = files;
+  state.place = files[0];
+  await showView();
   document.body.dataset.setId = latest.set_id;
+}
+
+function renderMapHeader(home) {
+  const p = home.place;
+  document.title = "Tonight's sky";
+  document.getElementById("place-name").textContent = "Tonight's sky";
+  document.getElementById("place-meta").textContent =
+    `The forecast area around ${p.name}. Pick ${p.name} for its full forecast, or any other spot ` +
+    `for that spot's numbers. Times are ${p.name} time (${p.time_zone}).`;
+}
+
+/** Draw the view the address asks for from the set loaded. */
+async function showView() {
+  const latest = state.latest;
+  if (!latest) return;
+  const home = state.places[0];
+  const r = route();
+  const place = r.view === "place" ? state.places.find((p) => p.place.id === r.id) : null;
+  const status = document.getElementById("status");
+  if (r.view === "place" && !place) {
+    status.hidden = false;
+    status.textContent = `There is no saved place called “${r.id}”; showing the map.`;
+  }
+  const onMap = !place;
+  document.getElementById("map-view").hidden = !onMap;
+  document.getElementById("tonight").hidden = onMap;
+  document.body.dataset.view = onMap ? "map" : "place";
+  renderUpdated(latest, home.place.time_zone);
+  renderAbout(latest, place ?? home, state.pageCommit);
+  if (onMap) {
+    renderMapHeader(home);
+    await mapView.show(latest, state.places);
+  } else {
+    state.place = place;
+    renderHeader(place);
+    renderUpdated(latest, place.place.time_zone);
+    renderVerdict(place);
+    renderRuns(latest, place, Date.now());
+    renderTerrain(place);
+    renderTable(place);
+    renderCredits(place);
+    status.hidden = true;
+  }
   document.body.dataset.state = "ready";
 }
 
@@ -95,6 +142,14 @@ async function check() {
 
 async function start() {
   renderSources();
+  window.addEventListener("hashchange", async () => {
+    try {
+      await showView();
+      window.scrollTo(0, 0);
+    } catch (err) {
+      showProblem(err.message);
+    }
+  });
   state.pageCommit = await loadPageCommit();
   await check();
   setInterval(check, CHECK_EVERY_MS);

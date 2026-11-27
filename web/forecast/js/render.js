@@ -17,7 +17,7 @@ const MISSING_REASONS = {
   partial: "no value: the model's run lacks this step",
 };
 
-function el(tag, attrs = {}, ...children) {
+export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v === null || v === undefined || v === false) continue;

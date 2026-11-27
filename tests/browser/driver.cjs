@@ -33,11 +33,17 @@ const requests = [];
 const consoleErrors = [];
 
 const commands = {
-  async launch({ origin, viewport, deviceScaleFactor }) {
+  async launch({ origin, viewport, deviceScaleFactor, hasTouch }) {
     const channel = process.env.PAGE_TEST_BROWSER_CHANNEL || undefined;
-    browser = await chromium.launch({ channel });
+    // The map page draws with WebGL. Headless Chrome on a machine without a GPU has
+    // it only through SwiftShader, which newer Chrome builds enable only on request.
+    browser = await chromium.launch({ channel, args: ["--enable-unsafe-swiftshader"] });
     allowedOrigin = origin;
-    context = await browser.newContext({ viewport, deviceScaleFactor: deviceScaleFactor || 1 });
+    context = await browser.newContext({
+      viewport,
+      deviceScaleFactor: deviceScaleFactor || 1,
+      hasTouch: Boolean(hasTouch),
+    });
     page = await context.newPage();
     page.on("console", (msg) => {
       if (msg.type() === "error") consoleErrors.push(msg.text());
@@ -70,8 +76,20 @@ const commands = {
   async click({ selector }) {
     await page.click(selector);
   },
-  async screenshot({ path, fullPage }) {
-    await page.screenshot({ path, fullPage: Boolean(fullPage) });
+  async mouseClick({ x, y }) {
+    await page.mouse.click(x, y);
+  },
+  async tap({ x, y }) {
+    await page.touchscreen.tap(x, y);
+  },
+  async press({ selector, key }) {
+    await page.press(selector, key);
+  },
+  async selectOption({ selector, value }) {
+    await page.selectOption(selector, value);
+  },
+  async screenshot({ path, fullPage, clip }) {
+    await page.screenshot({ path, fullPage: Boolean(fullPage), clip: clip || undefined });
   },
   async requests() {
     return requests;

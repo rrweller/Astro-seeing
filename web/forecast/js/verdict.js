@@ -57,7 +57,7 @@ function plural(n, one, many) {
   return n === 1 ? one : many;
 }
 
-function familyName(place, family) {
+export function familyName(place, family) {
   const model = Object.values(place.models).find((m) => m.family === family);
   return model?.name ?? FAMILY_NAMES[family] ?? family.toUpperCase();
 }
