@@ -22,7 +22,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C7` · **in-progress** · cloud · Code to move the kept raw GRIB to the NAS · [#100](https://github.com/rrweller/Astro-seeing/issues/100)
 
-- `C8` · **review** · cloud · ESO seeing-monitor fetcher · [#101](https://github.com/rrweller/Astro-seeing/issues/101) · PR [#104](https://github.com/rrweller/Astro-seeing/pull/104)
+- `C8` · **needs-you** · cloud · ESO seeing-monitor fetcher · needs you: merge PR #104 · [#101](https://github.com/rrweller/Astro-seeing/issues/101) · PR [#104](https://github.com/rrweller/Astro-seeing/pull/104)
 
 - `C9` · **needs-you** · cloud · Site time-series reader for the reproductions · needs you: merge PR #102 · [#98](https://github.com/rrweller/Astro-seeing/issues/98) · PR [#102](https://github.com/rrweller/Astro-seeing/pull/102)
 
@@ -140,7 +140,7 @@ flowchart LR
   %% ---
   class C7 inprogress
   %% ---
-  class C8 review
+  class C8 needsyou
   %% ---
   class C9 needsyou
   %% ---
