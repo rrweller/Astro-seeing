@@ -1291,6 +1291,7 @@ Decisions made before this log existed are in AGENTS.md "Decisions already made
   4. **Terrain warning:** a list under the run times, one line per model whose `terrain_caveat_m` is set: "Kongsberg (162 m) is 165 m below GFS 0.25°'s ground (327 m): fog or cold air pooling in terrain below the model's ground is not forecast by this model." The list is hidden when no model has a caveat. The metres are the file's, each rounded on its own, so the three numbers can differ by 1 m from a subtraction of the rounded ones.
   5. **Missing column:** a line heading each model's seeing rows, "Missing column: the 0.14 km from GFS 0.25°'s ground (327 m) up to its first usable pressure level is not in its seeing (the deepest gap over tonight's hours)", and every seeing cell's `aria-describedby` names it beside the D47 labels. The total-seeing row keeps D73 item 5's "no ground layer; the column starts N km above the model ground".
   6. **Tests and screenshots:** the page's tests use the hand-made nights (`tests/forecast_nights.py`), which now give each model the fog signals its settings list (a foggy hour at 06 UTC) and its own gap, and take model grounds per case, so one night has a place below three models' ground and above MEPS's. Screenshots are in `reports/screenshots/f1-15/`, reduced to a 128-colour palette (D73 item 10).
+- **Who:** agent (provisional), within the approved F1 spec.
 
 ## 2026-11-27 — Cloud session: map data, the map grid and the map layers (roadmap F1-16, ticket #65)
 
