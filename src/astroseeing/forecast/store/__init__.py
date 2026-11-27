@@ -5,7 +5,7 @@ atomically, never touched again; D51 item 12) and the expiring products on the S
 This module holds the SSD part (ticket #51): each run's hourly values at each saved
 place, one JSON file per place and run, under
 ``/staging/forecast/products/places/<place>/<run's UTC day>/<model>-<run>.json``. The
-daily stores on ``/data`` (``finalise_days``) are ticket #59 (F1-10).
+daily stores on ``/data`` and ``finalise_days`` (ticket #59) are in :mod:`.days`.
 
 - :func:`run_document` turns one run's column products at a place into the stored
   values: every verified step, unrounded, with J, H̄ and seeing for both Cₙ² models,
@@ -15,7 +15,8 @@ daily stores on ``/data`` (``finalise_days``) are ticket #59 (F1-10).
   world-readable; :meth:`PlaceStore.read_run` reads it back for the check that comes
   before any raw file is deleted.
 - :meth:`PlaceStore.hours_for` gives each model's values for a list of UTC hours from
-  its newest stored run, and the reason for every hour it has none (never filled).
+  its newest stored run that can reach them, and the reason for every hour it has none
+  (never filled). It reads the SSD and, for a day no longer there, ``/data``.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import logging
 import math
 import os
 import tempfile
@@ -36,6 +38,10 @@ import numpy as np
 from astroseeing.forecast.column import ColumnProducts, cloud_class
 from astroseeing.forecast.settings import CloudClasses, Model, Place
 from astroseeing.forecast.sources.interface import RunFields
+from astroseeing.forecast.store.days import DayStores, NasGuard
+from astroseeing.paths import StorageUnresponsive
+
+log = logging.getLogger(__name__)
 
 STORE_SCHEMA = "forecast-place-run/1"
 _CLOUD = {
@@ -160,8 +166,15 @@ class PlaceHours:
 
 
 class PlaceStore:
-    def __init__(self, root: Path):
+    """Each saved place's stored runs: the SSD files under ``root`` and, with ``days``
+    and ``guard``, the daily stores on ``/data`` that finalised days move to."""
+
+    def __init__(self, root: Path, days: DayStores | None = None, guard: NasGuard | None = None):
+        if days is not None and guard is None:
+            raise ValueError("day stores on /data need a NasGuard (the NAS hangs, not fails)")
         self.root = Path(root)
+        self.days = days
+        self.guard = guard
 
     def path_for(self, place_id: str, model_id: str, run_time: dt.datetime) -> Path:
         return (
@@ -195,20 +208,107 @@ class PlaceStore:
             raise ValueError(f"{path}: not a {STORE_SCHEMA} file")
         return doc
 
-    def latest_run(self, place_id: str, model_id: str) -> dict | None:
-        """The stored run of this model at this place with the newest run time."""
-        found = sorted((self.root / place_id).glob(f"*/{model_id}-*.json"), key=lambda p: p.name)
-        return self.read_run(found[-1]) if found else None
+    # -- UTC days on the SSD (ticket #59) ---------------------------------------------
+    def ssd_days(self, place_id: str) -> list[dt.date]:
+        """The UTC days with stored runs on the SSD, oldest first."""
+        folder = self.root / place_id
+        if not folder.is_dir():
+            return []
+        days = []
+        for p in folder.iterdir():
+            try:
+                day = dt.date.fromisoformat(p.name)
+            except ValueError:
+                continue
+            if p.is_dir() and any(p.glob("*.json")):
+                days.append(day)
+        return sorted(days)
 
+    def day_docs(self, place_id: str, day: dt.date) -> list[dict]:
+        """Every run stored on the SSD for a UTC day, by file name (model, run time)."""
+        folder = self.root / place_id / day.isoformat()
+        return [self.read_run(p) for p in sorted(folder.glob("*.json"))]
+
+    def remove_ssd_day(self, place_id: str, day: dt.date) -> int:
+        """Remove a UTC day's SSD run files, then its folder if empty (the caller has
+        checked the day is safe on ``/data``); returns the number of files removed."""
+        folder = self.root / place_id / day.isoformat()
+        files = sorted(folder.glob("*.json"))
+        for p in files:
+            p.unlink()
+        try:
+            folder.rmdir()
+        except OSError:
+            log.warning("%s left in place: it holds other files", folder)
+        return len(files)
+
+    # -- reading ----------------------------------------------------------------------
     def hours_for(
         self, place_id: str, models: Sequence[Model], hours: Sequence[dt.datetime]
     ) -> PlaceHours:
+        """Each model's values for ``hours`` from its newest stored run that can reach
+        them (run time no earlier than the first hour less the model's last step), read
+        from the SSD or, for a day no longer there, from its store on ``/data``."""
         runs, values = {}, {}
+        on_nas: dict[dt.date, tuple[dict, ...]] = {}
         for model in models:
-            doc = self.latest_run(place_id, model.id)
+            doc = self._newest_run(place_id, model, hours, on_nas)
             runs[model.id] = None if doc is None else {k: v for k, v in doc.items() if k != "steps"}
             values[model.id] = tuple(_hour_value(doc, model, t) for t in hours)
         return PlaceHours(tuple(hours), runs, values)
+
+    def _newest_run(
+        self,
+        place_id: str,
+        model: Model,
+        hours: Sequence[dt.datetime],
+        on_nas: dict[dt.date, tuple[dict, ...]],
+    ) -> dict | None:
+        earliest = hours[0] - dt.timedelta(hours=model.steps_h[-1])
+        found = []
+        for p in (self.root / place_id).glob(f"*/{model.id}-*.json"):
+            stamp = p.name[len(model.id) + 1 : -len(".json")]
+            run_time = dt.datetime.strptime(stamp, "%Y%m%dT%HZ").replace(tzinfo=dt.UTC)
+            if run_time >= earliest:
+                found.append((run_time, p))
+        if found:
+            return self.read_run(max(found)[1])
+        if self.days is None:
+            return None
+        # Every day only on /data is older than every day still on the SSD (D80), so
+        # /data is asked only for a model with no reachable run on the SSD.
+        ssd = set(self.ssd_days(place_id))
+        day = hours[-1].date()
+        while day >= earliest.date():
+            if day not in ssd:
+                docs = [
+                    d
+                    for d in self._nas_day(place_id, day, on_nas)
+                    if d["model"] == model.id and _run_time(d) >= earliest
+                ]
+                if docs:
+                    return max(docs, key=_run_time)
+            day -= dt.timedelta(days=1)
+        return None
+
+    def _nas_day(
+        self, place_id: str, day: dt.date, on_nas: dict[dt.date, tuple[dict, ...]]
+    ) -> tuple[dict, ...]:
+        """A day's runs from its store on ``/data`` (none if it has no store, or if the
+        NAS does not answer: logged)."""
+        if day not in on_nas:
+            what = f"read day store {place_id} {day}"
+            try:
+                content = self.guard.call(what, lambda: self.days.read(place_id, day))
+            except StorageUnresponsive as e:
+                log.error("%s: its runs are left out this time: %s", what, e)
+                content = None
+            on_nas[day] = () if content is None else content.runs
+        return on_nas[day]
+
+
+def _run_time(doc: Mapping) -> dt.datetime:
+    return dt.datetime.fromisoformat(doc["run_time"].replace("Z", "+00:00"))
 
 
 def _hour_value(doc: dict | None, model: Model, t: dt.datetime) -> dict:

@@ -417,3 +417,75 @@ def test_the_place_files_verdict_and_moon_equal_tonight_called_directly(world, h
         assert row["past"] is v.past and row["counted"] is v.counted
         assert row["agreement"] == v.agreement._asdict()
         assert row["moon_altitude_deg"] == alt
+
+
+#: GFS's runs of 26 November are all final by 27 November 00:00 with a 10 h online window
+#: (abandoned or gone 6 h after their run time): 00z never seen (06z is newer), 06z
+#: processed, 12z and 18z never published by the fake NOMADS.
+SHORT_WINDOW = {"models.gfs.online_window_h": 10}
+
+
+def files_under(path) -> dict:
+    return {str(p.relative_to(path)): (p.stat().st_mtime_ns, p.read_bytes())
+            for p in sorted(path.rglob("*")) if p.is_file()}  # fmt: skip
+
+
+def test_a_place_day_store_appears_once_its_runs_are_final_and_is_never_touched_again(
+    tmp_path, ephemeris
+):
+    w = World(tmp_path, ephemeris, settings_edits=SHORT_WINDOW)
+    try:
+        store = w.paths.place_days / "kongsberg" / "2026-11-26.zarr"
+        appeared = None
+        for hour in (0, 9, 10, 17, 18, 23, 24, 25, 30):
+            report = w.at(DAY + dt.timedelta(hours=hour))
+            if store.exists() and appeared is None:
+                appeared, written = hour, files_under(store)
+                assert [(d["day"], d["outcome"]) for d in report.days] == [
+                    ("2026-11-26", "written")
+                ]
+            elif appeared is not None:
+                assert report.days == [] and files_under(store) == written
+        assert appeared == 24  # 27 November 00:00, when the 18z run is gone for good
+        assert str(w.paths.place_days).startswith(str(tmp_path / "data"))
+        (row,) = w.manifest.conn.execute("SELECT * FROM forecast_place_days").fetchall()
+        assert (row["place"], row["day"], row["outcome"]) == ("kongsberg", "2026-11-26", "written")
+        assert row["bytes"] == sum(len(b) for _, b in written.values())
+    finally:
+        w.close()
+
+
+def test_a_hanging_nas_times_out_without_holding_back_publish(tmp_path, ephemeris):
+    import threading
+    import time
+
+    from astroseeing.forecast.store.days import DayStores
+    from astroseeing.forecast.tick import tick
+
+    from forecast_world import BUILD
+
+    class HangingNas(DayStores):
+        release = threading.Event()
+
+        def put(self, content):
+            self.release.wait(30)
+            return super().put(content)
+
+    edits = {**SHORT_WINDOW, "place_stores.nas_timeout_s": 0.3}
+    w = World(tmp_path, ephemeris, settings_edits=edits)
+    nas = HangingNas(w.paths.place_days)
+    try:
+        for hour in (9, 10):  # the 06z run is in; no tick runs from 11:00 on
+            w.at(DAY + dt.timedelta(hours=hour))
+        before = w.latest()["set_id"]
+        t0 = time.monotonic()
+        report = tick(DAY + dt.timedelta(hours=32), w.settings, w.adapters(), w.manifest,
+                      w.paths, ephemeris=ephemeris, build=BUILD, day_stores=nas)  # fmt: skip
+        assert time.monotonic() - t0 < 10
+        assert report.published and w.latest()["set_id"] == report.set_id != before
+        (day,) = report.days
+        assert day["outcome"] == "timed_out" and "no answer from the NAS" in day["error"]
+        assert w.manifest.conn.execute("SELECT * FROM forecast_place_days").fetchall() == []
+    finally:
+        nas.release.set()
+        w.close()
