@@ -38,7 +38,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-10` · **in-progress** · cloud · Per-place daily stores on the NAS · [#59](https://github.com/rrweller/Astro-seeing/issues/59)
 
-- `F1-11` · **ready** · cloud · `astro forecast status` and the 7-day size report · [#60](https://github.com/rrweller/Astro-seeing/issues/60)
+- `F1-11` · **in-progress** · cloud · `astro forecast status` and the 7-day size report · [#60](https://github.com/rrweller/Astro-seeing/issues/60)
 
 - `F1-12` · **ready** · cloud · Forecast phone alerts and the daily health line · [#61](https://github.com/rrweller/Astro-seeing/issues/61)
 
@@ -197,7 +197,7 @@ flowchart LR
   %% ---
   class F1_10 inprogress
   %% ---
-  class F1_11 ready
+  class F1_11 inprogress
   %% ---
   class F1_12 ready
   %% ---
