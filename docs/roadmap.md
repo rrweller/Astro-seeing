@@ -24,7 +24,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C8` · **in-progress** · cloud · ESO seeing-monitor fetcher · [#101](https://github.com/rrweller/Astro-seeing/issues/101)
 
-- `C9` · **in-progress** · cloud · Site time-series reader for the reproductions · [#98](https://github.com/rrweller/Astro-seeing/issues/98)
+- `C9` · **review** · cloud · Site time-series reader for the reproductions · [#98](https://github.com/rrweller/Astro-seeing/issues/98) · PR [#102](https://github.com/rrweller/Astro-seeing/pull/102)
 
 - `C10` · **blocked** · cloud · Reproduction spec and CT tickets (needs your approval) · ticket: none yet
 
@@ -142,7 +142,7 @@ flowchart LR
   %% ---
   class C8 inprogress
   %% ---
-  class C9 inprogress
+  class C9 review
   %% ---
   class C10 blocked
   %% ---
