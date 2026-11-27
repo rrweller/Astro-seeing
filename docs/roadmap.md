@@ -38,7 +38,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `F1-11` · **review** · cloud · `astro forecast status` and the 7-day size report · [#60](https://github.com/rrweller/Astro-seeing/issues/60) · PR [#89](https://github.com/rrweller/Astro-seeing/pull/89)
 
-- `F1-13` · **in-progress** · cloud · Web server and timer setup files, one-command deploy · [#62](https://github.com/rrweller/Astro-seeing/issues/62)
+- `F1-13` · **review** · cloud · Web server and timer setup files, one-command deploy · [#62](https://github.com/rrweller/Astro-seeing/issues/62) · PR [#90](https://github.com/rrweller/Astro-seeing/pull/90)
 
 - `F1-14` · **in-progress** · cloud · The verdict on the place view · [#63](https://github.com/rrweller/Astro-seeing/issues/63)
 
@@ -189,7 +189,7 @@ flowchart LR
   %% ---
   class F1_11 review
   %% ---
-  class F1_13 inprogress
+  class F1_13 review
   %% ---
   class F1_14 inprogress
   %% ---
