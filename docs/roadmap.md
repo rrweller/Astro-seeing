@@ -36,6 +36,8 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **blocked** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · waits for: F1-19 needs C8 (ESO fetcher) merged; F1-20 needs F1-19 · ticket: none
 
+- `C14` · **ready** · cloud · Fix the map page's flaky cell-click browser tests · ticket: none yet
+
 - `F1-19` · **blocked** · cloud · Paranal scoring: hourly ESO values, matched hours, statistics · waits also for C8's ticket · [#68](https://github.com/rrweller/Astro-seeing/issues/68)
 
 - `F1-20` · **blocked** · cloud · Paranal check end to end: ESO fetch, nights, panel, weekly report · [#69](https://github.com/rrweller/Astro-seeing/issues/69)
@@ -82,6 +84,7 @@ flowchart LR
     C11["C11 · Calibration spec"]
     C12["C12 · Experiment spec"]
     C13["C13 · F1 coordinator (reusable)"]
+    C14["C14 · Map-page test fix"]
     F1_19["F1-19 · Paranal scoring #68"]
     F1_20["F1-20 · Paranal check #69"]
   end
@@ -156,6 +159,8 @@ flowchart LR
   %% ---
   class C13 blocked
   %% ---
+  class C14 ready
+  %% ---
   class F1_19 blocked
   %% ---
   class F1_20 blocked
@@ -211,6 +216,7 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 | 3 | C11 | yes: approve | issues, this file |
 | 3 | C12 | yes: approve | issues, this file |
 | 4+ | C13 | yes: answer the helpers' questions | runs the ready F1 cloud tickets, up to 5 per run (see their rows) |
+| 1 | C14 | no | `tests/test_forecast_map_page.py`; `web/forecast/` only if the page itself is at fault |
 | 5 | F1-19 | no | `forecast/` paranal scoring |
 | 8 | F1-20 | no | `forecast/` paranal, column (relocation), tick, `web/forecast/` Paranal panel, `cli.py` |
 
@@ -256,6 +262,7 @@ Parallel sessions would otherwise take the same number.
 | D68 | C11 |
 | D69 | C12 |
 | D94 | C13 |
+| D96 | C14 |
 | D89–D92 | F1-19 to F1-22, in order (F1-n takes D70+n) |
 
 - D67 is this roadmap process; D70 is deleting finished items; D93 is agents merging into `dev` and the coordinator.
@@ -499,6 +506,30 @@ Report to Riley here:
 - what the next run will take, or why there's no next run yet;
 - for every F1 ticket a coordinator can't run (runs-on:ct, or waiting on something outside F1), tell Riley to start it in its own chat with its roadmap prompt once its wait is over, naming the ticket and the wait.
 Then clean up the helpers' worktrees.
+```
+
+### C14. Fix the map page's flaky cell-click browser tests
+
+Doesn't need you, and waits for nothing: ready now. It's worth running soon: until it's fixed, the map-page tests turn any PR's `tests` check red now and then, and agents may only merge on green (D93).
+
+```text
+Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C14.
+
+Skills: mattpocock-skills:diagnosing-bugs to find the cause, then mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds.
+
+You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, decisions D73, D87 and D93, tests/test_forecast_map_page.py, tests/page_browser.py, tests/browser/driver.cjs, web/forecast/js/mapview.js, web/forecast/style.css and .github/workflows/tests.yml, and the comment on PR #94 that describes the failure (https://github.com/rrweller/Astro-seeing/pull/94#issuecomment-7218758964).
+
+Task: the map page's browser tests that click a map cell fail now and then in CI: `click_cell` times out waiting for the cell card to show the clicked row and column. It failed twice on PR #94's head (test_the_dark_hours_layer_shows_the_minutes_left_and_none_as_its_own_colour) and once on dev at 1075a88 in a hand-started run (Actions run 46004749902, test_clicking_elsewhere_opens_the_cell_card_with_that_cells_layer_values), while the same dev commit passed on its push run. Locally, with Playwright's bundled Chromium, the tests passed every time; CI uses Google Chrome (PAGE_TEST_BROWSER_CHANNEL=chrome). First create a ticket under map #20 (labels runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
+
+Likely cause, to confirm or rule out: the first click opens the cell card; `.map-body:has(.cell-card[hidden])` in web/forecast/style.css then gives the card a grid column, so the map container narrows, and MapLibre resizes a moment later. `cell_point` can read the map's coordinates before that resize, so the next click lands on another cell.
+
+Requirements:
+- Find the cause and fix it at its source: in the tests (for example, wait until the map has settled after the layout change before working out where to click), or in the page if a real user's click during that moment would pick the wrong cell too.
+- Never skip, disable, quarantine or retry a test until it passes, and don't fix it by raising timeouts alone.
+- Reproduce the failure before the fix if you can (for example a forced delay before the map's resize, a slower CPU, or Chrome instead of Chromium), show it passing after, and say in the PR how you checked.
+- Leave the map's behaviour for users unchanged unless the cause is in the page; if it is, say what changes for a user.
+
+Log non-trivial choices as D96 (reserved for this item). Run the full test suite and ruff, then open a PR into dev. You may merge it yourself (D93): once the `tests` check is green on its head commit and code review left nothing serious, squash-merge it into dev, close the ticket with a comment linking the PR, and do the handoff's after-merge steps.
 ```
 
 ### F1-19. Paranal scoring: hourly ESO values, matched hours, statistics

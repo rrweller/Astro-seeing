@@ -1,0 +1,23 @@
+# ERA5 point time series from the CDS time-series products (D29: their own job slot;
+# D57 item 4; D62). Used by `astro fetch-sp`.
+#
+# Request keys (variable, location {longitude, latitude}, date ["start/end"],
+# data_format) as in ECMWF's earthkit tutorial for this product; the product answers
+# with the nearest 0.25° grid point, so we ask for the grid point itself. Not yet
+# checked against the live CDS form from this repo: the first CT request is the check.
+
+surface_pressure_points:
+  dataset: reanalysis-era5-single-levels-timeseries
+  variable: surface_pressure  # CDS name
+  short_name: sp  # name in the returned NetCDF
+  units: Pa
+  data_format: netcdf
+  sites: haslebacher2022  # a group in configs/sites.yaml; points from its era5_point
+  start: 1979-01-01  # Haslebacher et al.'s ERA5 period (D27)
+  end: 2020-12-31
+  # Calendar years per request. 42 = one request per site; whether the CDS takes 42
+  # hourly years in one request is untested (D57 item 4). If it refuses or truncates
+  # it, replan with `astro fetch-sp --replan --chunk-years 1`.
+  chunk_years: 42
+  # Under $ASTRO_DATA_ROOT: <store_dir>/<group>/<site>/<short_name>_<start>-<end>.zarr
+  store_dir: era5/sl_timeseries

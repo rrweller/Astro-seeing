@@ -28,6 +28,7 @@ matplotlib-base = ">=3.9"
 pytest = ">=8"
 hypothesis = ">=6.100"
 ruff = ">=0.8"
+netcdf4 = ">=1.7"
 
 [pypi-dependencies]
 astroseeing = { path = ".", editable = true }

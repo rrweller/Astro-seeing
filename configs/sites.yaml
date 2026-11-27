@@ -15,14 +15,16 @@ priyatikanto2026:
   eltari_radiosonde: {lon: 123.6679, lat: -10.1686, elevation: null, period: "2017-01/2018-12"}
 
 haslebacher2022:  # Table 1; Table 4 seeing-model lower integration levels (ERA5, hPa)
-  mauna_kea: {lon: -155.47, lat: 19.82, elevation: 4200, seeing_lower_level_hpa: 800}
-  paranal: {lon: -70.40, lat: -24.63, elevation: 2635, seeing_lower_level_hpa: 900}
-  la_silla: {lon: -70.73, lat: -29.25, elevation: 2400, seeing_lower_level_hpa: 825}
-  cerro_tololo: {lon: -70.80, lat: -30.17, elevation: 2200, seeing_lower_level_hpa: 825}
-  la_palma: {lon: -17.89, lat: 28.76, elevation: 2370, seeing_lower_level_hpa: 1000}
-  siding_spring: {lon: 149.07, lat: -31.28, elevation: 1165, seeing_lower_level_hpa: 950}
-  sutherland: {lon: 20.81, lat: -32.38, elevation: 1798, seeing_lower_level_hpa: 850}
-  san_pedro_martir: {lon: -115.46, lat: 31.04, elevation: 2800, seeing_lower_level_hpa: 850}
+  # era5_point: the nearest 0.25° grid point to Table 1's coordinates, as their code
+  # uses (D57 item 2); the surface-pressure fetch asks the time-series product for it (D62).
+  mauna_kea: {lon: -155.47, lat: 19.82, elevation: 4200, seeing_lower_level_hpa: 800, era5_point: [-155.50, 19.75]}
+  paranal: {lon: -70.40, lat: -24.63, elevation: 2635, seeing_lower_level_hpa: 900, era5_point: [-70.50, -24.75]}
+  la_silla: {lon: -70.73, lat: -29.25, elevation: 2400, seeing_lower_level_hpa: 825, era5_point: [-70.75, -29.25]}
+  cerro_tololo: {lon: -70.80, lat: -30.17, elevation: 2200, seeing_lower_level_hpa: 825, era5_point: [-70.75, -30.25]}
+  la_palma: {lon: -17.89, lat: 28.76, elevation: 2370, seeing_lower_level_hpa: 1000, era5_point: [-18.00, 28.75]}
+  siding_spring: {lon: 149.07, lat: -31.28, elevation: 1165, seeing_lower_level_hpa: 950, era5_point: [149.00, -31.25]}
+  sutherland: {lon: 20.81, lat: -32.38, elevation: 1798, seeing_lower_level_hpa: 850, era5_point: [20.75, -32.50]}
+  san_pedro_martir: {lon: -115.46, lat: 31.04, elevation: 2800, seeing_lower_level_hpa: 850, era5_point: [-115.50, 31.00]}
 
 tmt2009:  # Schöck et al. 2009 Tables 1-2
   cerro_tolar: {lon: -70.0997, lat: -21.9639, elevation: 2290}

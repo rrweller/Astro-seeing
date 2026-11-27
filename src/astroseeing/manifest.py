@@ -201,6 +201,62 @@ CREATE TABLE IF NOT EXISTS forecast_place_days (
 """
 
 
+#: Point time series from the CDS time-series products (``download.timeseries``, D62).
+#: Kept apart from ``requests`` like the forecast tables: those products have their own
+#: CDS slot (D29), so the pressure-level downloader, its gate (D39), ``astro status``
+#: and the notify watcher never read these. ``ts_stores`` records each per-site store
+#: written to ``/data``. Created on every open; older manifests gain them unchanged.
+TS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS ts_requests (
+    id             INTEGER PRIMARY KEY,
+    key            TEXT NOT NULL UNIQUE,
+    dataset        TEXT NOT NULL,
+    site_group     TEXT NOT NULL,
+    site           TEXT NOT NULL,
+    variable       TEXT NOT NULL,
+    short_name     TEXT NOT NULL,
+    units          TEXT NOT NULL,
+    lon            REAL NOT NULL,
+    lat            REAL NOT NULL,
+    start_date     TEXT NOT NULL,
+    end_date       TEXT NOT NULL,
+    request_json   TEXT NOT NULL,
+    request_hash   TEXT NOT NULL,
+    state          TEXT NOT NULL,
+    cds_request_id TEXT,
+    attempts       INTEGER NOT NULL DEFAULT 0,
+    last_error     TEXT,
+    file_path      TEXT,
+    file_size      INTEGER,
+    file_sha256    TEXT,
+    check_json     TEXT,
+    created_at     TEXT NOT NULL,
+    updated_at     TEXT NOT NULL,
+    submitted_at   TEXT
+);
+CREATE INDEX IF NOT EXISTS ts_requests_state ON ts_requests(state);
+CREATE TABLE IF NOT EXISTS ts_events (
+    id            INTEGER PRIMARY KEY,
+    ts_request_id INTEGER REFERENCES ts_requests(id),
+    at            TEXT NOT NULL,
+    event         TEXT NOT NULL,
+    detail        TEXT
+);
+CREATE TABLE IF NOT EXISTS ts_stores (
+    id             INTEGER PRIMARY KEY,
+    site_group     TEXT NOT NULL,
+    site           TEXT NOT NULL,
+    short_name     TEXT NOT NULL,
+    start_date     TEXT NOT NULL,
+    end_date       TEXT NOT NULL,
+    path           TEXT NOT NULL UNIQUE,
+    content_sha256 TEXT NOT NULL,
+    request_ids    TEXT NOT NULL,
+    written_at     TEXT NOT NULL
+);
+"""
+
+
 #: Event detail that marks a job the CDS lost (expired, deleted, HTTP 404).
 LOST_PREFIX = "lost at the CDS"
 
@@ -262,7 +318,7 @@ class Manifest:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.execute("PRAGMA busy_timeout=60000")
-        self.conn.executescript(SCHEMA + FORECAST_SCHEMA)
+        self.conn.executescript(SCHEMA + FORECAST_SCHEMA + TS_SCHEMA)
         self._upgrade()
 
     def _upgrade(self) -> None:

@@ -405,6 +405,81 @@ def cmd_build_landmask(args, paths: Paths) -> int:
     return 0
 
 
+def cmd_fetch_sp(args, paths: Paths) -> int:
+    """Surface pressure at the Haslebacher sites from the CDS time-series product (D62)."""
+    from astroseeing.download.timeseries import (
+        PlanConflict,
+        PointFetchConfig,
+        PointFetcher,
+        site_points,
+    )
+    from astroseeing.paths import probe_responsive
+
+    cfg = PointFetchConfig.from_config()
+    m = _manifest(paths)
+    if args.status:
+        return _print_ts_status(m)
+    points = site_points(cfg.sites)
+    if args.sites:
+        wanted = args.sites.split(",")
+        unknown = sorted(set(wanted) - {p.site for p in points})
+        if unknown:
+            log.error("not in %s: %s (known: %s)", cfg.sites, ", ".join(unknown),
+                      ", ".join(p.site for p in points))  # fmt: skip
+            return 2
+        points = [p for p in points if p.site in wanted]
+    probe_responsive(paths.data_root)
+    fetcher = PointFetcher(m, _backend(), paths.staging, paths.data_root / cfg.store_dir)
+    try:
+        fetcher.plan(cfg, points, chunk_years=args.chunk_years, replan=args.replan)
+    except PlanConflict as e:
+        log.error("%s", e)
+        return 2
+    if args.retry_failed:
+        log.info("%d failed chunk(s) planned again", fetcher.retry_failed())
+    if args.plan_only:
+        return _print_ts_status(m)
+    max_s = args.max_hours * 3600 if args.max_hours else None
+    s = fetcher.run(poll_seconds=args.poll, max_seconds=max_s)
+    log.info("fetch-sp finished: %s", s)
+    _print_ts_status(m)
+    if s.paused:
+        log.error("CDS submissions are paused (D39); see `astro status`")
+        return 3
+    if s.failed or s.rejected or s.store_errors:
+        log.error(
+            "%d chunk(s) failed, %d rejected, %d store(s) not written; see `astro fetch-sp "
+            "--status`", s.failed, s.rejected, len(s.store_errors),
+        )  # fmt: skip
+        return 1
+    if s.left.get("planned") or s.left.get("submitted"):
+        log.warning("time ran out with chunks left; run the command again to continue")
+        return 2
+    return 0
+
+
+def _print_ts_status(m) -> int:
+    from astroseeing.download.timeseries import TimeseriesRecords
+
+    rec = TimeseriesRecords(m)
+    out = {
+        "counts": rec.counts(),
+        "failed": [
+            {"key": r.key, "attempts": r.attempts, "error": r.last_error}
+            for r in rec.by_state("failed")
+        ],
+        "stores": [
+            {
+                k: s[k]
+                for k in ("site", "short_name", "start_date", "end_date", "path", "content_sha256")
+            }
+            for s in rec.stores()
+        ],
+    }
+    print(json.dumps(out, indent=2))
+    return 0
+
+
 def cmd_cds_smoke_test(args, paths: Paths) -> int:
     """Phase 1 step 2: one hour, small box, GRIB; record queue time, throughput, limits."""
     from astroseeing.download.downloader import Downloader
@@ -765,6 +840,25 @@ def main(argv: list[str] | None = None) -> int:
         help=f"JSON summary path (default without --dry-run: {DEFAULT_LANDMASK_SUMMARY})",
     )
     p.set_defaults(fn=cmd_build_landmask)
+
+    p = sub.add_parser("fetch-sp", help="surface pressure at the Haslebacher sites, 1979-2020, "
+                       "from the CDS time-series product (own CDS slot; D57, D62)")  # fmt: skip
+    p.add_argument("--sites", help="comma-separated sites of the group (default: all 8)")
+    p.add_argument("--chunk-years", type=int, help="calendar years per request (default: "
+                   "configs/timeseries.yaml)")  # fmt: skip
+    p.add_argument(
+        "--replan",
+        action="store_true",
+        help="replace unfinished chunks planned with another chunk size",
+    )
+    p.add_argument("--retry-failed", action="store_true", help="plan failed chunks again first")
+    p.add_argument(
+        "--plan-only", action="store_true", help="plan, print the status, submit nothing"
+    )
+    p.add_argument("--status", action="store_true", help="print chunks and stores (read only)")
+    p.add_argument("--poll", type=float, default=10.0, help="seconds between polls")
+    p.add_argument("--max-hours", type=float, default=6.0, help="stop after this long (0: never)")
+    p.set_defaults(fn=cmd_fetch_sp)
 
     p = sub.add_parser("cds-smoke-test", help="phase 1 step 2: one hour, small box")
     p.add_argument("--date", default="2023-06-21")
