@@ -122,6 +122,10 @@ def test_an_old_manifest_gains_the_two_forecast_tables_and_nothing_else_changes(
         "forecast_alerts",  # ticket #61
         "forecast_heartbeat",
         "forecast_place_days",
+        "ts_requests",  # the time-series point fetcher (D62)
+        "ts_requests_state",
+        "ts_events",
+        "ts_stores",
     }
     assert {k: after_schema[k] for k in before_schema} == before_schema
     assert after_rows == before_rows
