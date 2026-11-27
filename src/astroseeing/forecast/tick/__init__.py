@@ -1,14 +1,18 @@
 """The tick (F1 spec Module 8): ``astro forecast tick``, every 15 min from
 ``astro-forecast.timer``; idempotent, manifest-driven, every dependency injected (D51).
 
-Ticket #51 builds steps 1-5 of the spec's order:
+Ticket #51 builds steps 1-5 of the spec's order, ticket #59 step 6:
 
 1. ask each adapter for its newest published run;
 2. fetch, verify and compute what's new (one run at a time, in this process: within
    D51 item 4's limit of 2 worker processes, D72);
 3. store each saved place's values (SSD part of Module 6);
 4. build each saved place's file (the verdict comes with ticket #63);
-5. publish a product set, if anything changed.
+5. publish a product set, if anything changed;
+6. finalise days: each saved place's UTC days whose runs are all final go from the SSD
+   to one Zarr store each on ``/data``, written once (``store.days``). Every call to
+   ``/data`` has a timeout, so a hung NAS is logged and tried again next tick; and it
+   comes after publishing, so it never holds the page back.
 
 A run's manifest row moves ``seen`` → ``fetching`` → ``fetched`` → ``verified`` →
 ``processed`` (or ``partial`` when some steps are missing, ``failed`` on a format
@@ -48,6 +52,7 @@ from astroseeing.forecast.sources.ifs import IfsAdapter
 from astroseeing.forecast.sources.interface import RunRef, SourceAdapter
 from astroseeing.forecast.sources.meps import MepsAdapter
 from astroseeing.forecast.store import PlaceStore, utc_text
+from astroseeing.forecast.store.days import DayStores, NasGuard, finalise_days
 from astroseeing.forecast.tick.hosts import pick_host
 from astroseeing.forecast.tick.runs import RunWork
 from astroseeing.forecast.tonight.sun import sun_track
@@ -66,10 +71,15 @@ class ForecastPaths:
 
     root: Path  # /staging/forecast
     lock: Path  # on the root disk, beside the manifest
+    data: Path  # /data/astro/forecast: only ever grows (D51 item 10)
 
     @classmethod
     def from_paths(cls, paths: Paths) -> ForecastPaths:
-        return cls(root=paths.staging / "forecast", lock=paths.state_dir / "forecast-tick.lock")
+        return cls(
+            root=paths.staging / "forecast",
+            lock=paths.state_dir / "forecast-tick.lock",
+            data=paths.data_root / "forecast",
+        )
 
     def raw_dir(self, run: RunRef, area: str) -> Path:
         """``/staging/forecast/<model>/<run>/<area>/`` (D51 item 5's folder per run)."""
@@ -82,6 +92,11 @@ class ForecastPaths:
     @property
     def places(self) -> Path:
         return self.products / "places"
+
+    @property
+    def place_days(self) -> Path:
+        """``/data/astro/forecast/places``: the per-place daily stores (D51 item 12)."""
+        return self.data / "places"
 
     @property
     def sets(self) -> Path:
@@ -117,6 +132,7 @@ class TickReport:
     late: list[dict] = field(default_factory=list)  # runs late (logged, never alerted)
     set_id: str | None = None
     published: bool = False
+    days: list[dict] = field(default_factory=list)  # per-place days finalised or tried
 
     def as_dict(self) -> dict:
         return {
@@ -126,6 +142,7 @@ class TickReport:
             "late": self.late,
             "set_id": self.set_id,
             "published": self.published,
+            "days": self.days,
         }
 
 
@@ -168,9 +185,11 @@ def tick(
     ephemeris,
     build: BuildInfo,
     free_bytes: Callable[[Path], float] | None = None,
+    day_stores: DayStores | None = None,
 ) -> TickReport:
     """One tick at ``now`` (UTC). ``ephemeris`` is ``solar.sun.load_ephemeris()``'s
-    (eph, ts); ``free_bytes`` measures free space on /staging (default: the real disk)."""
+    (eph, ts); ``free_bytes`` measures free space on /staging (default: the real disk);
+    ``day_stores`` are the per-place daily stores (default: under ``paths.place_days``)."""
     report = TickReport(now)
     try:
         require_looked_up_heights(settings)  # ticket #54: never at a guessed height
@@ -189,6 +208,7 @@ def tick(
                 ephemeris,
                 build,
                 free_bytes or _free_bytes,
+                day_stores or DayStores(paths.place_days),
                 report,
             )
     except TickLocked:
@@ -203,9 +223,12 @@ def _free_bytes(path: Path) -> float:
     return shutil.disk_usage(p).free
 
 
-def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes, report) -> None:
+def _tick(
+    now, settings, adapters, manifest, paths, ephemeris, build, free_bytes, day_stores, report
+) -> None:
     records = ForecastRecords(manifest)
-    store = PlaceStore(paths.places)
+    guard = NasGuard(settings.place_stores.nas_timeout_s)
+    store = PlaceStore(paths.places, days=day_stores, guard=guard)
     places = settings.places
 
     # 1-3: each model's host and newest run; open runs fetched, verified and stored
@@ -256,6 +279,13 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
     )
     result = publish(paths.products, files, latest, now)
     report.set_id, report.published = result.set_id, result.new
+
+    # 6: final days to /data (after publishing: a hung NAS never holds the page back)
+    try:
+        report.days = finalise_days(now, settings, records, store, build)
+    except Exception as e:  # logged and reported; the next tick tries again
+        log.exception("finalising days failed")
+        report.days = [{"outcome": "error", "error": repr(e)}]
 
 
 def _late(model, area_id: str, records: ForecastRecords, settings, now) -> list[dict]:
