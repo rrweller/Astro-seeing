@@ -83,6 +83,7 @@ class World:
         self.mirror = mirror
         self.done: set[int] = set()
         self.published = False  # any run published yet
+        self.free_bytes = None  # /staging's free space as the tick sees it (None: real disk)
 
     def clock(self) -> float:
         return self.now.timestamp()
@@ -105,6 +106,7 @@ class World:
             self.paths,
             ephemeris=self.ephemeris,
             build=BUILD,
+            free_bytes=self.free_bytes,
         )
 
     def adapters(self) -> dict:
