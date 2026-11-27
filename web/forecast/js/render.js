@@ -64,7 +64,7 @@ export function renderUpdated(latest, timeZone) {
 
 // -- verdict ------------------------------------------------------------------------
 
-function show(id, text) {
+function showLine(id, text) {
   const node = document.getElementById(id);
   node.hidden = text === null;
   node.textContent = text ?? "";
@@ -77,8 +77,8 @@ export function renderVerdict(place) {
   box.hidden = !t;
   if (!t) return;
   box.dataset.basis = t.basis;
-  show("headline", headline(place));
-  show("basis-note", basisNote(t));
+  showLine("headline", headline(place));
+  showLine("basis-note", basisNote(t));
   const where = `${place.place.name} time`;
   document.getElementById("strip").replaceChildren(
     ...chips(place).map((c) =>
@@ -95,14 +95,14 @@ export function renderVerdict(place) {
       ),
     ),
   );
-  show("meps-line", mepsLine(t));
+  showLine("meps-line", mepsLine(t));
   const seeing = seeingLine(t);
-  const line = show("seeing-line", seeing && seeing.text);
+  const line = showLine("seeing-line", seeing && seeing.text);
   if (seeing?.uncalibrated) {
     line.title = Object.entries(t.seeing.per_family).map(([f, v]) => `${f}: ${fixed(v, 2)}″`).join(", ");
     line.append(", ", el("strong", { class: "caution", text: "uncalibrated" }));
   }
-  show("moon-line", place.moon ? moonLine(place) : null);
+  showLine("moon-line", place.moon ? moonLine(place) : null);
 }
 
 // -- runs ---------------------------------------------------------------------------

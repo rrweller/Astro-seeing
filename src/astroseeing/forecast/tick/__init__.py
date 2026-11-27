@@ -234,7 +234,10 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
         models = [settings.models[m] for m in area.models]
         sun = sun_track(place.lat, place.lon, now, *ephemeris)
         hours = store.hours_for(place.id, models, sun.hours)
-        doc = build_place_file(place, models, hours, sun, now, settings, ephemeris, build.commit)
+        doc = build_place_file(
+            place, models, hours, sun, now,
+            settings=settings, ephemeris=ephemeris, commit=build.commit,
+        )  # fmt: skip
         validate(doc, "f1-place/1")
         files[f"place-{place.id}.json"] = _json_bytes(doc)
     latest = _latest_doc(now, settings, places, records, build)

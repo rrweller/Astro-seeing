@@ -112,4 +112,6 @@ def place_file(
                 row.append({"missing": v} if isinstance(v, str) else _step(m.id, v))
         values[m.id] = tuple(row)
     hours = PlaceHours(sun.hours, stored_runs, values)
-    return build_place_file(PLACE, MODELS, hours, sun, now, SETTINGS, ephemeris, COMMIT)
+    return build_place_file(
+        PLACE, MODELS, hours, sun, now, settings=SETTINGS, ephemeris=ephemeris, commit=COMMIT
+    )

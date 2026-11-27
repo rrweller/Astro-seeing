@@ -80,6 +80,7 @@ def build_place_file(
     hours: PlaceHours,
     sun: SunTrack,
     now: dt.datetime,
+    *,
     settings: ForecastSettings,
     ephemeris,
     commit: str,

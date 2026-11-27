@@ -5,25 +5,28 @@
 
 import { clockLabel, fixed, hourLabel, wholePercent } from "./format.js";
 
-const BASIS_HOURS = {
-  dark: ["dark hour", "dark hours"],
-  sun_below_12: ["night hour (Sun below −12°)", "night hours (Sun below −12°)"],
-  sun_down: ["night hour (Sun down)", "night hours (Sun down)"],
-};
-
-const BASIS_NOTES = {
-  sun_below_12:
-    "No dark time tonight: the Sun never gets 18° below the horizon, so the count uses " +
-    "the hours with the Sun more than 12° down.",
-  sun_down:
-    "No dark time tonight: the Sun never gets 18° below the horizon, nor 12°, so the " +
-    "count uses the hours with the Sun down.",
-};
-
-const ENDED = {
-  dark: "Dark time",
-  sun_below_12: "Night hours (Sun below −12°)",
-  sun_down: "Night hours (Sun down)",
+/** The words for each basis of the counted hours (D48 item 2): the hours in the
+ *  headline (one, many), what ended, and the note under the headline (null for dark). */
+const BASES = {
+  dark: {
+    hours: ["dark hour", "dark hours"],
+    ended: "Dark time",
+    note: null,
+  },
+  sun_below_12: {
+    hours: ["night hour (Sun below −12°)", "night hours (Sun below −12°)"],
+    ended: "Night hours (Sun below −12°)",
+    note:
+      "No dark time tonight: the Sun never gets 18° below the horizon, so the count uses " +
+      "the hours with the Sun more than 12° down.",
+  },
+  sun_down: {
+    hours: ["night hour (Sun down)", "night hours (Sun down)"],
+    ended: "Night hours (Sun down)",
+    note:
+      "No dark time tonight: the Sun never gets 18° below the horizon, nor 12°, so the " +
+      "count uses the hours with the Sun down.",
+  },
 };
 
 export const CHIP_LABELS = {
@@ -71,7 +74,7 @@ export function headline(place) {
   const tz = place.place.time_zone;
   const nothing = t.nothing_to_count;
   if (nothing?.reason === "dark_time_ended") {
-    return `${ENDED[t.basis]} ended at ${clockLabel(nothing.dark_time_ended_at, tz)}`;
+    return `${BASES[t.basis].ended} ended at ${clockLabel(nothing.dark_time_ended_at, tz)}`;
   }
   if (nothing?.reason === "not_enough_models") {
     const states = Object.entries(nothing.families).map(
@@ -79,7 +82,7 @@ export function headline(place) {
     );
     return `Not enough models for a verdict: ${states.join("; ")}`;
   }
-  const [one, many] = BASIS_HOURS[t.basis];
+  const [one, many] = BASES[t.basis].hours;
   const hours = plural(t.counted_hours, one, many);
   const left = t.started ? " left" : "";
   const look = plural(t.clear_hours, "looks", "look");
@@ -91,7 +94,7 @@ export function headline(place) {
 
 /** Why the count isn't over dark hours, or null when it is. */
 export function basisNote(tonight) {
-  return BASIS_NOTES[tonight.basis] ?? null;
+  return BASES[tonight.basis].note;
 }
 
 /** The strip's chips: class, label, local hours ("22–02", or "22" for one hour) and
