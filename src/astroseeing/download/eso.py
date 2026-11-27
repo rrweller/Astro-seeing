@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import datetime as dt
+import fcntl
 import hashlib
 import json
 import logging
@@ -16,16 +17,20 @@ import os
 import re
 import tempfile
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 from astroseeing.config import load_config
 from astroseeing.forecast.http import HttpError, HttpUnavailable, RatePacer
+from astroseeing.forecast.store import fsync_dir
 from astroseeing.manifest import Manifest
-from astroseeing.paths import probe_responsive
+from astroseeing.paths import probe_store
 
 log = logging.getLogger(__name__)
 
@@ -93,17 +98,30 @@ class EsoRows:
     malformed_rows: int  # wrong number of fields: dropped from every column
     bad_times: int  # unreadable time: dropped from every column
 
+    @property
+    def duplicate_times(self) -> int:
+        """Rows whose time repeats an earlier row's (kept; counted only)."""
+        return int(self.times.size - np.unique(self.times).size)
+
+    @property
+    def out_of_order_times(self) -> int:
+        """Rows earlier than the row before them (kept; counted only)."""
+        return int((np.diff(self.times) < np.timedelta64(0, "s")).sum())
+
     def dropped(self) -> int:
         """Values left out, over all columns (each malformed or bad-time row counts once
         per column)."""
         per_row = (self.malformed_rows + self.bad_times) * len(self.series)
         return per_row + sum(s.missing + s.nonnumeric for s in self.series.values())
 
-    def counts(self) -> dict:
+    def counts(self) -> dict[str, Any]:
+        """Every count, for the log and the manifest."""
         return {
             "rows": self.rows,
             "malformed_rows": self.malformed_rows,
             "bad_times": self.bad_times,
+            "duplicate_times": self.duplicate_times,
+            "out_of_order_times": self.out_of_order_times,
             "columns": {
                 n: {"kept": int(s.values.size), "missing": s.missing, "nonnumeric": s.nonnumeric}
                 for n, s in self.series.items()
@@ -152,8 +170,8 @@ def parse_csv(tbl: Table, text: str) -> EsoRows:
         times.append(np.datetime64(t, "s"))
     t64 = np.array(times, "datetime64[s]")
     rows = EsoRows(tbl.key, len(data), t64, _series(tbl, t64, header, good), malformed, bad_times)
-    if rows.dropped():
-        log.warning("%s: values left out of the typed table: %s", tbl.key, rows.counts())
+    if rows.dropped() or rows.duplicate_times or rows.out_of_order_times:
+        log.warning("%s: values left out or times not in order: %s", tbl.key, rows.counts())
     return rows
 
 
@@ -166,15 +184,19 @@ def _record_count(tbl: Table, text: str) -> int:
     raise EsoFormatError(f"{tbl.key}: no '# A total of N records' record count in the answer")
 
 
-def _number(text: str) -> float | str | None:
-    """The value, ``None`` if the field is empty, or ``"nonnumeric"``."""
+class _Field(Enum):
+    MISSING = "missing"  # an empty field
+    NONNUMERIC = "nonnumeric"  # not a finite number: text, nan, inf
+
+
+def _number(text: str) -> float | _Field:
     if not text.strip():
-        return None
+        return _Field.MISSING
     try:
         x = float(text)
     except ValueError:
-        return "nonnumeric"
-    return x if math.isfinite(x) else "nonnumeric"
+        return _Field.NONNUMERIC
+    return x if math.isfinite(x) else _Field.NONNUMERIC
 
 
 def _series(tbl: Table, times: np.ndarray, header: list[str], data) -> dict[str, Series]:
@@ -184,9 +206,9 @@ def _series(tbl: Table, times: np.ndarray, header: list[str], data) -> dict[str,
         keep, vals, missing, nonnumeric = [], [], 0, 0
         for i, r in enumerate(data):
             v = _number(r[j])
-            if v is None:
+            if v is _Field.MISSING:
                 missing += 1
-            elif v == "nonnumeric":
+            elif v is _Field.NONNUMERIC:
                 nonnumeric += 1
             else:
                 keep.append(i)
@@ -345,6 +367,11 @@ class EsoFetcher:
         purpose: str = "adhoc",
     ) -> Fetched:
         _check_span(start, end)
+        if end > self.now():
+            raise ValueError(
+                f"{table_key}: range ends {_iso(end)}, not over yet; a fetch now "
+                "would store a partial span"
+            )
         tbl = table(table_key)
         self.probe(self.root)  # a dropped NAS hangs instead of failing (AGENTS.md)
         label = label or f"{_stamp(start)}-{_stamp(end)}"
@@ -357,27 +384,49 @@ class EsoFetcher:
         except EsoFormatError as e:
             self._failed_try(tbl, start, end, f"try {tries}: {e}")
             raise
-        fetch_no = len(self.history(table_key, start, end)) + 1
-        name = f"{tbl.key}_{label}_fetch{fetch_no}_{_stamp(fetched_at)}.csv"
-        dest = self.root / tbl.key / f"{start.astimezone(dt.UTC):%Y}" / name
-        sha = write_once(dest, resp.body)
-        rec = FetchRecord(
-            tbl.key,
-            start,
-            end,
-            label,
-            purpose,
-            fetch_no,
-            url,
-            dest,
-            len(resp.body),
-            sha,
-            rows.counts(),
-            tries,
-            fetched_at,
-        )
-        self._record(rec)
+        self.probe(self.root)  # again: the tries may have taken minutes
+        with self._lock():  # the number and the manifest row are claimed together
+            fetch_no = len(self.history(table_key, start, end)) + 1
+            name = f"{tbl.key}_{label}_fetch{fetch_no}_{_stamp(fetched_at)}.csv"
+            dest = self.root / tbl.key / f"{start.astimezone(dt.UTC):%Y}" / name
+            sha = write_once(dest, resp.body)
+            rec = FetchRecord(
+                table=tbl.key,
+                start=start,
+                end=end,
+                label=label,
+                purpose=purpose,
+                fetch_no=fetch_no,
+                url=url,
+                path=dest,
+                bytes=len(resp.body),
+                sha256=sha,
+                counts=rows.counts(),
+                tries=tries,
+                fetched_at=fetched_at,
+            )
+            self._record(rec)
         return Fetched(rec, rows)
+
+    def fetch_night(self, table_key: str, evening: dt.date, *, purpose: str) -> Fetched:
+        """Fetch the Night named by ``evening`` at the table's site, labelled
+        ``night-<evening>``. The one way to fetch a Night, so its first fetch and its
+        re-fetch (D54 item 8) always share a range and number 1, 2, …"""
+        start, end = night_span(evening, table(table_key).lon_deg)
+        return self.fetch(table_key, start, end, label=f"night-{evening}", purpose=purpose)
+
+    @contextmanager
+    def _lock(self) -> Iterator[None]:
+        """An exclusive lock beside the manifest (local disk), held while a fetch takes
+        its number, writes its file and records it, so two runs (the tick and a manual
+        command) can't take the same number."""
+        path = Path(self.manifest.path).parent / "eso-fetch.lock"
+        with open(path, "a") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
     def bulk(self, table_keys: list[str], first: str, last: str) -> BulkResult:
         """Fetch every table for each UTC calendar month from ``first`` to ``last``
@@ -562,20 +611,8 @@ def read_stored(rec: FetchRecord) -> EsoRows:
     sha = hashlib.sha256(data).hexdigest()
     if sha != rec.sha256:
         raise StoredFileChanged(f"{rec.path}: SHA-256 {sha} differs from the recorded {rec.sha256}")
-    return parse_csv(table(rec.table), _decode(table(rec.table), data))
-
-
-def probe_store(root: Path, timeout_s: float = 30.0) -> None:
-    """Raise ``StorageUnresponsive`` if the store (or, before its first file, its nearest
-    existing parent) does not answer a ``stat`` within ``timeout_s``."""
-    p = Path(root)
-    while True:  # every stat happens in the probe's child process, never here
-        try:
-            return probe_responsive(p, timeout_s)
-        except FileNotFoundError:
-            if p == p.parent:
-                raise
-            p = p.parent
+    tbl = table(rec.table)
+    return parse_csv(tbl, _decode(tbl, data))
 
 
 class WriteOnceError(FileExistsError):
@@ -584,21 +621,28 @@ class WriteOnceError(FileExistsError):
 
 def write_once(dest: Path, data: bytes) -> str:
     """Write ``data`` to ``dest`` atomically, refusing to replace anything, and return
-    its SHA-256 as read back from disk.
+    its SHA-256.
 
-    The bytes go to a temp file in the same folder (fsync), which is then hard-linked to
-    ``dest``: ``link`` fails if ``dest`` exists, so even a race can't overwrite a file.
+    The bytes go to a temp file in the same folder (fsync, mode 0644 so no reader
+    depends on its owner), are read back and checked, and the temp file is then
+    hard-linked to ``dest``: ``link`` fails if ``dest`` exists, so even a race can't
+    overwrite a file. The folder is fsynced so the new name is durable.
     """
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():
         raise WriteOnceError(f"{dest} already exists; raw ESO files are never overwritten")
+    want = hashlib.sha256(data).hexdigest()
     fd, tmp = tempfile.mkstemp(dir=dest.parent, prefix=f".{dest.name}.", suffix=".part")
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(data)
             f.flush()
             os.fsync(f.fileno())
+        os.chmod(tmp, 0o644)
+        got = hashlib.sha256(Path(tmp).read_bytes()).hexdigest()
+        if got != want:
+            raise OSError(f"{tmp}: read back SHA-256 {got}, wrote {want}")
         try:
             os.link(tmp, dest)
         except FileExistsError as e:
@@ -607,7 +651,5 @@ def write_once(dest: Path, data: bytes) -> str:
             ) from e
     finally:
         Path(tmp).unlink(missing_ok=True)
-    sha = hashlib.sha256(dest.read_bytes()).hexdigest()
-    if sha != hashlib.sha256(data).hexdigest():
-        raise OSError(f"{dest}: read back a different SHA-256 than was written")
-    return sha
+    fsync_dir(dest.parent)
+    return want

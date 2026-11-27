@@ -134,6 +134,8 @@ def test_missing_and_non_numeric_values_are_dropped_per_column_and_counted(caplo
         "rows": 8,
         "malformed_rows": 1,  # wrong number of fields: dropped from every column
         "bad_times": 1,
+        "duplicate_times": 0,
+        "out_of_order_times": 0,
         "columns": {
             "seeing": {"kept": 2, "missing": 1, "nonnumeric": 3},
             "airmass": {"kept": 5, "missing": 1, "nonnumeric": 0},
@@ -350,8 +352,8 @@ def test_a_failed_fetch_stores_nothing_and_records_why(world, script, error, cal
 def test_rows_outside_the_asked_range_are_refused(world):
     f, _ = world.fetcher((FIXTURES / "paranal-dimm.csv").read_bytes())  # rows on 2026-11-14
     later = (
-        dt.datetime(2026, 11, 20, 16, 41, 36, tzinfo=UTC),
-        dt.datetime(2026, 11, 21, 16, 41, 36, tzinfo=UTC),
+        dt.datetime(2026, 11, 10, 16, 41, 36, tzinfo=UTC),
+        dt.datetime(2026, 11, 11, 16, 41, 36, tzinfo=UTC),
     )
 
     with pytest.raises(eso.EsoFormatError, match="outside"):
@@ -509,7 +511,9 @@ def test_a_store_that_does_not_answer_stops_the_fetch_before_any_request(world):
 
 
 def test_probing_a_store_not_yet_created_checks_its_nearest_parent(tmp_path):
-    eso.probe_store(tmp_path / "validation" / "eso-asm")  # no error: tmp_path answers
+    from astroseeing.paths import probe_store
+
+    probe_store(tmp_path / "validation" / "eso-asm")  # no error: tmp_path answers
 
 
 # --- reading back -------------------------------------------------------------------
@@ -590,3 +594,67 @@ def test_a_range_must_be_whole_utc_seconds_with_start_before_end(world, span):
     with pytest.raises(ValueError):
         f.fetch("paranal-dimm", *span)
     assert client.calls == []
+
+
+# --- review fixes -------------------------------------------------------------------
+
+
+def test_a_range_not_yet_over_is_refused_so_no_partial_night_is_stored(world):
+    f, client = world.fetcher()  # the clock reads 2026-11-14 17:00:03
+    tonight = eso.night_span(dt.date(2026, 11, 14), -70.40)
+
+    with pytest.raises(ValueError, match="not over"):
+        f.fetch("paranal-dimm", *tonight)
+
+    assert client.calls == []
+
+
+def test_fetch_night_names_the_night_and_its_refetch_by_the_same_range(world):
+    f, _ = world.fetcher(
+        (FIXTURES / "paranal-mass.csv").read_bytes(), (FIXTURES / "paranal-mass.csv").read_bytes()
+    )
+
+    first = f.fetch_night("paranal-mass", dt.date(2026, 11, 13), purpose="nightly")
+    world.clock.t += dt.timedelta(days=3)
+    again = f.fetch_night("paranal-mass", dt.date(2026, 11, 13), purpose="refetch")
+
+    assert (first.record.start, first.record.end) == NIGHT
+    assert first.record.label == "night-2026-11-13"
+    assert [r.fetch_no for r in f.history("paranal-mass", *NIGHT)] == [1, 2]
+    assert again.path.name.startswith("paranal-mass_night-2026-11-13_fetch2_")
+
+
+def test_stored_files_are_readable_by_everyone(world):
+    f, _ = world.fetcher((FIXTURES / "paranal-dimm.csv").read_bytes())
+    got = f.fetch("paranal-dimm", *NIGHT)
+    assert got.path.stat().st_mode & 0o777 == 0o644
+
+
+def test_the_store_is_probed_again_just_before_the_write(world):
+    from astroseeing.paths import StorageUnresponsive
+
+    calls = []
+
+    def hangs_second_time(path):
+        calls.append(path)
+        if len(calls) == 2:
+            raise StorageUnresponsive(f"{path} did not respond within 30 s")
+
+    f, client = world.fetcher((FIXTURES / "paranal-dimm.csv").read_bytes(), probe=hangs_second_time)
+    with pytest.raises(StorageUnresponsive):
+        f.fetch("paranal-dimm", *NIGHT)
+
+    assert len(client.calls) == 1
+    assert f.history("paranal-dimm", *NIGHT) == []
+
+
+def test_repeated_and_out_of_order_times_are_counted_not_dropped():
+    text = fixture("paranal-dimm.csv").replace(
+        "2026-11-14T00:02:51,",
+        "2026-11-14T00:00:13,",  # a repeat of row 1, then back in time
+    )
+    rows = eso.parse_csv(eso.table("paranal-dimm"), text)
+
+    assert rows.series["seeing"].values.size == 8
+    assert rows.counts()["duplicate_times"] == 1
+    assert rows.counts()["out_of_order_times"] == 1
