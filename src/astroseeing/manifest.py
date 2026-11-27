@@ -171,6 +171,17 @@ CREATE TABLE IF NOT EXISTS forecast_hosts (
     switched_at        TEXT,
     updated_at         TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS forecast_place_days (
+    place          TEXT NOT NULL,
+    day            TEXT NOT NULL,
+    outcome        TEXT NOT NULL,
+    path           TEXT NOT NULL,
+    bytes          INTEGER,
+    content_sha256 TEXT NOT NULL,
+    detail         TEXT,
+    recorded_at    TEXT NOT NULL,
+    PRIMARY KEY (place, day)
+);
 """
 
 

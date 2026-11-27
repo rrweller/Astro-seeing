@@ -1,6 +1,7 @@
 """The forecast's manifest records: ``forecast_runs``, ``forecast_files``,
-``forecast_step_tries`` and ``forecast_hosts`` (spec Module 2, D51 items 6, 7, 11 and
-14). The tables live in the same SQLite manifest as the CDS requests
+``forecast_step_tries``, ``forecast_hosts`` (spec Module 2, D51 items 6, 7, 11 and
+14) and ``forecast_place_days`` (each per-place daily store on ``/data`` once settled,
+D51 item 12, D80). The tables live in the same SQLite manifest as the CDS requests
 (``manifest.FORECAST_SCHEMA``) and only this class writes them.
 
 Run states: ``seen`` → ``fetching`` → ``fetched`` → ``verified`` → ``processed``, or
@@ -308,3 +309,34 @@ class ForecastRecords:
                 f" AND raw_deleted_at IS NULL AND path NOT IN ({','.join('?' * len(kept))})",
                 (_iso(at), run_id, *kept),
             )
+
+    def record_place_day(
+        self,
+        place: str,
+        day: dt.date,
+        outcome: str,
+        path: str,
+        nbytes: int | None,
+        content_sha256: str,
+        detail: str | None,
+        at: dt.datetime,
+    ) -> None:
+        """Record a per-place day store as settled: ``written``, ``exists`` (the same
+        store was already there) or ``refused`` (one with other content is). Once
+        recorded, a day is never finalised again."""
+        with self.manifest.tx() as c:
+            c.execute(
+                "INSERT INTO forecast_place_days (place, day, outcome, path, bytes,"
+                " content_sha256, detail, recorded_at) VALUES (?,?,?,?,?,?,?,?)",
+                (place, day.isoformat(), outcome, path, nbytes, content_sha256, detail,
+                 _iso(at)),
+            )  # fmt: skip
+
+    def place_days(self, place: str) -> dict[dt.date, str]:
+        """Each settled day of a place's daily stores, and its outcome."""
+        return {
+            dt.date.fromisoformat(r["day"]): r["outcome"]
+            for r in self.manifest.conn.execute(
+                "SELECT day, outcome FROM forecast_place_days WHERE place=?", (place,)
+            )
+        }

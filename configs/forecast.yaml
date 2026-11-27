@@ -164,3 +164,11 @@ alerts:
 eso:
   fetch_time_utc: "17:00"
   refetch_after_days: 3
+
+# Per-place daily stores on /data (D51 item 12, D80). A call to the NAS that takes
+# longer than nas_timeout_s counts as hung: it is logged and tried again next tick (a
+# hard NFS mount hangs instead of failing). A finalised day stays on the SSD as well
+# for ssd_keep_days, so Tonight is read from local disk.
+place_stores:
+  nas_timeout_s: 60
+  ssd_keep_days: 2
