@@ -119,6 +119,8 @@ def test_an_old_manifest_gains_the_two_forecast_tables_and_nothing_else_changes(
         "forecast_files",
         "forecast_step_tries",
         "forecast_hosts",
+        "forecast_alerts",  # ticket #61
+        "forecast_heartbeat",
     }
     assert {k: after_schema[k] for k in before_schema} == before_schema
     assert after_rows == before_rows

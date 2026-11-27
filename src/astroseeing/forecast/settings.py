@@ -165,6 +165,7 @@ class Alerts:
     no_complete_run_h: float
     no_tick_h: float
     staging_min_free_gb: float
+    served_latest_url: str  # the page's latest.json as served (D52 item 10)
 
 
 @dataclass(frozen=True)
@@ -236,7 +237,12 @@ def _parse_settings(raw: Any, source: str) -> ForecastSettings:
         no_complete_run_h=al.number("no_complete_run_h", positive=True),
         no_tick_h=al.number("no_tick_h", positive=True),
         staging_min_free_gb=al.number("staging_min_free_gb", positive=True),
+        served_latest_url=al.text("served_latest_url"),
     )
+    if not re.fullmatch(r"https?://\S+", alerts.served_latest_url):
+        raise al.error(
+            f"served_latest_url must be an http(s) URL, got {alerts.served_latest_url!r}"
+        )
     al.done()
     es = root.node("eso")
     eso = Eso(es.text("fetch_time_utc"), es.integer("refetch_after_days", minimum=1))

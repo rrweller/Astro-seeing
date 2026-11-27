@@ -20,6 +20,12 @@ each open run over as many ticks as it needs (each step tried at most 5 times, a
 the rules themselves. A late run is logged (and listed in the report), never alerted.
 A failed run is not fetched again. An area with no saved place is not fetched yet:
 nothing would use it until the map layers (ticket #65).
+
+Alerts (ticket #61, D82; ``forecast.alerts``): the tick checks ``/staging``'s free space
+before any fetch, and after publishing fetches the served ``latest.json`` (spec step 9)
+and checks each worked model for a stale or failed run; each condition alerts once when
+it starts and once when it clears. A tick that gets this far writes its heartbeat
+last, which the download watcher checks for "no tick for 1 h".
 """
 
 from __future__ import annotations
@@ -35,6 +41,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import astroseeing
+from astroseeing.forecast.alerts import Notifier, TickAlerts
 from astroseeing.forecast.grid import map_grid
 from astroseeing.forecast.http import HttpClient
 from astroseeing.forecast.places import PlaceHeightMissing, require_looked_up_heights
@@ -168,9 +175,13 @@ def tick(
     ephemeris,
     build: BuildInfo,
     free_bytes: Callable[[Path], float] | None = None,
+    http: HttpClient | None = None,
+    notify: Notifier | None = None,
 ) -> TickReport:
     """One tick at ``now`` (UTC). ``ephemeris`` is ``solar.sun.load_ephemeris()``'s
-    (eph, ts); ``free_bytes`` measures free space on /staging (default: the real disk)."""
+    (eph, ts); ``free_bytes`` measures free space on /staging (default: the real disk);
+    ``http`` fetches the served ``latest.json`` (``None``: the served-page check is
+    skipped); ``notify`` sends the alerts (``None``: they are logged only)."""
     report = TickReport(now)
     try:
         require_looked_up_heights(settings)  # ticket #54: never at a guessed height
@@ -189,6 +200,8 @@ def tick(
                 ephemeris,
                 build,
                 free_bytes or _free_bytes,
+                http,
+                TickAlerts(manifest, settings, notify, now),
                 report,
             )
     except TickLocked:
@@ -203,16 +216,19 @@ def _free_bytes(path: Path) -> float:
     return shutil.disk_usage(p).free
 
 
-def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes, report) -> None:
+def _tick(
+    now, settings, adapters, manifest, paths, ephemeris, build, free_bytes, http, alerts, report
+) -> None:
     records = ForecastRecords(manifest)
     store = PlaceStore(paths.places)
     places = settings.places
+    alerts.disk(free_bytes(paths.root))  # the runs below skip fetching while it is low
 
     # 1-3: each model's host and newest run; open runs fetched, verified and stored
     work = RunWork(
         now, settings, adapters, records, store, paths.raw_dir, paths.root, build, free_bytes
     )
-    picks = {}
+    picks, worked = {}, []
     for area in settings.areas.values():
         area_places = [p for p in places.values() if p.area == area.id]
         if not area_places:
@@ -222,6 +238,7 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
             if adapter is None:
                 continue  # no adapter for this model in this tick
             model = settings.models[model_id]
+            worked.append((model, area.id))
             if model_id not in picks:  # one host check per model and tick
                 picks[model_id] = pick_host(model, adapter, records, settings.run_rules, now)
             report.runs += work.work_model(model, area, area_places, picks[model_id])
@@ -256,6 +273,11 @@ def _tick(now, settings, adapters, manifest, paths, ephemeris, build, free_bytes
     )
     result = publish(paths.products, files, latest, now)
     report.set_id, report.published = result.set_id, result.new
+
+    if http is not None:  # 9: is the page served what was just written? (D52 item 10)
+        alerts.page(http, paths.latest)
+    alerts.models(worked)
+    alerts.beat(worked)  # last: only a finished tick counts for the watcher
 
 
 def _late(model, area_id: str, records: ForecastRecords, settings, now) -> list[dict]:

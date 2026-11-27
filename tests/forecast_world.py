@@ -83,6 +83,10 @@ class World:
         self.mirror = mirror
         self.done: set[int] = set()
         self.published = False  # any run published yet
+        # the tick's other seams (ticket #61): None keeps the tick's defaults
+        self.free_bytes = None  # /staging's free space, e.g. lambda path: 30e9
+        self.page_http = None  # the client the served-page check uses
+        self.notify = None  # the alert notifier, (message, title, priority)
 
     def clock(self) -> float:
         return self.now.timestamp()
@@ -105,6 +109,9 @@ class World:
             self.paths,
             ephemeris=self.ephemeris,
             build=BUILD,
+            free_bytes=self.free_bytes,
+            http=self.page_http,
+            notify=self.notify,
         )
 
     def adapters(self) -> dict:
