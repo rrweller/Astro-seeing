@@ -36,7 +36,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `C13` · **in-progress** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · next run: F1-15, F1-16 · ticket: none
 
-- `F1-17` · **in-progress** · cloud · The map page: layers, hour slider, cell card · [#66](https://github.com/rrweller/Astro-seeing/issues/66)
+- `F1-17` · **review** · cloud · The map page: layers, hour slider, cell card · [#66](https://github.com/rrweller/Astro-seeing/issues/66) · PR [#96](https://github.com/rrweller/Astro-seeing/pull/96)
 
 - `F1-18` · **blocked** · cloud · Sunset maps for the last 7 nights · [#67](https://github.com/rrweller/Astro-seeing/issues/67)
 
@@ -165,7 +165,7 @@ flowchart LR
   %% ---
   class C13 inprogress
   %% ---
-  class F1_17 inprogress
+  class F1_17 review
   %% ---
   class F1_18 blocked
   %% ---
