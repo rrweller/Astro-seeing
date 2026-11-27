@@ -20,13 +20,11 @@ from __future__ import annotations
 import datetime as dt
 import json
 import logging
-import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from astroseeing.forecast.publish.sets import SET_LATEST
-from astroseeing.forecast.store import fsync_dir, write_atomic
+from astroseeing.forecast.publish.sets import SET_LATEST, write_folder
 from astroseeing.forecast.tonight.shapes import SunTrack
 
 log = logging.getLogger(__name__)
@@ -65,22 +63,8 @@ def take_sunset_map(products: Path, sun: SunTrack, now: dt.datetime) -> SunsetMa
         return None
     folder, latest_bytes = found
     latest = json.loads(latest_bytes)
-
-    root.mkdir(parents=True, exist_ok=True)
-    os.chmod(root, 0o755)
-    tmp = root / f".tmp-{night}-{os.getpid()}"
-    shutil.rmtree(tmp, ignore_errors=True)
-    tmp.mkdir()
-    try:
-        for entry in latest["layers"].values():
-            write_atomic(tmp / entry["file"], (folder / entry["file"]).read_bytes())
-        write_atomic(tmp / SET_LATEST, latest_bytes)
-        os.chmod(tmp, 0o755)
-        os.rename(tmp, final)
-    except BaseException:
-        shutil.rmtree(tmp, ignore_errors=True)
-        raise
-    fsync_dir(root)
+    files = {e["file"]: (folder / e["file"]).read_bytes() for e in latest["layers"].values()}
+    write_folder(final, {**files, SET_LATEST: latest_bytes})
     deleted = _prune(root)
     log.info("sunset map for the night of %s taken from set %s (sunset %s)%s", night,
              latest["set_id"], sun.sunset,

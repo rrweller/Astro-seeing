@@ -104,12 +104,12 @@ async function showView() {
   document.getElementById("tonight").hidden = onMap;
   document.body.dataset.view = onMap ? "map" : "place";
   renderUpdated(latest, state.place.place.time_zone);
-  renderAbout(latest, state.place, state.pageCommit);
   if (onMap) {
     renderMapHeader(home, night);
     const shown = await mapView.show(latest, state.places, night);
-    if (night) renderAbout(latest, state.place, state.pageCommit, { night, latest: shown });
+    renderAbout(latest, state.place, state.pageCommit, night ? { night, latest: shown } : null);
   } else {
+    renderAbout(latest, state.place, state.pageCommit);
     renderHeader(place);
     renderVerdict(place);
     renderRuns(latest, place, Date.now());

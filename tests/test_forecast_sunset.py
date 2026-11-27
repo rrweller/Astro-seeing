@@ -199,6 +199,17 @@ def test_no_map_is_taken_once_the_set_at_sunset_is_gone_never_a_later_one(tmp_pa
     assert "no sunset map for the night of 2026-11-20" in caplog.text
 
 
+def test_each_set_keeps_its_own_latest_json_and_refuses_files_of_that_name(tmp_path):
+    products = tmp_path / "products"
+    now = START + dt.timedelta(hours=1)
+    sid = Clock(products).publish(now)
+    own = (products / "sets" / sid / "latest.json").read_bytes()
+    assert own == (products / "latest.json").read_bytes()
+    assert json.loads(own)["written_at"] == "2026-11-20T01:00:00Z"
+    with pytest.raises(ValueError, match=r"latest\.json"):
+        publish(products, {"latest.json": b"{}"}, {"schema": "f1-latest/1"}, now)
+
+
 def test_a_tick_at_or_before_sunset_takes_nothing(tmp_path, nights):
     sun = nights[1]
     products = tmp_path / "products"
