@@ -350,7 +350,10 @@ summary { cursor: pointer; font: 400 1.2rem/1.3 var(--serif); }
 .layer-choice input:focus-visible + span { outline: 2px solid var(--lamp); outline-offset: 2px; position: relative; z-index: 1; }
 
 .model-pick, .night-pick { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); }
-.night-pick select { max-width: 100%; }
+/* The night picker never grows past the controls' width: on a narrow screen its
+   select shrinks (its text clipped) rather than running into the page's gutter. */
+.night-pick { max-width: 100%; min-width: 0; }
+.night-pick select { flex: 0 1 auto; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
 .model-pick select, .night-pick select {
   padding: 0.35rem 0.5rem;
   border: 1px solid var(--rule);

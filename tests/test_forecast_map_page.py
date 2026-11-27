@@ -484,10 +484,16 @@ def test_the_night_picker_and_label_fit_a_390px_phone(case):
     wait_drawn(b)
     b.call("selectOption", selector="#night", value="2026-11-25")
     wait_set(b, ids["2026-11-25"])
-    assert b.eval("document.documentElement.scrollWidth") <= 390
-    for box in ("night-pick", "night-label"):
-        r = b.eval(f"document.getElementById('{box}').getBoundingClientRect().toJSON()")
-        assert r["width"] > 0 and r["left"] >= 16 and r["right"] <= 390 - 16 + 0.5, (box, r)
+    # also with a wider font than this machine's (CI's Chrome measured the picker 6 px
+    # wider than here and it ran into the gutter): the picker shrinks, never overflows
+    for spacing in ("normal", "0.12em"):
+        b.eval(f"document.getElementById('night').style.letterSpacing = '{spacing}'")
+        assert b.eval("document.documentElement.scrollWidth") <= 390
+        for box in ("night-pick", "night", "night-label"):
+            r = b.eval(f"document.getElementById('{box}').getBoundingClientRect().toJSON()")
+            assert r["width"] > 0 and r["left"] >= 16 and r["right"] <= 390 - 16 + 0.5, (
+                spacing, box, r,
+            )  # fmt: skip
 
 
 def test_a_new_set_redraws_the_map_and_the_open_card(case):
