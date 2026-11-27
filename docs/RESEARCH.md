@@ -434,6 +434,7 @@ Their seeing data include La Palma (IAC/ING, 2004–2019), Siding Spring (AAT, 1
   - Paranal: DIMM, MASS, MASS-DIMM and SLODAR query forms.
   - La Silla: ambient query form.
   - It overlaps the phase 2 and 3 years, so hold out some years for testing.
+  - Fetched by `astro eso` (`download/eso.py`; query, columns, files and checks in D65).
 
 ---
 
