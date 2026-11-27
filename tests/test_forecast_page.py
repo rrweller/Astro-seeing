@@ -27,7 +27,8 @@ from forecast_world import DAY, World
 from icon_eu_samples import IconWorld
 from page_browser import Browser, PageSite, require_browser
 
-PAGE = "/forecast/"
+# The place view of the default saved place; the page itself opens on the map (ticket #66).
+PAGE = "/forecast/#place/kongsberg"
 OSLO = ZoneInfo("Europe/Oslo")
 PAGE_COMMIT = "c" * 40
 
