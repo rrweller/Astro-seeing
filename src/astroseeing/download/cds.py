@@ -36,6 +36,14 @@ QUEUE_LIMIT_MESSAGES = (
 )
 
 
+#: The CDS time-series products. They run in their own slot (D29, measured 2026-09-27:
+#: one ran while a pressure-level job was running), so their jobs never count for the
+#: pressure-level gate (D39); ``download.timeseries`` keeps to one of them at a time.
+TIMESERIES_DATASETS = frozenset(
+    {"reanalysis-era5-single-levels-timeseries", "reanalysis-era5-pressure-levels-timeseries"}
+)
+
+
 def is_queue_limit_rejection(error: str | None) -> bool:
     low = (error or "").lower()
     return any(m in low for m in QUEUE_LIMIT_MESSAGES)
@@ -135,10 +143,20 @@ class DatastoresBackend:
         self.client.delete(request_id)
 
     def active_jobs(self) -> list[str]:
-        """Ids of this account's jobs queued or running at the CDS, in any dataset.
+        """Ids of this account's jobs queued or running at the CDS, in any dataset except
+        the time-series products, which have their own slot (D29).
 
         The downloader submits only when this is empty (D39), so a job left over from a
-        crash, a timed-out submission or another process still blocks the next one.
+        crash, a timed-out submission or another process still blocks the next one. A
+        job whose dataset the list doesn't name still counts.
         """
+        return [rid for rid, ds in self._active() if ds not in TIMESERIES_DATASETS]
+
+    def active_timeseries_jobs(self) -> list[str]:
+        """Ids of time-series jobs queued or running (and jobs whose dataset isn't named)."""
+        return [rid for rid, ds in self._active() if ds is None or ds in TIMESERIES_DATASETS]
+
+    def _active(self) -> list[tuple[str, str | None]]:
+        """(job id, dataset) of every job queued or running: each job's ``processID``."""
         jobs = self.client.get_jobs(limit=100, status=["accepted", "running"])
-        return list(jobs.request_ids)
+        return [(j["jobID"], j.get("processID")) for j in jobs.json["jobs"]]
