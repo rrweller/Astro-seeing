@@ -58,7 +58,6 @@ async function show(latest) {
   const files = await Promise.all(entries.map((e) => getJson(new URL(latest.set_path + e.file, dataBase))));
   state.latest = latest;
   state.places = files;
-  state.place = files[0];
   await showView();
   document.body.dataset.setId = latest.set_id;
 }
@@ -85,18 +84,18 @@ async function showView() {
     status.textContent = `There is no saved place called “${r.id}”; showing the map.`;
   }
   const onMap = !place;
+  // the place whose time zone the page's times use: the map uses the default place's
+  state.place = place ?? home;
   document.getElementById("map-view").hidden = !onMap;
   document.getElementById("tonight").hidden = onMap;
   document.body.dataset.view = onMap ? "map" : "place";
-  renderUpdated(latest, home.place.time_zone);
-  renderAbout(latest, place ?? home, state.pageCommit);
+  renderUpdated(latest, state.place.place.time_zone);
+  renderAbout(latest, state.place, state.pageCommit);
   if (onMap) {
     renderMapHeader(home);
     await mapView.show(latest, state.places);
   } else {
-    state.place = place;
     renderHeader(place);
-    renderUpdated(latest, place.place.time_zone);
     renderVerdict(place);
     renderRuns(latest, place, Date.now());
     renderTerrain(place);

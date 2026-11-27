@@ -107,6 +107,18 @@ export function visibilityKm(valueM) {
   return fixed(valueM / 1000, valueM < 1000 ? 2 : 1);
 }
 
+/** Whole minutes as hours and minutes: "12 h 3 min", "45 min". */
+export function duration(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h} h ${m} min` : `${m} min`;
+}
+
+/** A point to 0.0001° (the map grid's 0.0625° needs four decimals): "59.7500° N, 9.5000° E". */
+export function latLon(lat, lon) {
+  return `${fixed(Math.abs(lat), 4)}° ${lat >= 0 ? "N" : "S"}, ${fixed(Math.abs(lon), 4)}° ${lon >= 0 ? "E" : "W"}`;
+}
+
 /** Metres as kilometres to 0.01 km: "0.14 km". */
 export function km(valueM) {
   return `${fixed(valueM / 1000, 2)} km`;

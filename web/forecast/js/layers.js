@@ -107,7 +107,8 @@ export const KINDS = {
     colour: ramp(SEEING_STOPS),
     value: (v, entry) => v * entry.scale,
     ticks: [0.4, 0.8, 1.2, 1.8, 2.5],
-    tickLabel: (v) => `${v.toFixed(1)}″`,
+    // the scale's ends hold every value beyond them, so they say so
+    tickLabel: (v) => (v === 0.4 ? "≤0.4″" : v === 2.5 ? "≥2.5″" : `${v.toFixed(1)}″`),
     codes: { 65535: { pattern: "hatch", label: "No value: the model has no seeing over the counted hours" } },
   },
   dark: {
@@ -116,7 +117,7 @@ export const KINDS = {
     colour: ramp(DARK_STOPS),
     value: (v) => v / 60,
     ticks: [0, 4, 8, 12, 16],
-    tickLabel: (v) => `${v} h`,
+    tickLabel: (v) => (v === 16 ? "16+ h" : `${v} h`),
     codes: {},
   },
   cloud: {

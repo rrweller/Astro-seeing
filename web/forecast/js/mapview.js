@@ -8,13 +8,14 @@
 // No base map: the only geography is the vendored outline (Natural Earth coastlines and
 // borders, web/vendor/natural-earth/); no request leaves the host.
 
-import { clockLabel, dayLabel, fixed, metres } from "./format.js";
+import { clockLabel, dayLabel, duration, fixed, latLon, metres } from "./format.js";
 import { KINDS, cellAt, familiesOf, field, gridBounds, loadLayer, paintTile, patternSwatch, scaleGradient } from "./layers.js";
 import { el } from "./render.js";
 import { familyName } from "./verdict.js";
 
 const TILE = 256;
 const MAX_ZOOM = 12;
+const KEEP_FIELDS = 8; // layers whose tiles can still be painted (see `redraw`)
 const DEFAULT_FAMILY = "gfs"; // the most levels (user story 3)
 // coastlines and borders round the Kongsberg box (scripts/make_map_outline.py)
 const OUTLINE_URL = new URL("../../vendor/natural-earth/outline-kongsberg-box.json", import.meta.url).href;
@@ -38,8 +39,8 @@ function addProtocol(maplibregl) {
   });
 }
 
-function edgeFeature(grid) {
-  const [w, s, e, n] = gridBounds(grid);
+/** The outline of a box [west, south, east, north], as a GeoJSON line. */
+function boxLine([w, s, e, n]) {
   return {
     type: "Feature",
     properties: {},
@@ -47,27 +48,12 @@ function edgeFeature(grid) {
   };
 }
 
-function cellFeature(grid, c) {
+/** The outline of map cell `c` (row i, column j), or nothing. */
+function cellLine(grid, c) {
   if (!c) return { type: "FeatureCollection", features: [] };
   const n = grid.lat_north - (c.i - 0.5) * grid.dlat;
-  const s = n - grid.dlat;
   const w = grid.lon_west + (c.j - 0.5) * grid.dlon;
-  const e = w + grid.dlon;
-  return {
-    type: "Feature",
-    properties: {},
-    geometry: { type: "LineString", coordinates: [[w, s], [e, s], [e, n], [w, n], [w, s]] },
-  };
-}
-
-function hoursText(minutes) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return h > 0 ? `${h} h ${m} min` : `${m} min`;
-}
-
-function latLonText(lat, lon) {
-  return `${fixed(Math.abs(lat), 4)}° ${lat >= 0 ? "N" : "S"}, ${fixed(Math.abs(lon), 4)}° ${lon >= 0 ? "E" : "W"}`;
+  return boxLine([w, n - grid.dlat, w + grid.dlon, n]);
 }
 
 export class MapView {
@@ -79,9 +65,11 @@ export class MapView {
     this.layers = new Map(); // layer name → typed array, for the set shown
     this.choice = "clear";
     this.family = DEFAULT_FAMILY;
-    this.hour = null;
+    this.hour = null; // the slider: the index of the hour shown, and its time (UTC text)
+    this.hourTime = null;
     this.picked = null;
     this.map = null;
+    this.noMap = false; // true once the map could not be made (no WebGL)
     this.wire();
   }
 
@@ -98,7 +86,9 @@ export class MapView {
       });
     }
     document.getElementById("model").addEventListener("change", (e) => this.choose({ family: e.target.value }));
-    document.getElementById("hour").addEventListener("input", (e) => this.choose({ hour: Number(e.target.value) }));
+    document.getElementById("hour").addEventListener("input", (e) => {
+      this.choose({ hourTime: this.sliderHours()[Number(e.target.value)] });
+    });
   }
 
   async choose(change) {
@@ -128,27 +118,35 @@ export class MapView {
     document.getElementById("hour-pick").hidden = this.choice !== "cloud";
   }
 
-  /** The slider's hours (UTC text) for the chosen family, and the hour shown. */
+  /** The slider's hours (UTC text) for the chosen family; sets `hour`, the index of the
+   *  hour shown. The hour is kept by its time, so a new set (whose hours may start
+   *  later) shows the same hour while it has it; otherwise the hour that holds "now",
+   *  or the first. */
   sliderHours() {
-    const entry = this.latest.layers[`total_cloud_${this.family}`];
-    const hours = entry?.hours ?? [];
-    if (this.hour === null || this.hour >= hours.length) {
-      // start at the hour that holds "now", or the first hour
+    const hours = this.latest.layers[`total_cloud_${this.family}`]?.hours ?? [];
+    let k = hours.indexOf(this.hourTime);
+    if (k < 0) {
       const now = Date.now();
-      const k = hours.findLastIndex((h) => Date.parse(h) <= now);
-      this.hour = Math.max(0, k);
+      k = Math.max(0, hours.findLastIndex((h) => Date.parse(h) <= now));
     }
+    this.hour = k;
+    this.hourTime = hours[k] ?? null;
     return hours;
   }
 
   // -- data ----------------------------------------------------------------------------
 
+  /** A layer of the set shown, loaded once; a load that failed is tried again next time. */
   async layer(name) {
     if (!this.layers.has(name)) {
       const entry = this.latest.layers[name];
       if (!entry) throw new Error(`latest.json has no layer ${name}`);
       const url = new URL(this.latest.set_path + entry.file, this.dataBase);
-      this.layers.set(name, loadLayer(url, entry));
+      const loading = loadLayer(url, entry);
+      this.layers.set(name, loading);
+      loading.catch(() => {
+        if (this.layers.get(name) === loading) this.layers.delete(name);
+      });
     }
     return this.layers.get(name);
   }
@@ -162,16 +160,21 @@ export class MapView {
     this.latest = latest;
     this.home = places[0];
     this.places = places;
-    if (newSet) {
-      this.layers = new Map();
-      for (const key of fields.keys()) if (!key.startsWith(latest.set_id + "/")) fields.delete(key);
-    }
+    if (newSet) this.layers = new Map();
+    this.renderPlaces();
+    if (this.noMap) return; // no WebGL: the places' links still work
     const base = ["clear_left", "counted_left", "incomplete_left", "dark_left_min"];
     for (const f of familiesOf(latest)) base.push(`seeing_fa_${f}`, `model_ground_${f}`);
     await Promise.all(base.map((name) => this.layer(name)));
-    this.renderPlaces();
-    if (!this.map) await this.createMap();
-    else if (newSet) this.refreshMap();
+    if (!this.map) {
+      try {
+        await this.createMap();
+      } catch (err) {
+        this.noMap = true;
+        this.problem(err.message);
+        return;
+      }
+    } else if (newSet) this.refreshMap();
     await this.redraw();
   }
 
@@ -197,8 +200,8 @@ export class MapView {
       version: 8,
       sources: {
         outline: { type: "geojson", data: OUTLINE_URL },
-        edge: { type: "geojson", data: edgeFeature(this.grid) },
-        pick: { type: "geojson", data: cellFeature(this.grid, null) },
+        edge: { type: "geojson", data: boxLine(gridBounds(this.grid)) },
+        pick: { type: "geojson", data: cellLine(this.grid, null) },
       },
       layers: [
         { id: "background", type: "background", paint: { "background-color": "#0b1226" } },
@@ -272,7 +275,7 @@ export class MapView {
   /** The grid's edge, the cells source and the place markers, for the set shown. */
   refreshMap() {
     const map = this.map;
-    map.getSource("edge").setData(edgeFeature(this.grid));
+    map.getSource("edge").setData(boxLine(gridBounds(this.grid)));
     // the grid may differ between sets: the cells source is made again by `redraw`
     if (map.getLayer("cells")) map.removeLayer("cells");
     if (map.getSource("cells")) map.removeSource("cells");
@@ -312,8 +315,11 @@ export class MapView {
     if (key !== this.key()) return; // the reader chose again while the layer loaded
     const cells = this.grid.nlat * this.grid.nlon;
     const offset = this.choice === "cloud" ? this.hour * cells : 0;
+    fields.delete(key); // to the end of the insertion order: the newest
     fields.set(key, field(this.choice, this.grid, entry, values, offset));
     this.drawCells(key);
+    // keep the few layers shown last, for tiles of theirs still being asked for
+    for (const old of fields.keys()) if (fields.size > KEEP_FIELDS) fields.delete(old);
     this.renderHour(hours, values, offset, cells);
     this.renderLegend();
     this.renderNote();
@@ -395,7 +401,7 @@ export class MapView {
 
   async pick(c) {
     this.picked = c;
-    this.map.getSource("pick").setData(cellFeature(this.grid, c));
+    this.map.getSource("pick").setData(cellLine(this.grid, c));
     await this.renderCard();
   }
 
@@ -420,7 +426,7 @@ export class MapView {
       clearText = `${clear} of ${counted} counted hours left look clear on most models`;
       clearText += incomplete > 0 ? ` (${incomplete} incomplete).` : ".";
     }
-    const darkText = dark === 0 ? "No dark time left tonight." : `${hoursText(dark)} of dark time left.`;
+    const darkText = dark === 0 ? "No dark time left tonight." : `${duration(dark)} of dark time left.`;
 
     const rows = [];
     for (const f of familiesOf(this.latest)) {
@@ -456,7 +462,7 @@ export class MapView {
     card.replaceChildren(
       close,
       el("h3", { text: "This spot tonight" }),
-      el("p", { class: "card-where", text: `Map cell at ${latLonText(lat, lon)}` }),
+      el("p", { class: "card-where", text: `Map cell at ${latLon(lat, lon)}` }),
       el("p", { class: "card-label", text: "At the models' ground, not your terrain height." }),
       el("p", { class: "card-clear", dataset: { field: "clear_left", value: clear }, text: clearText }),
       el("p", { dataset: { field: "dark_left", value: dark }, text: darkText }),
