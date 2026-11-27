@@ -28,7 +28,7 @@ import logging
 import math
 import os
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Container, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -269,7 +269,7 @@ class PlaceStore:
         for p in (self.root / place_id).glob(f"*/{model.id}-*.json"):
             stamp = p.name[len(model.id) + 1 : -len(".json")]
             run_time = dt.datetime.strptime(stamp, "%Y%m%dT%HZ").replace(tzinfo=dt.UTC)
-            if run_time >= earliest:
+            if reaches(run_time, model.steps_h[-1], hours[0]):
                 found.append((run_time, p))
         if found:
             return self.read_run(max(found)[1])
@@ -311,21 +311,35 @@ def _run_time(doc: Mapping) -> dt.datetime:
     return dt.datetime.fromisoformat(doc["run_time"].replace("Z", "+00:00"))
 
 
+def run_step(
+    run_time: dt.datetime, steps_expected: Sequence[int], have: Container[int], t: dt.datetime
+) -> int | str:
+    """The step of a run that holds hour ``t``, or why it has none (F1-1's three
+    reasons): ``no_run`` when the run doesn't reach the hour, ``off_step`` between a
+    3-hourly model's steps, ``partial`` when the run lacks the step (not fetched or not
+    verified; ``have`` holds the steps it has). The one rule the place store and the map
+    layers (ticket #65) read a run's hours by."""
+    step = (t - run_time) / dt.timedelta(hours=1)
+    if not step.is_integer() or not steps_expected[0] <= step <= steps_expected[-1]:
+        return "no_run"
+    if int(step) not in steps_expected:
+        return "off_step"
+    return int(step) if int(step) in have else "partial"
+
+
+def reaches(run_time: dt.datetime, last_step_h: int, first_hour: dt.datetime) -> bool:
+    """Whether a run can reach the hours from ``first_hour`` on (its last step is no
+    earlier): only such a run is used for them (``PlaceStore.hours_for``)."""
+    return run_time >= first_hour - dt.timedelta(hours=last_step_h)
+
+
 def _hour_value(doc: dict | None, model: Model, t: dt.datetime) -> dict:
-    """The stored step for hour ``t``, or why there is none (F1-1's three reasons)."""
+    """The stored step for hour ``t``, or why there is none."""
     if doc is None:
         return {"missing": "no_run"}
-    run_time = dt.datetime.fromisoformat(doc["run_time"].replace("Z", "+00:00"))
-    step = (t - run_time) / dt.timedelta(hours=1)
-    expected = doc["steps_expected"]
-    if not step.is_integer() or not expected[0] <= step <= expected[-1]:
-        return {"missing": "no_run"}  # the run doesn't reach this hour
-    if int(step) not in expected:
-        return {"missing": "off_step"}  # between a 3-hourly model's steps
-    for s in doc["steps"]:
-        if s["step"] == int(step):
-            return s
-    return {"missing": "partial"}  # the run lacks this step (not fetched or not verified)
+    by_step = {s["step"]: s for s in doc["steps"]}
+    step = run_step(_run_time(doc), doc["steps_expected"], by_step, t)
+    return {"missing": step} if isinstance(step, str) else by_step[step]
 
 
 def write_atomic(path: Path, data: bytes, mode: int = 0o644) -> None:
@@ -355,4 +369,13 @@ def fsync_dir(path: Path) -> None:
         os.close(fd)
 
 
-__all__ = ["PlaceHours", "PlaceStore", "StoredFile", "run_document", "utc_text", "write_atomic"]
+__all__ = [
+    "PlaceHours",
+    "PlaceStore",
+    "StoredFile",
+    "reaches",
+    "run_document",
+    "run_step",
+    "utc_text",
+    "write_atomic",
+]

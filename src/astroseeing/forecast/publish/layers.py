@@ -39,7 +39,7 @@ import numpy as np
 
 from astroseeing.forecast.grid import MapGrid, to_map_grid
 from astroseeing.forecast.settings import CloudClasses, Model
-from astroseeing.forecast.store import utc_text
+from astroseeing.forecast.store import reaches, run_step, utc_text
 from astroseeing.forecast.store.areas import AreaRun
 from astroseeing.forecast.tonight import (
     HourTable,
@@ -159,25 +159,16 @@ class _OnMap:
 
 
 def _hour_steps(on: _OnMap | None, hours: Sequence[dt.datetime]) -> list[int | str] | None:
-    """For each hour, the index of the run's stored step, or why it has none: the place
-    store's rules (``store.hours_for``), so a map cell and a saved place read a run alike.
-    None when the run can't reach any of the hours (the model counts as having no run)."""
+    """For each hour, the index of the run's stored step, or why it has none, by the
+    place store's rules (``store.run_step``), so a map cell and a saved place read a run
+    alike. None when the run can't reach the hours (the model counts as having no run)."""
     if on is None:
         return None
     run = on.run
-    expected = run.steps_expected
-    if run.run_time < hours[0] - dt.timedelta(hours=expected[-1]):
+    if not reaches(run.run_time, run.steps_expected[-1], hours[0]):
         return None
-    out: list[int | str] = []
-    for t in hours:
-        step = (t - run.run_time) / dt.timedelta(hours=1)
-        if not step.is_integer() or not expected[0] <= step <= expected[-1]:
-            out.append("no_run")  # the run doesn't reach this hour
-        elif int(step) not in expected:
-            out.append("off_step")  # between a 3-hourly model's steps
-        else:
-            out.append(on.index.get(int(step), "partial"))  # partial: the run lacks it
-    return out
+    steps = (run_step(run.run_time, run.steps_expected, on.index, t) for t in hours)
+    return [s if isinstance(s, str) else on.index[s] for s in steps]
 
 
 def _model_hours(
@@ -202,7 +193,10 @@ def _slider_cloud(
     steps = _hour_steps(on, hours)
     for k, s in enumerate(steps or ()):
         if not isinstance(s, str):
-            out[k] = np.floor(on.cloud[s] + 0.5)  # whole percent, for display only
+            cloud = on.cloud[s]
+            if not (np.isfinite(cloud).all() and (cloud >= 0).all() and (cloud <= 100).all()):
+                raise ValueError(f"{on.run.model}: total cloud outside 0-100 % at step index {s}")
+            out[k] = np.floor(cloud + 0.5)  # whole percent, for display only
     return out
 
 

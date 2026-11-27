@@ -23,9 +23,10 @@ import hashlib
 import io
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -65,6 +66,7 @@ class AreaRun:
     total_cloud_pct: np.ndarray
     j_free: np.ndarray
     model_ground_m: np.ndarray  # (rows, columns)
+    provenance: Mapping[str, Any]  # commit, config hash, manifest run id, software
 
     def __post_init__(self) -> None:
         if self.run_time.tzinfo is None:
@@ -94,6 +96,7 @@ class AreaRun:
             "run_time": utc_text(self.run_time),
             "steps_expected": list(self.steps_expected),
             "steps": list(self.steps),
+            "provenance": dict(self.provenance),
         }
         buf = io.BytesIO()
         np.savez_compressed(
@@ -122,12 +125,13 @@ class AreaRun:
             run_time=dt.datetime.fromisoformat(meta["run_time"].replace("Z", "+00:00")),
             steps_expected=tuple(meta["steps_expected"]),
             steps=tuple(meta["steps"]),
+            provenance=meta["provenance"],
             **arrays,
         )
 
     def same_as(self, other: AreaRun) -> bool:
         """Equal in every value (NaN equal to NaN): the read-back check."""
-        meta = ("area", "model", "run_id", "run_time", "steps_expected", "steps")
+        meta = ("area", "model", "run_id", "run_time", "steps_expected", "steps", "provenance")
         if any(getattr(self, k) != getattr(other, k) for k in meta):
             return False
         arrays = ("lat", "lon", "total_cloud_pct", "j_free", "model_ground_m")
@@ -137,7 +141,12 @@ class AreaRun:
 
 
 def area_run(
-    fields: RunFields, area: str, verified_steps: Sequence[int], run_id: int, cn2_model: str
+    fields: RunFields,
+    area: str,
+    verified_steps: Sequence[int],
+    run_id: int,
+    cn2_model: str,
+    provenance: Mapping[str, Any],
 ) -> AreaRun:
     """The map values of a run's ``verified_steps`` over the whole area: total cloud as
     read, and ``cn2_model``'s free-atmosphere J at the model ground."""
@@ -164,6 +173,7 @@ def area_run(
         total_cloud_pct=np.asarray(fields.total_cloud_pct, dtype=np.float64)[keep],
         j_free=j,
         model_ground_m=np.asarray(fields.model_ground_m, dtype=np.float64).copy(),
+        provenance=dict(provenance),
     )
 
 

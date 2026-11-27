@@ -230,7 +230,14 @@ class RunWork:
                 )
             derived += stored
         if self._on_map(model, area):
-            grid = area_run(fields, area.id, report.verified_steps, run.id, VERDICT_CN2)
+            grid = area_run(
+                fields,
+                area.id,
+                report.verified_steps,
+                run.id,
+                VERDICT_CN2,
+                self._provenance(run.id),
+            )
             stored = self.areas.put_run(grid)
             if stored is None:
                 return self._fail(
@@ -268,12 +275,7 @@ class RunWork:
         i, j = nearest_point(fields.lat, fields.lon, place.lat, place.lon)
         at = _at_point(fields, i, j)
         products = column_products(at, observer_height_m=place.height.metres)
-        provenance = {
-            "commit": self.build.commit,
-            "config_hash": self.settings.config_hash,
-            "manifest_run_id": run_id,
-            "software": dict(self.build.software),
-        }
+        provenance = self._provenance(run_id)
         doc = run_document(
             place,
             at,
@@ -290,6 +292,14 @@ class RunWork:
         if self.store.read_run(stored.path) != json.loads(json.dumps(doc)):
             return None
         return stored.bytes
+
+    def _provenance(self, run_id: int) -> dict:
+        return {
+            "commit": self.build.commit,
+            "config_hash": self.settings.config_hash,
+            "manifest_run_id": run_id,
+            "software": dict(self.build.software),
+        }
 
     def _on_map(self, model: Model, area: Area) -> bool:
         """Whether the run's values go on the map: a global model in the map's area

@@ -53,6 +53,7 @@ def area_run(model, lats_lons, steps, cloud, seeing, ground=300.0, run_id=1, exp
         total_cloud_pct=np.broadcast_to(np.asarray(cloud, float), shape).copy(),
         j_free=np.broadcast_to(j_from_seeing(np.asarray(seeing, float)), shape).copy(),
         model_ground_m=np.full((lats.size, lons.size), ground),
+        provenance={"commit": "a" * 40, "manifest_run_id": run_id},
     )
 
 
@@ -239,3 +240,14 @@ def test_each_entry_describes_its_file_exactly(ephemeris):
     # little-endian on disk whatever the machine: 900 mas is 0x0384 → bytes 84 03
     gfs = result.files[result.entries["seeing_fa_gfs"]["file"]]
     assert gfs[2:4] == bytes([0x84, 0x03])
+
+
+def test_a_cloud_the_slider_cannot_show_is_an_error_never_cast(ephemeris):
+    runs = four_models()
+    bad = runs["gfs"].total_cloud_pct.copy()
+    bad[30, 0, 0] = np.nan  # step 30: 12 UTC on the 27th, after every counted hour
+    runs["gfs"] = area_run("gfs", COARSE, range(49), 5.0, 0.62)
+    object.__setattr__(runs["gfs"], "total_cloud_pct", bad)
+    with pytest.raises(ValueError, match="total cloud outside"):
+        build(runs, EVENING, ephemeris, slider=[RUN_TIME + dt.timedelta(hours=30 + k)
+                                                for k in range(24)])  # fmt: skip
