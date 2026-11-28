@@ -1,0 +1,55 @@
+# ESO ambient-conditions archive: the one fetcher both tracks use (D28, D54 item 8, D65).
+# Used by `astro eso …` and, from F1-20 on, by the forecast tick's daily Paranal step.
+#
+# Query details were checked against ESO's live query forms on 2026-11-27: the form
+# name is the last part of https://archive.eso.org/wdb/wdb/asm/<form>/form; each column
+# is switched on by its `flag`; `header` is the column name ESO's CSV answer carries
+# (see tests/fixtures/eso/). ESO always adds each form's default columns as well.
+# `start_date=A..B` includes both ends, so a range [start, end) is asked as
+# start..(end - 1 s); ESO's times are whole UTC seconds.
+
+base_url: https://archive.eso.org/wdb/wdb/asm
+# Raw CSVs, written once, under $ASTRO_DATA_ROOT (D54 item 8): /data/astro/validation/eso-asm
+store_dir: validation/eso-asm
+# A whole month of Paranal DIMM was 13,397 rows (2023-06); a cut answer is refused.
+max_rows: 200000
+timeout_s: 120
+# Requests start at least this many seconds apart (bulk mode: "one every few seconds").
+min_interval_s: 5
+# Transient failures (no answer, HTTP 429 or 5xx) are tried again, as D51 item 7.
+retries:
+  attempts: 5
+  spacing_s: 60
+
+tables:
+  paranal-dimm:
+    form: dimm_paranal
+    # The site's longitude (east-positive), for the Night (local mean solar noon to the
+    # next): configs/sites.yaml haslebacher2022.paranal.
+    lon_deg: -70.40
+    columns:
+      # "Seeing measured by the ASM-DIMM telescope, FWHM at 500nm"; normalised to unit
+      # airmass (ESO's ASM instruments page, D54).
+      seeing: {flag: tab_fwhm, header: 'DIMM Seeing ["]', unit: arcsec}
+      airmass: {flag: tab_airmass, header: Airmass, unit: '1'}
+  paranal-mass:
+    form: mass_paranal
+    lon_deg: -70.40
+    columns:
+      # "Free atmosphere seeing at 500nm/zenith from MASS stand-alone integrated profile"
+      free_atmosphere_seeing: {flag: tab_fwhm, header: 'Free Atmosphere Seeing ["]', unit: arcsec}
+      # "Characteristic altitude of the free atmosphere turbulence from MASS-DIMM
+      # integrated profile [J1:J6]"; ESO's layer heights are "above ground".
+      turbulence_altitude: {flag: tab_alt, header: 'MASS Turb Altitude [m]', unit: m}
+      # "Fraction of turbulence in the ground layer (GL defined as J0, or DIMM minus MASS)"
+      ground_fraction: {flag: tab_fracgl, header: MASS-DIMM Cn2 fraction at ground, unit: '1'}
+      # "Whole atmosphere seeing at 500nm/zenith from MASS-DIMM combined profile [J0:J6]"
+      mass_dimm_seeing: {flag: tab_turbfwhm, header: 'MASS-DIMM Seeing ["]', unit: arcsec}
+  lasilla-dimm:
+    form: ambient_lasilla
+    lon_deg: -70.73  # configs/sites.yaml haslebacher2022.la_silla
+    columns:
+      # "Seeing as measured by the ASM-DIMM telescope, FWHM at 500nm"; the form does not
+      # say whether it is corrected to zenith, so the airmass is kept beside it.
+      seeing: {flag: tab_fwhm, header: 'DIMM Seeing ["]', unit: arcsec}
+      airmass: {flag: tab_airmass, header: DIMM Airmass, unit: '1'}
