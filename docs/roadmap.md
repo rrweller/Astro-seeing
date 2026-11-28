@@ -18,25 +18,19 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C6` · **needs-you** · cloud · Multi-month surface requests and per-kind planning rates · needs you: merge PR #103 · [#99](https://github.com/rrweller/Astro-seeing/issues/99), PR [#103](https://github.com/rrweller/Astro-seeing/pull/103)
-
 - `C7` · **needs-you** · cloud · Code to move the kept raw GRIB to the NAS · needs you: merge PR #105 · [#100](https://github.com/rrweller/Astro-seeing/issues/100) · PR [#105](https://github.com/rrweller/Astro-seeing/pull/105)
 
-- `C8` · **needs-you** · cloud · ESO seeing-monitor fetcher · needs you: merge PR #104 · [#101](https://github.com/rrweller/Astro-seeing/issues/101) · PR [#104](https://github.com/rrweller/Astro-seeing/pull/104)
+- `C10` · **ready** · cloud · Reproduction spec and CT tickets (needs your approval) · ticket: none yet
 
-- `C9` · **needs-you** · cloud · Site time-series reader for the reproductions · needs you: merge PR #102 · [#98](https://github.com/rrweller/Astro-seeing/issues/98) · PR [#102](https://github.com/rrweller/Astro-seeing/pull/102)
+- `C11` · **ready** · cloud · Calibration spec and CT tickets (needs your approval) · ticket: none yet
 
-- `C10` · **blocked** · cloud · Reproduction spec and CT tickets (needs your approval) · ticket: none yet
+- `C12` · **ready** · cloud · Experiment spec and CT tickets (needs your approval) · ticket: none yet
 
-- `C11` · **blocked** · cloud · Calibration spec and CT tickets (needs your approval) · ticket: none yet
-
-- `C12` · **blocked** · cloud · Experiment spec and CT tickets (needs your approval) · ticket: none yet
-
-- `C13` · **blocked** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · waits for: F1-19 needs C8 (ESO fetcher) merged; F1-20 needs F1-19 · ticket: none
+- `C13` · **ready** · cloud · F1 coordinator, reusable: one run takes up to 5 ready F1 cloud tickets (you answer questions) · waits for: F1-19 needs C8 (ESO fetcher) merged; F1-20 needs F1-19 · ticket: none
 
 - `C14` · **ready** · cloud · Fix the map page's flaky cell-click browser tests · ticket: none yet
 
-- `F1-19` · **blocked** · cloud · Paranal scoring: hourly ESO values, matched hours, statistics · waits also for C8's ticket · [#68](https://github.com/rrweller/Astro-seeing/issues/68)
+- `F1-19` · **ready** · cloud · Paranal scoring: hourly ESO values, matched hours, statistics · waits also for C8's ticket · [#68](https://github.com/rrweller/Astro-seeing/issues/68)
 
 - `F1-20` · **blocked** · cloud · Paranal check end to end: ESO fetch, nights, panel, weekly report · [#69](https://github.com/rrweller/Astro-seeing/issues/69)
 
@@ -58,7 +52,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `K7` · **blocked** · CT · First pilot request: 1–16 June 2023, global, ~104 GB · ticket: none yet
 
-- `K8` · **blocked** · CT · ESO DIMM/MASS fetch for 2021–2025 · ticket: none yet
+- `K8` · **ready** · CT · ESO DIMM/MASS fetch for 2021–2025 · ticket: none yet
 
 - `K9` · **blocked** · CT · Reproduction notebooks, one per paper · ticket: none yet
 
@@ -73,10 +67,7 @@ Colors show each item's state (legend at the bottom). The arrows show what has t
 ```mermaid
 flowchart LR
   subgraph cloud["Cloud"]
-    C6["C6 · Multi-month surface requests"]
     C7["C7 · Raw GRIB archive code"]
-    C8["C8 · ESO fetcher"]
-    C9["C9 · Site time-series reader"]
     C10["C10 · Reproduction spec"]
     C11["C11 · Calibration spec"]
     C12["C12 · Experiment spec"]
@@ -100,21 +91,13 @@ flowchart LR
     F1_21["F1-21 · CT install, live trials #70"]
     F1_22["F1-22 · 28-night run, F1 report #71"]
   end
-  C8 --> F1_19
   F1_19 --> F1_20
   F1_19 --> F1_21
   F1_20 --> F1_21
   F1_21 --> F1_22
-  C9 --> C10
-  C8 --> C11
-  C9 --> C11
   K2 --> K4 --> K7
-  C6 --> K6
   C7 --> K6 --> K7
-  C8 --> K8
   C10 --> K9
-  C8 --> C12
-  C9 --> C12
   C12 --> K10
   C11 --> K10
   K4 --> K11
@@ -136,25 +119,19 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C6 needsyou
-  %% ---
   class C7 needsyou
   %% ---
-  class C8 needsyou
+  class C10 ready
   %% ---
-  class C9 needsyou
+  class C11 ready
   %% ---
-  class C10 blocked
+  class C12 ready
   %% ---
-  class C11 blocked
-  %% ---
-  class C12 blocked
-  %% ---
-  class C13 blocked
+  class C13 ready
   %% ---
   class C14 ready
   %% ---
-  class F1_19 blocked
+  class F1_19 ready
   %% ---
   class F1_20 blocked
   %% ---
@@ -176,7 +153,7 @@ flowchart LR
   %% ---
   class K7 blocked
   %% ---
-  class K8 blocked
+  class K8 ready
   %% ---
   class K9 blocked
   %% ---
@@ -200,9 +177,6 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 
 | Wave | ID | Needs you? | Touches |
 |---|---|---|---|
-| 1 | C8 | no | new module, `cli.py` |
-| 1 | C9 | no | new module |
-| 2 | C6 | no | `download/requests.py`, `configs/era5.yaml`, `cli.py` |
 | 2 | C7 | no | `manifest.py`, `cli.py`, new module |
 | 3 | C10 | yes: approve | issues, this file |
 | 3 | C11 | yes: approve | issues, this file |
@@ -230,10 +204,10 @@ F1-21 and F1-22 (the forecast's live trials and its 28-night run) don't use it e
 | K3 | — | no |
 | K4 | K2 | **yes** |
 | K5 | — | own slot |
-| K6 | C6, C7 | estimates only |
+| K6 | C7 | estimates only |
 | K7 | K4, K6 | **yes** |
-| K8 | C8 | no |
-| K9 | C10, C9 | no |
+| K8 | — | no |
+| K9 | C10 | no |
 | K10 | C12, C11 (stage 1, for the ground-layer part) | no (time-series slot, AWS, ESO only) |
 | K11 | K4, K7, and your [ASK] on the size | **yes** |
 | F1-21 | F1-19, F1-20 | no |
@@ -246,10 +220,7 @@ Parallel sessions would otherwise take the same number.
 | D-number | Item |
 |---|---|
 | D61 | C10 |
-| D63 | C6 |
 | D64 | C7 |
-| D65 | C8 |
-| D66 | C9 |
 | D68 | C11 |
 | D69 | C12 |
 | D94 | C13 |
@@ -266,27 +237,6 @@ Parallel sessions would otherwise take the same number.
 ## Prompts
 
 Every prompt has the same first sentence, which loads the session protocol. Most put a slash command in front of it on the same line, which starts that item's main skill. Copy everything inside the box and send it as one message. If a session ever shows the skill without the rest of the prompt (it shouldn't), send the prompt again without the slash command as the next message.
-
-### C6. Multi-month surface requests and per-kind planning rates
-
-```text
-/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C6.
-
-Skills: this message starts implement, and this prompt is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Implement ends with a commit; this item still ends with the PR and status steps below.
-
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, reports/cds_throughput_one_job.md, and decisions D16, D23, D39, D40 and D55 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
-
-Task (D55 item 5, plus the config fix in cds_throughput_one_job.md §5). First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
-
-1. Let single-level requests span up to N consecutive months (configurable, default 3, per D55) in src/astroseeing/download/requests.py; RequestSpec.cds_request allows one month today.
-   - A months × days request implies dates that don't exist (30 Feb, 31 Apr), and verification must expect exactly the real dates.
-   - Planning refuses anything over the configured cost limit before queuing.
-   - Labels and store paths stay unique.
-2. Add a command (or flag) that prices a plan with the CDS cost estimator without submitting it, printing the estimate next to our own field count, so Riley can run the "does the CDS count 30 February?" check on the CT.
-3. Replace the single request.fields_per_s in configs/era5.yaml with per-kind planning rates from the report, or better, the per-request wait-plus-run model (W + F/R, §5). Update the estimate plan-area prints.
-
-Pressure-level requests stay unchanged. Tests: month boundaries, leap years, non-existent dates, cost limit, unique keys, estimates. Log non-trivial choices as D63. Run the full test suite and ruff, then open a PR into dev with the CT commands for the cost check.
-```
 
 ### C7. Code to move the kept raw GRIB from `/staging` to the NAS
 
@@ -311,58 +261,9 @@ Rules:
 Tests with temp directories and a fake slow or hung filesystem. Log non-trivial choices as D64. Run the full test suite and ruff, then open a PR into dev with the exact CT commands (dry run first).
 ```
 
-### C8. ESO seeing-monitor fetcher
-
-```text
-/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C8.
-
-Skills: this message starts implement, and this prompt is its spec. Build test-first with mattpocock-skills:tdd, then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. Implement ends with a commit; this item still ends with the PR and status steps below.
-
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, docs/agents/issue-tracker.md, docs/RESEARCH.md §6.5, decisions D28, D44 and D54 item 8 (if D54 isn't on dev, read it from branch planning/paranal-comparison-d54, PR #38), and docs/research/seeing-measurements.md on branch research/seeing-measurements (ESO query details).
-
-Task: one fetcher for ESO's ambient-conditions archive, shared by the forecast track (nightly, D54 item 8) and the historical calibration (2021–2025 bulk). First create a ticket under map #20 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line. Then edit F1 ticket #68 (Paranal scoring) so its Blocked by line names your ticket number instead of "roadmap item C8".
-
-Requirements:
-- Data: Paranal DIMM and MASS (including free-atmosphere seeing, turbulence altitude and ground fraction), and La Silla DIMM.
-- Query by UTC time range. Use a generic User-Agent with no contact details. In bulk mode, send at most one request every few seconds, chunked by month.
-- Write raw CSV write-once under a configured path (D54: /data/astro/validation/eso-asm/), with fetch time and SHA-256, recorded in the manifest.
-- A re-fetch of the same night is a separate, named file (D54's 3-day re-fetch). Never overwrite.
-- Parse into a typed table. Count and log rows dropped as missing or non-numeric; never clip.
-
-If this session can reach archive.eso.org, save one small real response as a test fixture (CC BY 4.0; note the ESO acknowledgement) and check the column names against it. Otherwise build from the documented columns and say so in the PR. Tests: parsing, write-once, re-fetch naming, retries. Log choices as D65. Run the full test suite and ruff, then open a PR into dev with the CT commands for the 2021–2025 bulk fetch.
-```
-
-### C9. Site time-series reader for the reproductions
-
-```text
-/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C9.
-
-Skills: this message starts implement, and this prompt is its spec. Implement ends with a commit; this item still ends with the PR and status steps below. Before any code, design the reader's interface and test seams with mattpocock-skills:codebase-design (one deep module the four notebooks call). Then build it with mattpocock-skills:tdd at those seams, and run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds.
-
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md, CLAUDE.md, CONTEXT.md, docs/agents/issue-tracker.md, docs/RESEARCH.md in full, decisions D3, D5, D8, D10, D18 and D57 (if D57 isn't on dev, read it from branch grill/7-reproductions, PR #39), and reports/validation_downloads.md §1 (store layouts: grid, and area cells).
-
-Task: the shared, tested code the four paper reproductions will call on the CT. Map #6 says the cloud writes this against synthetic stores. First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
-
-1. Read a site's hourly columns (z, t, u, v, and cc when present) from one or many Zarr stores in either layout, over a time range, in time order, with checks for duplicate or missing hours.
-2. Site-value rules (D57 item 2):
-   - nearest grid point;
-   - four-point bilinear (O&S);
-   - Priyatikanto's cubic interpolation in lon, lat and pressure, then linear to 5 hPa steps.
-   Interpolating T, u, v and z is allowed inside reproductions; interpolating seeing or J is not.
-3. Underground-level masking by the cell's static orography (D57 item 1), plus the unmasked variant. Masked counts are returned, not just logged.
-4. Hour-set selectors (D57 item 3), using the existing solar module:
-   - all hours;
-   - night mask (Sun < −12°);
-   - dark time (Sun < −18°) over a given list of nights;
-   - local-solar-time windows (04–07 h, 19–23 h).
-5. Golden-result JSON helpers (D57 item 5: settings, store ids and content hashes, statistics, target, tolerance, gating vs informational), and a pytest marker `data` that skips when /data is absent.
-
-Build synthetic test stores with the existing synthetic helpers. Known-answer tests for each interpolation; property tests where they fit. Log choices as D66. Run the full test suite and ruff, then open a PR into dev.
-```
-
 ### C10. Reproduction spec and CT tickets
 
-Needs your approval. Once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C9.
+Needs your approval. Once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message.
 
 ```text
 /mattpocock-skills:to-spec Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C10.
@@ -393,7 +294,7 @@ The Blocked by line in each ticket body is the source of truth (docs/agents/issu
 
 ### C11. Calibration spec and CT tickets
 
-Needs your approval. Like C10: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C8 (the ESO fetcher the data comes from) and C9 (the site reader the matching code uses).
+Needs your approval. Like C10: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message.
 
 ```text
 /mattpocock-skills:to-spec Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C11.
@@ -416,7 +317,7 @@ The Blocked by line in each ticket body is the source of truth (docs/agents/issu
 
 ### C12. Experiment spec and CT tickets
 
-Needs your approval. Like C10 and C11: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message. Depends on C8 (the fetcher its tickets extend) and C9 (the site reader every experiment uses).
+Needs your approval. Like C10 and C11: the prompt starts with `/mattpocock-skills:to-spec`, and once you've approved the spec, the session asks you to send `/mattpocock-skills:to-tickets #<spec issue>` as your next message.
 
 ```text
 /mattpocock-skills:to-spec Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C12.
@@ -502,7 +403,7 @@ Log non-trivial choices as D96 (reserved for this item). Run the full test suite
 
 ### F1-19. Paranal scoring: hourly ESO values, matched hours, statistics
 
-Ticket [#68](https://github.com/rrweller/Astro-seeing/issues/68). Depends on C8. C8's ticket isn't created yet; the ticket's Blocked by line names C8 until it is. The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
+Ticket [#68](https://github.com/rrweller/Astro-seeing/issues/68). The coordinator (C13) can run this ticket; paste this prompt yourself only when it can't, or you'd rather run it alone.
 
 ```text
 /mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is F1-19.
@@ -571,6 +472,8 @@ This item stays in-progress for the whole run (about 4 weeks). Open a PR into de
 Replace `<ID>`, the skills line and the task line. Replace `<slash command>` with `/mattpocock-skills:implement` for K9's and K10's tickets, and delete it for the other items.
 
 Skills by item: K1 and K3 `mattpocock-skills:wizard` (a step-by-step script for you); K4, K7 and K11 `mattpocock-skills:research` (write up what was measured); K9 also `mattpocock-skills:diagnosing-bugs` when a reproduction misses its tolerance, and K10 `mattpocock-skills:research` for the LHATPRO clear flag; the others none. Whether the Matt Pocock plugin is installed on the CT hasn't been checked: if a slash command answers "unknown command" there, it needs installing.
+
+K6's task line: "Roadmap item K6: first the surface-request cost check in `docs/ct_runbook.md` §9 (`astro cost-check`, which submits nothing; D63). If it passes as defined in D63 item 7, set `request.default_months_per_request.sl` to 3 in `configs/era5.yaml` (Riley, 2026-11-27) and record the answer in a short report; otherwise stop and ask Riley. Then the raw GRIB archive move with C7's command (`docs/ct_runbook.md` §10), dry run first."
 
 K8's task line: "Roadmap item K8, D65: ESO's DIMM and MASS rows for 2021–2025. Run `pixi run astro eso bulk --from 2021-01 --to 2025-12` (Paranal DIMM, Paranal MASS, La Silla DIMM: 180 monthly requests at least 5 s apart, about 30–40 min, roughly 150 MB of raw CSVs written once under /data/astro/validation/eso-asm/; under `tmux`, logging to logs/). A failure stops it; run the same command again, which skips the months already stored. Report per table the files, rows and values left out (from the manifest's `eso_fetches`), months with no rows, and columns that are always empty (La Silla's airmass was empty in January 2021)."
 

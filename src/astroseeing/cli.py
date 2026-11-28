@@ -254,21 +254,31 @@ def _subset_region(region: str, kind: str, variables: tuple[str, ...] | None) ->
     return f"{region}@vars-" + "-".join(allvars[v]["short_name"] for v in variables)
 
 
-def cmd_plan_area(args, paths: Paths) -> int:
-    """Plan downloads for a validation area (configs/validation_areas.yaml, D31)."""
-    from astroseeing.download.areas import load_areas
-    from astroseeing.download.requests import plan_requests, static_request
+def _area_plan(args, allow_global: bool = False):
+    """``(region, area, hours, specs)`` for ``plan-area``'s arguments; nothing is written.
 
-    areas = load_areas()
-    if args.name not in areas:
-        raise SystemExit(f"unknown area {args.name!r}; known: {sorted(areas)}")
-    area = areas[args.name]
+    With ``allow_global``, the name ``global`` means the whole globe (``area`` None).
+    """
+    from astroseeing.download.areas import load_areas
+    from astroseeing.download.requests import default_months, plan_requests, static_request
+
+    if allow_global and args.name == "global":
+        validation_area = None
+        if args.hours == "night":
+            raise SystemExit("--hours night needs a validation area, not the globe")
+    else:
+        areas = load_areas()
+        if args.name not in areas:
+            known = sorted(areas) + (["global"] if allow_global else [])
+            raise SystemExit(f"unknown area {args.name!r}; known: {known}")
+        validation_area = areas[args.name]
     if args.hours == "all":
         hours = tuple(range(24))
     elif args.hours == "night":
-        hours = area.night_hours()
+        hours = validation_area.night_hours()
     else:
         hours = tuple(int(h) for h in args.hours.split(","))
+    area = None if validation_area is None else validation_area.area
     cfg_pl = load_config("era5")["datasets"]["pl"]
     levels = {"29": None, "37": tuple(cfg_pl["levels_hpa_all"])}.get(args.levels)
     if levels is None and args.levels not in ("29",):
@@ -281,40 +291,89 @@ def cmd_plan_area(args, paths: Paths) -> int:
     specs = []
     for kind in kinds:
         if kind == "static":
-            specs.append(static_request(region, area.area))
+            specs.append(static_request(region, area))
             continue
-        specs += plan_requests(
-            kind,
-            _subset_region(region, kind, variables[kind]),
-            _date(args.start),
-            _date(args.end),
-            area.area,
-            granularity="month",
-            variables=variables[kind],
-            levels=levels if kind == "pl" else None,
-            hours=hours,
-            day_step=args.day_step,
-        )
+        try:
+            specs += plan_requests(
+                kind,
+                _subset_region(region, kind, variables[kind]),
+                _date(args.start),
+                _date(args.end),
+                area,
+                granularity="month",
+                variables=variables[kind],
+                levels=levels if kind == "pl" else None,
+                hours=hours,
+                day_step=args.day_step,
+                months_per_request=default_months(kind) if args.months is None else args.months,
+            )
+        except ValueError as e:  # over the month cap or the cost limit: nothing planned
+            raise SystemExit(f"{e}; nothing added") from e
+    return region, area, hours, specs
+
+
+def cmd_plan_area(args, paths: Paths) -> int:
+    """Plan downloads for a validation area (configs/validation_areas.yaml, D31)."""
+    from astroseeing.download.estimate import estimate_plan
+
+    region, area, hours, specs = _area_plan(args)
     m = _manifest(paths)
-    for spec in specs:  # a key already used by a different request: refuse before adding
+    for spec in specs:  # refuse before adding anything, so a plan is never half added
         row = m.conn.execute(
             "SELECT request_hash FROM requests WHERE key=?", (spec.key,)
         ).fetchone()
         if row is not None and row["request_hash"] != spec.request_hash():
             raise SystemExit(f"{spec.key} is already planned as a different request; nothing added")
-    total_fields = n = 0
+        if row is None and (other := m.overlapping_keys(spec)):
+            raise SystemExit(
+                f"{', '.join(other)} already cover days of {spec.key}; a day must never be in "
+                "two stores, so nothing added (plan the same months per request, or cancel)"
+            )
     for spec in specs:
         m.add_request(spec)
-        total_fields += spec.n_fields
-        n += 1
-    rate = load_config("era5")["request"]["fields_per_s"]  # measured, one job at a time (D40)
+    est = estimate_plan(specs)
     log.info(
-        "planned %d requests for area %s (%s; UTC hours %s): %.2f M fields, ~%.1f days of CDS "
-        "processing at %.1f fields/s (measured on pressure levels, one job at a time)",
-        n, region, area.area.as_cds(), ",".join(map(str, hours)), total_fields / 1e6,
-        total_fields / rate / 86400, rate,
+        "planned %d requests for area %s (%s; UTC hours %s): %.2f M fields; %s",
+        est.total.requests, region, area.as_cds(), ",".join(map(str, hours)),
+        est.total.fields / 1e6, est.summary(),
     )  # fmt: skip
     return 0
+
+
+def cmd_cost_check(args, paths: Paths) -> int:
+    """Price a plan with the CDS cost estimator; submits nothing, plans nothing (D63)."""
+    from astroseeing.download.costcheck import VERDICT_TEXT, price_plan, verdict
+    from astroseeing.download.estimate import estimate_plan
+
+    region, area, hours, specs = _area_plan(args, allow_global=True)
+    backend = _backend()
+    rows = price_plan(specs, backend.client.estimate_costs)
+    print(f"{'request':<40} {'real fields':>11} {'named':>8} {'CDS cost':>9} {'limit':>8}  "
+          "CDS counts")  # fmt: skip
+    for r in rows:
+        cost = "-" if r.cds_cost is None else f"{r.cds_cost:.0f}"
+        limit = "-" if r.cds_limit is None else f"{r.cds_limit:.0f}"
+        note = r.error or {"same": "(no non-existent date)", "other": "neither of our counts"}.get(
+            r.counts, r.counts
+        )
+        flag = "  OVER the CDS limit" if r.over_limit else ""
+        print(f"{r.key:<40} {r.real_fields:>11} {r.named_fields:>8} {cost:>9} {limit:>8}  "
+              f"{note}{flag}")  # fmt: skip
+    v = verdict(rows)
+    print(f"verdict: {VERDICT_TEXT[v]}")
+    print(f"if planned: {estimate_plan(specs).summary()}")
+    if args.out:
+        _write_report(args.out, {
+            "checked_utc": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+            "plan": {"area": region, "box": None if area is None else area.as_cds(),
+                     "hours": list(hours), "start": args.start, "end": args.end,
+                     "kinds": args.kinds, "months": args.months},
+            "verdict": v,
+            "requests": [r.as_dict() for r in rows],
+            "git": git_state(),
+        })  # fmt: skip
+        log.info("cost check written to %s", args.out)
+    return 1 if any(r.error or r.over_limit or r.counts == "other" for r in rows) else 0
 
 
 def cmd_plan_measure(args, paths: Paths) -> int:
@@ -775,6 +834,27 @@ def cmd_web_deploy(args, paths: Paths) -> int:
     return 0
 
 
+def _plan_arguments(p: argparse.ArgumentParser) -> None:
+    """The plan arguments shared by ``plan-area`` and ``cost-check``."""
+    p.add_argument("--start", required=True)
+    p.add_argument("--end", required=True)
+    p.add_argument("--kinds", default="pl", help="comma list of pl, sl, static")
+    p.add_argument("--hours", default="all", help="all | night | comma list of UTC hours")
+    p.add_argument(
+        "--variables", default="",
+        help="variables for every kind in --kinds, e.g. z,t,u,v for pl or lcc,zust for sl "
+        "(default all); a name the kind doesn't have is an error, so plan pl and sl separately",
+    )  # fmt: skip
+    p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
+    p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
+    p.add_argument(
+        "--months", type=int, default=None,
+        help="consecutive months per request, in calendar blocks, for every kind in --kinds "
+        "(default per kind: configs/era5.yaml request.default_months_per_request; at most "
+        "request.max_months_per_request; pressure levels: 1; D63)",
+    )  # fmt: skip
+
+
 def _eso_fetcher(paths: Paths):
     """The ESO fetcher on the CT layout: raw CSVs under $ASTRO_DATA_ROOT (D54 item 8)."""
     from astroseeing.download.eso import EsoFetcher, Settings
@@ -918,18 +998,16 @@ def main(argv: list[str] | None = None) -> int:
 
     p = sub.add_parser("plan-area", help="plan downloads for a validation area (D31)")
     p.add_argument("name", help="area in configs/validation_areas.yaml")
-    p.add_argument("--start", required=True)
-    p.add_argument("--end", required=True)
-    p.add_argument("--kinds", default="pl", help="comma list of pl, sl, static")
-    p.add_argument("--hours", default="all", help="all | night | comma list of UTC hours")
-    p.add_argument(
-        "--variables", default="",
-        help="variables for every kind in --kinds, e.g. z,t,u,v for pl or lcc,zust for sl "
-        "(default all); a name the kind doesn't have is an error, so plan pl and sl separately",
-    )  # fmt: skip
-    p.add_argument("--levels", default="29", help="29 (default) | 37 | comma list of hPa")
-    p.add_argument("--day-step", type=int, default=1, help="keep every Nth day of each month")
+    _plan_arguments(p)
     p.set_defaults(fn=cmd_plan_area)
+    p = sub.add_parser(
+        "cost-check",
+        help="price a plan with the CDS cost estimator: submits and plans nothing (D63)",
+    )
+    p.add_argument("name", help="area in configs/validation_areas.yaml, or global")
+    _plan_arguments(p)
+    p.add_argument("--out", default=None, help="also write the findings as JSON here")
+    p.set_defaults(fn=cmd_cost_check)
     p = sub.add_parser(
         "plan-measure",
         help="plan a one-off CDS test request: downloaded and verified, never ingested (#10)",

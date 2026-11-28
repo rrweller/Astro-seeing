@@ -12,9 +12,11 @@ finish, so a campaign takes
   (``reports/cds_throughput_one_job.md`` §2 and §5);
 - idle: 18 s, the measured median.
 
-The request plans cover 2021-2025 and keep each request inside one month, as
-``RequestSpec.cds_request`` requires. Field counts are the CDS cost: variables x levels x
-hours x days (29 levels x 5 variables on pressure levels, 17 single-level variables).
+The request plans cover 2021-2025 and keep each request inside one month (written before
+single levels could span up to 3 months, D63; ``astro plan-area`` now prints the same
+model per plan, with the waits from ``configs/era5.yaml`` ``request.planning``). Field
+counts are the CDS cost: variables x levels x hours x days (29 levels x 5 variables on
+pressure levels, 17 single-level variables).
 Gigabytes use the measured 1.87 MB per global pressure-level field (the global hour,
 2026-11-13). Regional requests are much smaller, so their size isn't shown.
 

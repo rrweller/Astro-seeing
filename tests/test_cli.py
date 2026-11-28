@@ -306,17 +306,3 @@ def load_config_sl_short_names() -> list[str]:
     from astroseeing.config import load_config
 
     return [v["short_name"] for v in load_config("era5")["datasets"]["sl"]["variables"].values()]
-
-
-def test_plan_area_estimate_uses_the_configured_rate(ct, caplog):
-    import logging
-
-    from astroseeing.config import load_config
-
-    rate = load_config("era5")["request"]["fields_per_s"]
-    assert rate == 5.6  # measured with one job at a time (D40)
-    args = ["plan-area", "chile", "--start", "2021-01-01", "--end", "2021-01-31",
-            "--kinds", "sl", "--variables", "lcc", "--hours", "night"]  # fmt: skip
-    with caplog.at_level(logging.INFO):
-        assert cli.main(args) == 0
-    assert f"at {rate:.1f} fields/s" in caplog.text
