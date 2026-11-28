@@ -18,8 +18,6 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C7` · **needs-you** · cloud · Code to move the kept raw GRIB to the NAS · needs you: merge PR #105 · [#100](https://github.com/rrweller/Astro-seeing/issues/100) · PR [#105](https://github.com/rrweller/Astro-seeing/pull/105)
-
 - `C10` · **ready** · cloud · Reproduction spec and CT tickets (needs your approval) · ticket: none yet
 
 - `C11` · **ready** · cloud · Calibration spec and CT tickets (needs your approval) · ticket: none yet
@@ -48,7 +46,7 @@ Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions
 
 - `K5` · **ready** · CT · Fetch surface pressure at the 8 Haslebacher sites · ticket: none yet
 
-- `K6` · **blocked** · CT · Surface-request cost check, then the raw GRIB archive move · ticket: none yet
+- `K6` · **ready** · CT · Surface-request cost check, then the raw GRIB archive move · ticket: none yet
 
 - `K7` · **blocked** · CT · First pilot request: 1–16 June 2023, global, ~104 GB · ticket: none yet
 
@@ -67,7 +65,6 @@ Colors show each item's state (legend at the bottom). The arrows show what has t
 ```mermaid
 flowchart LR
   subgraph cloud["Cloud"]
-    C7["C7 · Raw GRIB archive code"]
     C10["C10 · Reproduction spec"]
     C11["C11 · Calibration spec"]
     C12["C12 · Experiment spec"]
@@ -96,7 +93,7 @@ flowchart LR
   F1_20 --> F1_21
   F1_21 --> F1_22
   K2 --> K4 --> K7
-  C7 --> K6 --> K7
+  K6 --> K7
   C10 --> K9
   C12 --> K10
   C11 --> K10
@@ -119,8 +116,6 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C7 needsyou
-  %% ---
   class C10 ready
   %% ---
   class C11 ready
@@ -149,7 +144,7 @@ flowchart LR
   %% ---
   class K5 ready
   %% ---
-  class K6 blocked
+  class K6 ready
   %% ---
   class K7 blocked
   %% ---
@@ -177,7 +172,6 @@ Items in a wave can run at the same time. A later wave usually depends on an ear
 
 | Wave | ID | Needs you? | Touches |
 |---|---|---|---|
-| 2 | C7 | no | `manifest.py`, `cli.py`, new module |
 | 3 | C10 | yes: approve | issues, this file |
 | 3 | C11 | yes: approve | issues, this file |
 | 3 | C12 | yes: approve | issues, this file |
@@ -204,7 +198,7 @@ F1-21 and F1-22 (the forecast's live trials and its 28-night run) don't use it e
 | K3 | — | no |
 | K4 | K2 | **yes** |
 | K5 | — | own slot |
-| K6 | C7 | estimates only |
+| K6 | — | estimates only |
 | K7 | K4, K6 | **yes** |
 | K8 | — | no |
 | K9 | C10 | no |
@@ -220,7 +214,6 @@ Parallel sessions would otherwise take the same number.
 | D-number | Item |
 |---|---|
 | D61 | C10 |
-| D64 | C7 |
 | D68 | C11 |
 | D69 | C12 |
 | D94 | C13 |
@@ -237,29 +230,6 @@ Parallel sessions would otherwise take the same number.
 ## Prompts
 
 Every prompt has the same first sentence, which loads the session protocol. Most put a slash command in front of it on the same line, which starts that item's main skill. Copy everything inside the box and send it as one message. If a session ever shows the skill without the rest of the prompt (it shouldn't), send the prompt again without the slash command as the next message.
-
-### C7. Code to move the kept raw GRIB from `/staging` to the NAS
-
-```text
-/mattpocock-skills:implement Read docs/agents/session-handoff.md on origin/dev first and follow it for this whole session. Your roadmap item is C7.
-
-Skills: this message starts implement, and this prompt is its spec. Implement ends with a commit; this item still ends with the PR and status steps below. Build test-first with mattpocock-skills:tdd (write the crash-recovery and hung-filesystem tests first), then run mattpocock-skills:code-review on your branch against origin/dev before opening the PR, and fix what it finds. This code deletes files, so take the review seriously.
-
-You are a cloud session on rrweller/Astro-seeing (no /data, CDS or CT access). Work from origin/dev. Read AGENTS.md in full (data-safety rules), CLAUDE.md, docs/agents/issue-tracker.md, and decisions D10, D11, D12, D50 and D55 items 6–7 (if D55 isn't on dev, read it from branch grill/13-global-downloads, PR #37).
-
-Task: build the command that copies the raw validation GRIB kept on /staging (~41 GB, 472 files, plus the 271 MB measurement file) to a write-once archive on the NAS, then removes the /staging copies. First create a ticket under map #6 (runs-on:cloud, wayfinder:task), unless one exists, claim it, and put its link on your roadmap board line.
-
-Rules:
-- The archive path comes from config (D55 suggests /data/astro/raw-archive; propose the exact layout).
-- Order of operations: copy, fsync, verify the SHA-256 against the manifest's recorded checksum, record the archive location in the manifest, and only then delete the /staging copy. Mirror D12's ordering and crash recovery.
-- Never overwrite or delete anything under /data. A destination with different content is refused; an identical one is a no-op.
-- Add a dry-run mode that prints sizes and the plan.
-- NFS hangs rather than failing (AGENTS.md), so use per-file timeouts and a watchdog.
-- Make it resumable after interruption.
-- Measurement-only files (state "measured") are listed separately, because deleting them is Riley's call.
-
-Tests with temp directories and a fake slow or hung filesystem. Log non-trivial choices as D64. Run the full test suite and ruff, then open a PR into dev with the exact CT commands (dry run first).
-```
 
 ### C10. Reproduction spec and CT tickets
 
