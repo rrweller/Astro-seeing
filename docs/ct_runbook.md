@@ -285,3 +285,30 @@ through Nginx Proxy Manager; a tick's run time against the timer's 15 min and
   (for example `192.168.1.0/24`), Allow `100.64.0.0/10` (the tailnet); NPM denies
   every other address after the Allow lines. Satisfy Any: off; Pass Auth to Upstream:
   off.
+
+## 9. Pricing a plan without submitting it (cost check; D55 item 5, D63)
+
+`astro cost-check` builds the same requests as `plan-area` and asks the CDS cost
+estimator (`estimate_costs`) to price each one. It submits nothing, writes nothing to
+the manifest and doesn't use the account's one CDS place (D39), so it can run while
+the download loop is busy. The name is a validation area or `global` (the cost doesn't
+depend on the area).
+
+```bash
+# Does the CDS count non-existent dates (30 February, 31 April) in a months x days
+# request? 2023 and 2024 in 3-month single-level blocks: 8 estimates, the leap year
+# included. Exit 0: every estimate read and under the limit; 1 otherwise.
+pixi run astro cost-check global --kinds sl --start 2023-01-01 --end 2024-12-31 \
+    --months 3 --out reports/cds_cost_check_multi_month.json
+```
+
+Each row shows our two counts next to the CDS's: `real fields` (the real dates, what
+verification expects) and `named` (the whole year × month × day product, what planning
+checks against the limit). The verdict line says which one the CDS charged.
+
+If it exits 0 with the verdict "counts the non-existent dates" or "counts only the real
+dates", the check has passed. Set `request.default_months_per_request.sl` to 3 in
+`configs/era5.yaml` in the report PR (Riley, 2026-11-27; D63). Any other result goes to
+Riley first. Until then `plan-area` plans single levels monthly unless `--months` asks
+for more (at most `request.max_months_per_request`: 3 for single levels, 1 for
+pressure levels).

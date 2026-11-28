@@ -1,13 +1,20 @@
 """Build ERA5 CDS requests and the expectations used to verify their files.
 
-A request covers one region for one period (a day by default, AGENTS.md
-"day-sized requests"). Its canonical JSON is hashed for the manifest, so the same
-request is never downloaded twice, and a changed request is never mistaken for an
-old one.
+A request covers one region for one period: a day, part of a month, a month, or (single
+levels only) up to ``request.max_months_per_request`` consecutive months of one calendar
+year (D55 item 5, D63). Its canonical JSON is hashed for the manifest, so the same
+request is never downloaded twice, and a changed request is never mistaken for an old
+one.
+
+The CDS form takes dates as a year × month × day product. A request over several months
+therefore names days that don't exist in every month (30 February, 31 April). A request's
+``dates`` are always the real dates only: they are what verification expects. Its
+``cds_cost`` counts the whole product, the most the CDS could charge for it.
 """
 
 from __future__ import annotations
 
+import calendar
 import datetime as dt
 import hashlib
 from dataclasses import dataclass, field
@@ -17,6 +24,30 @@ from astroseeing.config import load_config
 from astroseeing.provenance import canonical_json
 
 ALL_HOURS = tuple(range(24))
+
+
+def _cds_axes(dates) -> tuple[list[str], list[str], list[str]]:
+    """The CDS form's year, month and day lists covering ``dates``."""
+    return (
+        sorted({f"{d.year:04d}" for d in dates}),
+        sorted({f"{d.month:02d}" for d in dates}),
+        sorted({f"{d.day:02d}" for d in dates}),
+    )
+
+
+def _real_dates(years, months, days) -> set[dt.date]:
+    """The dates that exist in a year × month × day product (30 February drops out)."""
+    out = set()
+    for y in years:
+        for m in months:
+            n = calendar.monthrange(int(y), int(m))[1]
+            out.update(dt.date(int(y), int(m), int(d)) for d in days if int(d) <= n)
+    return out
+
+
+def _is_product(dates) -> bool:
+    """Whether ``dates`` are exactly the real dates of their own year × month × day product."""
+    return _real_dates(*_cds_axes(dates)) == set(dates)
 
 
 @dataclass(frozen=True)
@@ -82,17 +113,21 @@ class RequestSpec:
     # --- identity -------------------------------------------------------------
     @property
     def period_label(self) -> str:
-        """``YYYY-MM-DD`` (one day), ``YYYY-MM`` (a whole month), else ``first_last``."""
+        """``YYYY-MM-DD`` (one day), ``YYYY-MM`` (a whole month), ``YYYY-MM_YYYY-MM``
+        (several whole months, D63), else ``first_last`` (``YYYY-MM-DD_YYYY-MM-DD``)."""
         d0, d1 = self.dates[0], self.dates[-1]
         if d0 == d1:
             return d0.isoformat()
-        whole_month = (
+        whole_months = (
             d0.day == 1
             and (d1 + dt.timedelta(days=1)).day == 1
-            and (d0.year, d0.month) == (d1.year, d1.month)
-            and len(self.dates) == d1.day
+            and len(set(self.dates)) == (d1 - d0).days + 1
         )
-        return f"{d0:%Y-%m}" if whole_month else f"{d0.isoformat()}_{d1.isoformat()}"
+        if whole_months and (d0.year, d0.month) == (d1.year, d1.month):
+            return f"{d0:%Y-%m}"
+        if whole_months:
+            return f"{d0:%Y-%m}_{d1:%Y-%m}"
+        return f"{d0.isoformat()}_{d1.isoformat()}"
 
     @property
     def fields_per_day(self) -> int:
@@ -101,7 +136,27 @@ class RequestSpec:
 
     @property
     def n_fields(self) -> int:
+        """Fields on the real dates: what verification expects in the file."""
         return self.fields_per_day * len(self.dates)
+
+    @property
+    def cds_cost(self) -> int:
+        """The CDS cost of the request as the form names it: the whole year × month × day
+        product, non-existent dates included (the same count as ``notify.request_fields``).
+
+        Equal to ``n_fields`` for a request inside one month. Over several months it is
+        the most the CDS could charge; whether it counts 30 February is the cost check's
+        question (``astro cost-check``, D63), so planning limits use this upper bound.
+        """
+        return self.fields_per_day * _product_size(self.dates)
+
+    def check_cost_limit(self) -> None:
+        """Raise if ``cds_cost`` is over the CDS limit for the kind (:func:`max_fields`)."""
+        limit = max_fields(self.kind)
+        if self.cds_cost > limit:
+            raise ValueError(
+                f"{self.key} would cost {self.cds_cost} fields, over the CDS limit of {limit}"
+            )
 
     @property
     def key(self) -> str:
@@ -114,11 +169,9 @@ class RequestSpec:
     def cds_request(self) -> dict[str, Any]:
         cfg = load_config("era5")
         ds = cfg["datasets"][self.kind]
-        years = sorted({f"{d.year:04d}" for d in self.dates})
-        months = sorted({f"{d.month:02d}" for d in self.dates})
-        days = sorted({f"{d.day:02d}" for d in self.dates})
-        if len(years) * len(months) * len(days) != len(self.dates):
-            raise ValueError("dates must form a full year×month×day product (one month at most)")
+        years, months, days = _cds_axes(self.dates)
+        if len(set(self.dates)) != len(self.dates) or not _is_product(self.dates):
+            raise ValueError("dates must be exactly the real dates of a year × month × day product")
         req: dict[str, Any] = {
             "product_type": [ds["product_type"]],
             "variable": list(self.variables),
@@ -194,6 +247,62 @@ def max_fields(kind: str) -> int:
     return int(load_config("era5")["request"]["max_fields"][kind])
 
 
+def max_months(kind: str) -> int:
+    """Most consecutive months one request of a kind may span (configs/era5.yaml, D63)."""
+    return int(load_config("era5")["request"]["max_months_per_request"][kind])
+
+
+def default_months(kind: str) -> int:
+    """Months per request ``plan-area`` uses unless ``--months`` is given (configs/era5.yaml
+    ``request.default_months_per_request``; D63)."""
+    return int(load_config("era5")["request"]["default_months_per_request"][kind])
+
+
+def _merge_months(groups: list[list[dt.date]], n: int, day_step: int) -> list[list[dt.date]]:
+    """Merge one-month groups into calendar blocks of ``n`` months (D63).
+
+    A block merges only when every one of its months is in the plan whole (every day, or
+    every ``day_step``-th day, as planning keeps them). Any other month stays a request of
+    its own, as in a monthly plan, so a block's key never depends on where a plan starts.
+    """
+
+    def whole(year: int, month: int) -> list[dt.date]:
+        days = range(1, calendar.monthrange(year, month)[1] + 1, day_step)
+        return [dt.date(year, month, d) for d in days]
+
+    by_month = {(g[0].year, g[0].month): g for g in groups}
+    out: list[list[dt.date]] = []
+    done: set[tuple[int, int]] = set()
+    for g in groups:
+        y, m = g[0].year, g[0].month
+        if (y, m) in done:
+            continue
+        first = (m - 1) // n * n + 1
+        block = [(y, mm) for mm in range(first, min(first + n, 13))]
+        if len(block) > 1 and all(by_month.get(k) == whole(*k) for k in block):
+            out.append([d for k in block for d in by_month[k]])
+            done.update(block)
+        else:
+            out.append(list(g))
+    return out
+
+
+def _refuse_over_limit(days: list[dt.date], per_day: int, limit: int) -> list[list[dt.date]]:
+    """A multi-month group is never split (its parts wouldn't be products); refuse it."""
+    cost = per_day * _product_size(days)
+    if cost > limit:
+        raise ValueError(
+            f"{days[0]:%Y-%m}_{days[-1]:%Y-%m} would cost {cost} fields, over the CDS limit "
+            f"of {limit}; plan fewer months per request"
+        )
+    return [days]
+
+
+def _product_size(dates) -> int:
+    years, months, days = _cds_axes(dates)
+    return len(years) * len(months) * len(days)
+
+
 def _split_to_limit(days: list[dt.date], per_day: int, limit: int) -> list[list[dt.date]]:
     """The fewest near-equal contiguous chunks of ``days`` with at most ``limit`` fields each."""
     if len(days) * per_day <= limit:
@@ -218,8 +327,18 @@ def plan_requests(
     hours: tuple[int, ...] = ALL_HOURS,
     split: bool = True,
     day_step: int = 1,
+    months_per_request: int = 1,
 ) -> list[RequestSpec]:
     """Split [start, end] (inclusive) into day- or month-sized requests.
+
+    ``months_per_request`` > 1 (with ``granularity="month"``, single levels only, at most
+    ``request.max_months_per_request`` in ``configs/era5.yaml``) merges consecutive months
+    into one request, in calendar blocks of that many months counted from January, never
+    across a year: with 3, January–March, April–June, … (D63). Only a block whose months
+    are all in the plan whole merges; any other month (a plan starting on the 10th, or in
+    February) stays a request of its own, as in a monthly plan. So a block's key never
+    depends on where a plan starts. A merged request over the CDS cost limit is refused,
+    never split.
 
     With ``split`` (the default), any request over the CDS cost limit for its dataset
     (:func:`max_fields`) is cut into the fewest near-equal runs of days under it; a
@@ -237,6 +356,17 @@ def plan_requests(
         levels = tuple(levels or cfg["levels_hpa"])
     if granularity not in ("day", "month"):
         raise ValueError("granularity must be 'day' or 'month'")
+    if months_per_request < 1:
+        raise ValueError("months_per_request must be >= 1")
+    if months_per_request > 1:
+        cap = max_months(kind)
+        if months_per_request > cap:
+            raise ValueError(
+                f"{kind} requests may span at most {cap} month(s) "
+                f"(configs/era5.yaml request.max_months_per_request), not {months_per_request}"
+            )
+        if granularity != "month":
+            raise ValueError("months_per_request > 1 needs granularity='month'")
     days = [start + dt.timedelta(days=i) for i in range((end - start).days + 1)]
     days = [d for d in days if (d.day - 1) % day_step == 0]
     groups: list[list[dt.date]] = []
@@ -249,9 +379,19 @@ def plan_requests(
             groups.append([d])
         else:
             groups[-1].append(d)
+    per_day = len(variables) * (len(levels) if kind == "pl" else 1) * len(hours)
+    if months_per_request > 1:
+        groups = _merge_months(groups, months_per_request, day_step)
     if split:
-        per_day = len(variables) * (len(levels) if kind == "pl" else 1) * len(hours)
-        groups = [c for g in groups for c in _split_to_limit(g, per_day, max_fields(kind))]
+        groups = [
+            c
+            for g in groups
+            for c in (
+                _split_to_limit(g, per_day, max_fields(kind))
+                if len({(d.year, d.month) for d in g}) == 1
+                else _refuse_over_limit(g, per_day, max_fields(kind))
+            )
+        ]
     return [
         RequestSpec(
             kind=kind,
