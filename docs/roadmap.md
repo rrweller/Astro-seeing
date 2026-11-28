@@ -18,13 +18,13 @@
 
 Each line: ID · **state** · where it runs · item · tickets and PRs. Sessions edit only the state word and the link, or delete the whole entry once the item is finished, per `docs/agents/session-handoff.md`; the blank lines between entries are deliberate.
 
-- `C6` · **ready** · cloud · Multi-month surface requests and per-kind planning rates · ticket: none yet
+- `C6` · **needs-you** · cloud · Multi-month surface requests and per-kind planning rates · needs you: merge PR #103 · [#99](https://github.com/rrweller/Astro-seeing/issues/99), PR [#103](https://github.com/rrweller/Astro-seeing/pull/103)
 
-- `C7` · **ready** · cloud · Code to move the kept raw GRIB to the NAS · ticket: none yet
+- `C7` · **needs-you** · cloud · Code to move the kept raw GRIB to the NAS · needs you: merge PR #105 · [#100](https://github.com/rrweller/Astro-seeing/issues/100) · PR [#105](https://github.com/rrweller/Astro-seeing/pull/105)
 
-- `C8` · **ready** · cloud · ESO seeing-monitor fetcher · ticket: none yet
+- `C8` · **needs-you** · cloud · ESO seeing-monitor fetcher · needs you: merge PR #104 · [#101](https://github.com/rrweller/Astro-seeing/issues/101) · PR [#104](https://github.com/rrweller/Astro-seeing/pull/104)
 
-- `C9` · **in-progress** · cloud · Site time-series reader for the reproductions · [#98](https://github.com/rrweller/Astro-seeing/issues/98)
+- `C9` · **needs-you** · cloud · Site time-series reader for the reproductions · needs you: merge PR #102 · [#98](https://github.com/rrweller/Astro-seeing/issues/98) · PR [#102](https://github.com/rrweller/Astro-seeing/pull/102)
 
 - `C10` · **blocked** · cloud · Reproduction spec and CT tickets (needs your approval) · ticket: none yet
 
@@ -136,13 +136,13 @@ flowchart LR
   classDef needsyou fill:#fb8f44,stroke:#bc4c00,color:#1f2328
   classDef blocked fill:#ffebe9,stroke:#cf222e,color:#1f2328
   %% Status lines: one per item, each followed by a `%% ---` spacer. Sessions change only the last word.
-  class C6 ready
+  class C6 needsyou
   %% ---
-  class C7 ready
+  class C7 needsyou
   %% ---
-  class C8 ready
+  class C8 needsyou
   %% ---
-  class C9 inprogress
+  class C9 needsyou
   %% ---
   class C10 blocked
   %% ---
@@ -573,6 +573,8 @@ Replace `<ID>`, the skills line and the task line. Replace `<slash command>` wit
 Skills by item: K1 and K3 `mattpocock-skills:wizard` (a step-by-step script for you); K4, K7 and K11 `mattpocock-skills:research` (write up what was measured); K9 also `mattpocock-skills:diagnosing-bugs` when a reproduction misses its tolerance, and K10 `mattpocock-skills:research` for the LHATPRO clear flag; the others none. Whether the Matt Pocock plugin is installed on the CT hasn't been checked: if a slash command answers "unknown command" there, it needs installing.
 
 K6's task line: "Roadmap item K6: first the surface-request cost check in `docs/ct_runbook.md` §9 (`astro cost-check`, which submits nothing; D63). If it passes as defined in D63 item 7, set `request.default_months_per_request.sl` to 3 in `configs/era5.yaml` (Riley, 2026-11-27) and record the answer in a short report; otherwise stop and ask Riley. Then the raw GRIB archive move with C7's command, dry run first."
+
+K8's task line: "Roadmap item K8, D65: ESO's DIMM and MASS rows for 2021–2025. Run `pixi run astro eso bulk --from 2021-01 --to 2025-12` (Paranal DIMM, Paranal MASS, La Silla DIMM: 180 monthly requests at least 5 s apart, about 30–40 min, roughly 150 MB of raw CSVs written once under /data/astro/validation/eso-asm/; under `tmux`, logging to logs/). A failure stops it; run the same command again, which skips the months already stored. Report per table the files, rows and values left out (from the manifest's `eso_fetches`), months with no rows, and columns that are always empty (La Silla's airmass was empty in January 2021)."
 
 K11's task line: "Roadmap item K11, D59 item 2: the model-level (ERA5 complete) download for the Paranal 5×5 box, 2023, 23–11 UTC, levels 49–137 of t, q, u, v plus lnsp and z on level 1. Before planning anything, check that Riley has approved the size in an [ASK] (asked on ticket #16 once K4 reports, with the size recomputed from K4's measurements); if not, stop and set K11 to needs-you. Plan requests at the cost limit K4 measured, queue them behind K7 under the D39 gate, verify and ingest as validation-box stores."
 

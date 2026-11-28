@@ -105,3 +105,16 @@ def probe_responsive(path: Path, timeout_s: float = 30.0) -> None:
         raise StorageUnresponsive(f"{path} did not respond within {timeout_s} s") from e
     except subprocess.CalledProcessError as e:
         raise FileNotFoundError(f"{path}: {e.stderr.decode(errors='replace').strip()}") from e
+
+
+def probe_store(root: Path, timeout_s: float = 30.0) -> None:
+    """Raise ``StorageUnresponsive`` if the store (or, before its first file, its nearest
+    existing parent) does not answer a ``stat`` within ``timeout_s``."""
+    p = Path(root)
+    while True:  # every stat happens in the probe's child process, never here
+        try:
+            return probe_responsive(p, timeout_s)
+        except FileNotFoundError:
+            if p == p.parent:
+                raise
+            p = p.parent
