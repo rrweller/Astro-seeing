@@ -308,7 +308,7 @@ You are a cloud session on rrweller/Astro-seeing. Work from origin/dev. Read:
 Task: write the reproduction spec as an issue under map #6, then its tickets (follow docs/agents/issue-tracker.md).
 - Create one runs-on:ct ticket per paper, in D57's order: Haslebacher (a) Paranal, Priyatikanto, Bi, O&S. Add Haslebacher (b) (Table 4 levels) and Haslebacher (c) (the written account).
 - Each ticket states:
-  - the variant grid fixed before running;
+  - the variant grid fixed before running. Priyatikanto's grid includes both readings of the cubic step in pressure, `PriyatikantoCubic(cubic_to="native")` and `PriyatikantoCubic(cubic_to="target")`, crossed with D57 item 10's variants (Riley, 2026-11-28; D66 item 6). O&S masks underground levels with the bilinearly blended orography, as `read_site` does (Riley, 2026-11-28; D66 item 7);
   - the gating variant and its tolerance (D19);
   - the input store ids;
   - the outputs: notebook, reports/repro_<paper>.md, golden JSON;
