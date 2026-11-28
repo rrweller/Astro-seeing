@@ -14,6 +14,7 @@ import threading
 import time
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from astroseeing import rawarchive
@@ -536,6 +537,8 @@ def test_the_dry_run_prints_the_plan_and_changes_nothing(ct, capsys):
 
 
 def test_the_command_checks_real_stores_archives_and_exits_zero(real, monkeypatch):
+    if real["mask"] is not None:
+        pytest.skip("the command uses the project's own mask (Paranal: a plain grid box)")
     from astroseeing import cli
 
     tmp, m = real["tmp"], real["m"]
@@ -550,6 +553,8 @@ def test_the_command_checks_real_stores_archives_and_exits_zero(real, monkeypatc
 
 
 def test_the_command_refuses_to_delete_when_a_real_store_fails_its_check(real, monkeypatch):
+    if real["mask"] is not None:
+        pytest.skip("the command uses the project's own mask (Paranal: a plain grid box)")
     from astroseeing import cli
 
     tmp, m, rid = real["tmp"], real["m"], real["ids"][0]
@@ -694,9 +699,19 @@ def test_a_hung_store_read_stops_the_run_before_the_delete(w):
 
 
 # --- the real store check, on real GRIB and Zarr stores --------------------------------
-@pytest.fixture
-def real(tmp_path):
-    """Three requests downloaded (fake CDS), verified and ingested by the real pipeline."""
+def five_cells(req, dec):
+    """A cells-layout mask, like a validation area's site boxes (D31): 5 of the 9 cells."""
+    mask = np.zeros((dec.lat.size, dec.lon.size), bool)
+    mask[1, :] = True
+    mask[:, 1] = True
+    return mask, None
+
+
+@pytest.fixture(params=[None, five_cells], ids=["grid", "cells"])
+def real(tmp_path, request):
+    """Three requests downloaded (fake CDS), verified and ingested by the real pipeline,
+    as grid stores and as cells-layout stores (with a mask function)."""
+    mask = request.param
     m = Manifest(tmp_path / "state" / "manifest.sqlite")
     specs = plan_requests(
         "pl", "paranal", dt.date(2023, 6, 20), dt.date(2023, 6, 21), AREA, hours=(0, 12)
@@ -712,15 +727,15 @@ def real(tmp_path):
             break
     (tmp_path / "data").mkdir()
     assert verify_pending(m)["verified"] == 3
-    assert ingest_pending(m, tmp_path / "data", {})["ingested"] == 3
+    assert ingest_pending(m, tmp_path / "data", {}, mask_fn=mask)["ingested"] == 3
     settings = ArchiveSettings(root=tmp_path / "data" / "raw-archive", timeout_base_s=30,
                                stall_s=5, poll_s=0.01)  # fmt: skip
-    yield {"m": m, "ids": ids, "tmp": tmp_path, "settings": settings}
+    yield {"m": m, "ids": ids, "tmp": tmp_path, "settings": settings, "mask": mask}
     m.close()
 
 
 def run_real(real, **kw):
-    kw.setdefault("store_check", IngestStoreCheck(real["m"], mask_fn=None))
+    kw.setdefault("store_check", IngestStoreCheck(real["m"], mask_fn=real["mask"]))
     return archive_raw(real["m"], real["tmp"] / "staging", real["settings"], **kw)
 
 
@@ -751,14 +766,14 @@ def test_a_real_store_that_no_longer_matches_its_grib_keeps_the_staging_copy(rea
 
 
 def test_a_cells_layout_store_is_not_deleted_without_the_ingest_mask(real):
-    m, rid = real["m"], real["ids"][0]
-    f = m.current_file(rid)
-    m.conn.execute(  # as the validation areas' stores are recorded (D31)
-        "UPDATE ingests SET report_json = json_set(report_json, '$.layout', 'cells')"
-        " WHERE file_id=?", (f["id"],))  # fmt: skip
-    s = run_real(real)
-    assert s.refused == 1 and any("mask" in p for p in s.problems)
-    assert Path(f["path"]).exists() and m.get(rid).state == "ingested"
+    if real["mask"] is None:
+        pytest.skip("grid stores need no mask")
+    m = real["m"]
+    raws = [Path(m.current_file(r)["path"]) for r in real["ids"]]
+    s = run_real(real, store_check=IngestStoreCheck(m, mask_fn=None))
+    assert s.refused == 3 and s.staging_deleted == 0
+    assert all("mask" in p for p in s.problems)
+    assert all(p.exists() for p in raws) and m.counts() == {"ingested": 3}
 
 
 def test_recovery_on_real_stores_uses_the_recorded_content_hash(real, monkeypatch):
@@ -774,3 +789,23 @@ def test_recovery_on_real_stores_uses_the_recorded_content_hash(real, monkeypatc
     s = run_real(real)
     assert s.recovered == 0 and s.refused == 1 and m.get(r1).state == "ingested"
     assert any("content sha256" in p for p in s.problems)
+
+
+def test_a_failed_check_after_an_earlier_run_archived_the_file_keeps_the_staging_copy(w):
+    w.run(delete_measured=False, store_check=lambda item, raw, read: ["not yet"])
+    assert all(w.m.raw_archive(w.m.latest_file(r)["id"]) for r in (w.a, w.b, w.c))
+    w.store_problems[w.c] = ["t: values differ"]  # the next run finds c's store broken
+    s = w.run()
+    assert (s.copied, s.staging_deleted, s.refused) == (0, 2, 1)
+    assert w.staged(w.c).exists() and w.m.get(w.c).state == "ingested"
+
+
+def test_an_error_inside_the_store_check_keeps_the_staging_copy(w):
+    def broken(item, raw, read):
+        if item.request_id == w.b:
+            raise ValueError("cannot decode this GRIB")  # e.g. a mask or decode error
+        return []
+
+    s = w.run(store_check=broken)
+    assert s.failed == 1 and s.staging_deleted == 2 and not s.ok
+    assert w.staged(w.b).exists() and w.m.get(w.b).state == "ingested"
