@@ -765,6 +765,76 @@ def cmd_web_deploy(args, paths: Paths) -> int:
     return 0
 
 
+def _eso_fetcher(paths: Paths):
+    """The ESO fetcher on the CT layout: raw CSVs under $ASTRO_DATA_ROOT (D54 item 8)."""
+    from astroseeing.download.eso import EsoFetcher, Settings
+    from astroseeing.forecast.http import HttpClient
+
+    settings = Settings.load()
+    client = HttpClient(timeout_s=settings.timeout_s)
+    return EsoFetcher(client, _manifest(paths), paths.data_root / settings.store_dir,
+                      settings=settings)  # fmt: skip
+
+
+def _eso_run(fn) -> int:
+    """Run one ESO step; a failure is logged (what was stored stays recorded) and gives 1."""
+    from astroseeing.download.eso import EsoFetchFailed, EsoFormatError, WriteOnceError
+    from astroseeing.paths import StorageUnresponsive
+
+    try:
+        fn()
+    except (EsoFetchFailed, EsoFormatError, WriteOnceError, StorageUnresponsive) as e:
+        log.error("eso: %s", e)
+        return 1
+    return 0
+
+
+def _eso_print(got) -> None:
+    print(json.dumps({"path": str(got.path), "sha256": got.sha256, **got.rows.counts()}))
+
+
+def _eso_tables(args, default: list[str]) -> list[str]:
+    return args.tables.split(",") if args.tables else default
+
+
+def cmd_eso_fetch(args, paths: Paths) -> int:
+    """One ESO table over one UTC range [start, end)."""
+
+    def run():
+        start, end = args.start, args.end
+        _eso_print(_eso_fetcher(paths).fetch(args.table, start, end, label=args.label))
+
+    return _eso_run(run)
+
+
+def cmd_eso_night(args, paths: Paths) -> int:
+    """Each table's rows for the Night named by its evening date (local mean noon to noon
+    at the table's site). Run again later for the re-fetch: it is stored as fetch 2."""
+
+    def run():
+        f = _eso_fetcher(paths)
+        evening = dt.date.fromisoformat(args.evening)
+        for key in _eso_tables(args, ["paranal-dimm", "paranal-mass"]):
+            _eso_print(f.fetch_night(key, evening, purpose=args.purpose))
+
+    return _eso_run(run)
+
+
+def cmd_eso_bulk(args, paths: Paths) -> int:
+    """Every table, month by month (resumes: stored table-months are skipped)."""
+
+    def run():
+        done = _eso_fetcher(paths).bulk(_eso_tables(args, eso_tables()), args.first, args.last)
+        print(json.dumps({"fetched": len(done.fetched), "skipped": len(done.skipped)}))
+
+    return _eso_run(run)
+
+
+def eso_tables() -> list[str]:
+    """The ESO tables in ``configs/eso.yaml``."""
+    return list(load_config("eso")["tables"])
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="astro", description=__doc__)
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -922,6 +992,26 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--timeout-hours", type=float, default=6.0)
     p.add_argument("--out", default=str(REPO_ROOT / "reports" / "cds_smoke_test.json"))
     p.set_defaults(fn=cmd_cds_smoke_test)
+
+    eso_p = sub.add_parser("eso", help="ESO ambient conditions: Paranal DIMM and MASS, La Silla "
+                           "DIMM; raw CSVs written once (D54 item 8, D65)")  # fmt: skip
+    esub = eso_p.add_subparsers(dest="eso_cmd", required=True)
+    p = esub.add_parser("fetch", help="one table over one UTC range [start, end)")
+    p.add_argument("table", choices=eso_tables())
+    p.add_argument("--start", required=True, type=_utc, help="UTC, e.g. 2026-11-13T16:41:36")
+    p.add_argument("--end", required=True, type=_utc, help="UTC, exclusive")
+    p.add_argument("--label", help="name part of the file (default: the range)")
+    p.set_defaults(fn=cmd_eso_fetch)
+    p = esub.add_parser("night", help="the tables for one Night, by its evening date")
+    p.add_argument("--evening", required=True, help="YYYY-MM-DD")
+    p.add_argument("--tables", help="comma-separated (default: paranal-dimm,paranal-mass)")
+    p.add_argument("--purpose", default="nightly", help="recorded in the manifest, e.g. refetch")
+    p.set_defaults(fn=cmd_eso_night)
+    p = esub.add_parser("bulk", help="month by month, one request every few seconds; resumes")
+    p.add_argument("--from", dest="first", required=True, help="first month, YYYY-MM")
+    p.add_argument("--to", dest="last", required=True, help="last month, YYYY-MM")
+    p.add_argument("--tables", help="comma-separated (default: every table in configs/eso.yaml)")
+    p.set_defaults(fn=cmd_eso_bulk)
 
     forecast = sub.add_parser("forecast", help="the forecast track (F1)")
     fsub = forecast.add_subparsers(dest="forecast_cmd", required=True)

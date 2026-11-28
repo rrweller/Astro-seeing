@@ -278,6 +278,39 @@ CREATE TABLE IF NOT EXISTS raw_archives (
 """
 
 
+#: ESO ambient-conditions fetches (``download.eso``, D65): one ``eso_fetches`` row per
+#: raw CSV written once under ``validation/eso-asm/`` (D54 item 8), and one
+#: ``eso_fetch_tries`` row per failed try. Kept apart from the CDS tables: the CDS gate,
+#: ``astro status`` and the download watcher never read them. Created on every open.
+ESO_SCHEMA = """
+CREATE TABLE IF NOT EXISTS eso_fetches (
+    id          INTEGER PRIMARY KEY,
+    table_key   TEXT NOT NULL,
+    start_utc   TEXT NOT NULL,
+    end_utc     TEXT NOT NULL,
+    label       TEXT NOT NULL,
+    purpose     TEXT NOT NULL,
+    fetch_no    INTEGER NOT NULL,
+    url         TEXT NOT NULL,
+    path        TEXT NOT NULL UNIQUE,
+    bytes       INTEGER NOT NULL,
+    sha256      TEXT NOT NULL,
+    counts_json TEXT NOT NULL,
+    tries       INTEGER NOT NULL,
+    fetched_at  TEXT NOT NULL,
+    UNIQUE (table_key, start_utc, end_utc, fetch_no)
+);
+CREATE TABLE IF NOT EXISTS eso_fetch_tries (
+    id        INTEGER PRIMARY KEY,
+    table_key TEXT NOT NULL,
+    start_utc TEXT NOT NULL,
+    end_utc   TEXT NOT NULL,
+    at        TEXT NOT NULL,
+    error     TEXT NOT NULL
+);
+"""
+
+
 #: Event detail that marks a job the CDS lost (expired, deleted, HTTP 404).
 LOST_PREFIX = "lost at the CDS"
 
@@ -339,7 +372,7 @@ class Manifest:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.execute("PRAGMA busy_timeout=60000")
-        self.conn.executescript(SCHEMA + FORECAST_SCHEMA + TS_SCHEMA + ARCHIVE_SCHEMA)
+        self.conn.executescript(SCHEMA + FORECAST_SCHEMA + TS_SCHEMA + ESO_SCHEMA + ARCHIVE_SCHEMA)
         self._upgrade()
 
     def _upgrade(self) -> None:
