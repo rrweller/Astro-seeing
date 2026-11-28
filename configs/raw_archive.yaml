@@ -1,0 +1,21 @@
+# Write-once archive of the raw ERA5 GRIB kept on /staging (D55 item 7, D64).
+# Used by `astro archive-raw`. Layout: <root>/era5/<kind>/<region>/<period>.grib, the
+# same kind/region/period as the Zarr stores (D10) and the manifest's request key.
+
+# Under $ASTRO_DATA_ROOT (/data/astro on the CT) unless absolute. Its parent must
+# already exist, so an unmounted NAS is never mistaken for an empty directory.
+root: raw-archive
+
+# The NAS hangs rather than failing (AGENTS.md): every call to it runs under a
+# watchdog. A call stops the run if it shows no progress (no chunk read or written)
+# for stall_s, or runs longer than timeout_base_s + size / min_rate_mb_s. The NAS
+# does ~110 MB/s; at 5 MB/s a 400 MB file gets 80 s on top of the base, a 1 GB file 200 s.
+# The copy is flushed every 256 MB, so the final fsync (no progress) stays short.
+timeout_base_s: 120
+min_rate_mb_s: 5
+stall_s: 120
+poll_s: 0.5
+
+# A run refuses to copy more than this without --max-gb. D55 item 7 approved the
+# ~41.6 GB of validation GRIB plus the 0.27 GB measurement file.
+max_copy_gb: 45
