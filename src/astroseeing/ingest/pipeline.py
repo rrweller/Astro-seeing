@@ -173,6 +173,44 @@ def ingest_pending(
     return out
 
 
+def _read_now(_what: str, fn):
+    return fn()
+
+
+def store_problems(
+    m: Manifest,
+    request_id: int,
+    file_id: int,
+    raw_path: Path | None,
+    mask_fn: MaskFn | None,
+    read=_read_now,
+) -> list[str]:
+    """D12's check of a request's Zarr store before its raw GRIB leaves /staging.
+
+    With the raw GRIB (``raw_path``), the store must match the arrays rebuilt from it
+    bit for bit, with the same ``mask_fn`` as the ingest. Without it (``None``: the file
+    is already gone, a crash recovery), the store must match its recorded content hash.
+    Returns the problems found (empty: the store is good). ``read(what, fn)`` runs the
+    calls that read the store, so a caller can put them under a NAS timeout.
+    """
+    ing = m.conn.execute(
+        "SELECT * FROM ingests WHERE file_id=? AND ok=1 ORDER BY id DESC LIMIT 1", (file_id,)
+    ).fetchone()
+    if ing is None:
+        return ["no verified ingest recorded for this file"]
+    store = Path(ing["store_path"])
+    if raw_path is None:
+        return read(f"self-check {store}", lambda: self_check_store(store, ing["content_sha256"]))
+    layout = json.loads(ing["report_json"]).get("layout", "grid")
+    if layout != "grid" and mask_fn is None:
+        return [f"{layout}-layout store {store} can only be checked with the ingest's mask_fn"]
+    req = m.get(request_id)
+    dec = decode_grib(Path(raw_path), req.expected)
+    cell_mask, keep = mask_fn(req, dec) if mask_fn else (None, None)
+    prepared = prepare(dec, cell_mask, keep)
+    return read(f"compare {store}", lambda: compare_store(store, prepared))
+
+
 def cleanup_raw(m: Manifest, staging_root: Path, mask_fn: MaskFn | None = None) -> dict[str, int]:
     """Delete raw GRIBs whose ingest is verified. Only files under ``staging_root``.
 
@@ -216,7 +254,7 @@ def _cleanup_one(m: Manifest, req: Request, staging_root: Path, mask_fn: MaskFn 
     if not path.exists():
         # A previous run deleted the file and died before the manifest update. The
         # GRIB is gone, so check the store against its recorded content hash.
-        problems = self_check_store(store, ing["content_sha256"])
+        problems = store_problems(m, req.id, f["id"], None, mask_fn)
         if problems:
             log.error(
                 "%s: raw file gone and store %s fails its self-check: %s", req.key, store, problems
@@ -224,9 +262,7 @@ def _cleanup_one(m: Manifest, req: Request, staging_root: Path, mask_fn: MaskFn 
             return "skipped"
         m.mark_raw_deleted(req.id, f["id"], detail=f"recovered: {path} already gone")
         return "recovered"
-    dec = decode_grib(path, req.expected)
-    cell_mask, keep = mask_fn(req, dec) if mask_fn else (None, None)
-    problems = compare_store(store, prepare(dec, cell_mask, keep))
+    problems = store_problems(m, req.id, f["id"], path, mask_fn)
     if problems:
         log.error("store %s does not match %s: %s", store, path, problems)
         return "skipped"

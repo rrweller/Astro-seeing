@@ -10,7 +10,9 @@ call). For each file, in this order (D12's ordering and crash recovery):
 2. read the temp copy back and compare its SHA-256 with the manifest's checksum;
 3. link it to its final name, which fails if that name exists (never overwrites);
 4. record the archive copy in the manifest;
-5. only then delete the /staging copy, and record that in one transaction (the file
+5. check the request's Zarr store against the GRIB (D12, Riley 2026-11-28); a store
+   that fails keeps the /staging copy;
+6. only then delete the /staging copy, and record that in one transaction (the file
    row, the archive row, and ``ingested`` → ``raw_deleted``).
 
 A destination that already holds the same bytes is a no-op (recorded as ``present``);
@@ -217,7 +219,12 @@ class Watchdog:
         self.poll_s = poll_s
         self.hung: str | None = None
 
-    def call(self, what: str, fn: Callable[[Beat], T], deadline_s: float) -> T:
+    def call(
+        self, what: str, fn: Callable[[Beat], T], deadline_s: float, stall_s: float | None = None
+    ) -> T:
+        """Run ``fn(beat)``; ``stall_s`` overrides the stall limit for one call (a call
+        that can't report progress passes its deadline here)."""
+        stall = self.stall_s if stall_s is None else stall_s
         if self.hung is not None:
             raise StorageUnresponsive(f"{what}: not tried, an earlier call hung ({self.hung})")
         _HUNG[:] = [(w, t) for w, t in _HUNG if t.is_alive()]
@@ -244,8 +251,8 @@ class Watchdog:
             if not thread.is_alive():
                 break
             now = time.monotonic()
-            if now - last[0] > self.stall_s:
-                self.hung = f"{what}: no progress for {self.stall_s:g} s"
+            if now - last[0] > stall:
+                self.hung = f"{what}: no progress for {stall:g} s"
             elif now - start > deadline_s:
                 self.hung = f"{what}: not finished within {deadline_s:.0f} s"
             if self.hung:
@@ -388,6 +395,27 @@ def format_plan(plan: Plan, settings: ArchiveSettings, delete_measured: bool,
 
 
 # -- the run --------------------------------------------------------------------------
+#: ``store_check(item, raw, read)``: problems with the request's Zarr store (empty: good).
+#: ``raw`` is the /staging copy, or None once it is gone (a crash recovery); ``read(what,
+#: fn)`` runs a store read under the watchdog.
+StoreCheck = Callable[[Item, "Path | None", Callable[[str, Callable[[], Any]], Any]], list[str]]
+
+
+class IngestStoreCheck:
+    """D12's store check before a raw GRIB leaves /staging: the store must match the
+    arrays rebuilt from the GRIB bit for bit (with the ingest's ``mask_fn``), or, once the
+    /staging copy is gone, its recorded content hash (``ingest.pipeline.store_problems``)."""
+
+    def __init__(self, m: Manifest, mask_fn=None):
+        self.m = m
+        self.mask_fn = mask_fn
+
+    def __call__(self, item: Item, raw: Path | None, read) -> list[str]:
+        from astroseeing.ingest.pipeline import store_problems
+
+        return store_problems(self.m, item.request_id, item.file_id, raw, self.mask_fn, read)
+
+
 class ArchiveConflict(RuntimeError):
     """The archive already holds other bytes under that name, or a copy failed its
     checksum: refused, nothing overwritten, the /staging copy kept."""
@@ -438,11 +466,15 @@ def archive_raw(
     staging_root: Path,
     settings: ArchiveSettings,
     *,
+    store_check: StoreCheck,
     fs: LocalArchiveFS | None = None,
     delete_measured: bool = False,
     max_copy_gb: float | None = None,
 ) -> Summary:
-    """Archive every kept raw GRIB in the plan (see the module docstring)."""
+    """Archive every kept raw GRIB in the plan (see the module docstring).
+
+    ``store_check`` is required, so no caller can skip the store check by omission; the
+    command passes :class:`IngestStoreCheck` with the ingest's mask function."""
     fs = fs or LocalArchiveFS()
     watchdog = Watchdog(settings.stall_s, settings.poll_s)
     plan = plan_archive(m, staging_root, settings)
@@ -467,7 +499,7 @@ def archive_raw(
         for item in items:
             delete = item.state == "ingested" or delete_measured
             try:
-                _archive_one(m, fs, watchdog, settings, item, delete, s)
+                _archive_one(m, fs, watchdog, settings, item, delete, store_check, s)
             except ArchiveConflict as e:
                 log.error("%s: refused: %s", item.key, e)
                 m.archive_event(item.request_id, "archive_refused", str(e))
@@ -496,6 +528,7 @@ def _archive_one(
     settings: ArchiveSettings,
     item: Item,
     delete: bool,
+    store_check: StoreCheck,
     s: Summary,
 ) -> None:
     """One file: archive it (unless recorded already), then maybe delete /staging."""
@@ -528,7 +561,20 @@ def _archive_one(
                 f"archive copy {archived} no longer matches the manifest ({got} != "
                 f"{item.sha256}); /staging copy kept"
             )
-    if item.staging.exists():
+    staged = item.staging.exists()
+    if item.state == "ingested":
+        # D12: the store is checked right before its raw GRIB leaves /staging, against
+        # the GRIB itself, or against its recorded hash once the /staging copy is gone.
+        def read(what: str, fn: Callable[[], Any]) -> Any:
+            return watchdog.call(what, lambda _b: fn(), limit, stall_s=limit)
+
+        problems = store_check(item, item.staging if staged else None, read)
+        if problems:
+            raise ArchiveConflict(
+                f"its Zarr store fails the check ({'; '.join(problems[:3])}); /staging copy "
+                "kept, archive copy kept"
+            )
+    if staged:
         item.staging.unlink()
         m.mark_staging_deleted_after_archive(
             item.request_id, item.file_id, f"archived at {item.dest}; {item.staging} deleted"

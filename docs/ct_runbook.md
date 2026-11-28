@@ -290,7 +290,11 @@ through Nginx Proxy Manager; a tick's run time against the timer's 15 min and
 
 `astro archive-raw` copies the raw GRIB of `ingested` requests from `/staging` to
 `/data/astro/raw-archive/era5/<kind>/<region>/<period>.grib`, checks each copy's
-SHA-256 against the manifest, records it, and only then deletes the `/staging` copy.
+SHA-256 against the manifest, records it, checks the request's Zarr store against the
+GRIB (as `cleanup-raw` does), and only then deletes the `/staging` copy. A store that
+fails the check keeps its `/staging` copy (exit code 1). Decoding every GRIB once for
+that check makes the run longer than the copy alone; how much longer isn't measured
+yet (the ingest did the same decoding).
 Measurement files (state `measured`) are copied too, but their `/staging` copy stays
 unless you add `--delete-measured`. No file content on `/data` is ever overwritten or
 deleted; the only name it removes there is its own temp name, right after the same

@@ -165,8 +165,10 @@ def cmd_cleanup_raw(args, paths: Paths) -> int:
 
 def cmd_archive_raw(args, paths: Paths) -> int:
     """Kept raw GRIB from /staging to the write-once archive on the NAS (D55 item 7, D64)."""
+    from astroseeing.download.areas import mask_fn
     from astroseeing.rawarchive import (
         ArchiveSettings,
+        IngestStoreCheck,
         PlanRefused,
         archive_raw,
         format_plan,
@@ -182,8 +184,16 @@ def cmd_archive_raw(args, paths: Paths) -> int:
         return 0
     try:
         with run_lock(paths.state_dir):
-            s = archive_raw(m, paths.staging, settings, delete_measured=args.delete_measured,
-                            max_copy_gb=args.max_gb)  # fmt: skip
+            # D12: each store is checked against its GRIB (with the ingest's mask, as
+            # `cleanup-raw` does) right before the /staging copy goes.
+            s = archive_raw(
+                m,
+                paths.staging,
+                settings,
+                store_check=IngestStoreCheck(m, mask_fn),
+                delete_measured=args.delete_measured,
+                max_copy_gb=args.max_gb,
+            )
     except PlanRefused as e:
         log.error("archive-raw refused: %s", e)
         return 2

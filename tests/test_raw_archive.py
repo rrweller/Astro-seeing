@@ -17,10 +17,13 @@ from pathlib import Path
 import pytest
 
 from astroseeing import rawarchive
-from astroseeing.download.requests import Area, RequestSpec
+from astroseeing.download.downloader import Downloader
+from astroseeing.download.requests import Area, RequestSpec, plan_requests
+from astroseeing.ingest.pipeline import ingest_pending, store_path, verify_pending
 from astroseeing.manifest import Manifest
 from astroseeing.rawarchive import (
     ArchiveSettings,
+    IngestStoreCheck,
     LocalArchiveFS,
     PlanRefused,
     archive_raw,
@@ -28,6 +31,8 @@ from astroseeing.rawarchive import (
     plan_archive,
     run_lock,
 )
+
+from fakes import Clock, FakeCdsBackend
 
 AREA = Area.around(-24.63, -70.40, half_width_cells=1)
 
@@ -115,6 +120,13 @@ class World:
             max_copy_gb=1.0,
         )  # fmt: skip
         self.content: dict[int, bytes] = {}
+        self.checked: list[tuple[int, Path | None]] = []  # (request id, raw) per store check
+        self.store_problems: dict[int, list[str]] = {}
+
+    def store_check(self, item, raw, read):
+        """Stands in for the real store check (tested on real stores below)."""
+        self.checked.append((item.request_id, raw))
+        return read("store check", lambda: self.store_problems.get(item.request_id, []))
 
     def add(self, kind: str, region: str, day: dt.date, state: str, size: int = 50_000,
             purpose: str = "store", path: Path | None = None) -> int:  # fmt: skip
@@ -141,6 +153,7 @@ class World:
         return self.root / "era5" / r.kind / r.region / f"{r.period}.grib"
 
     def run(self, fs=None, **kw):
+        kw.setdefault("store_check", self.store_check)
         return archive_raw(self.m, self.staging, self.settings, fs=fs or LocalArchiveFS(), **kw)
 
 
@@ -522,12 +535,38 @@ def test_the_dry_run_prints_the_plan_and_changes_nothing(ct, capsys):
     assert all(ct.staged(r).exists() for r in (ct.a, ct.b, ct.c, ct.meas))
 
 
-def test_the_command_archives_and_exits_zero_then_nothing_is_left(ct, capsys):
+def test_the_command_checks_real_stores_archives_and_exits_zero(real, monkeypatch):
     from astroseeing import cli
 
+    tmp, m = real["tmp"], real["m"]
+    monkeypatch.setenv("ASTRO_DATA_ROOT", str(tmp / "data"))
+    monkeypatch.setenv("ASTRO_STAGING", str(tmp / "staging"))
+    monkeypatch.setenv("ASTRO_STATE_DIR", str(tmp / "state"))
+    monkeypatch.setenv("ASTRO_LOG_DIR", str(tmp / "logs"))
+    raws = [Path(m.current_file(r)["path"]) for r in real["ids"]]
     assert cli.main(["archive-raw"]) == 0
-    for rid in (ct.a, ct.b, ct.c):
-        done(ct, rid)
+    assert m.counts() == {"raw_deleted": 3} and not any(p.exists() for p in raws)
+    assert len(list((tmp / "data" / "raw-archive" / "era5").rglob("*.grib"))) == 3
+
+
+def test_the_command_refuses_to_delete_when_a_real_store_fails_its_check(real, monkeypatch):
+    from astroseeing import cli
+
+    tmp, m, rid = real["tmp"], real["m"], real["ids"][0]
+    for k, v in {"ASTRO_DATA_ROOT": "data", "ASTRO_STAGING": "staging",
+                 "ASTRO_STATE_DIR": "state", "ASTRO_LOG_DIR": "logs"}.items():  # fmt: skip
+        monkeypatch.setenv(k, str(tmp / v))
+    tamper(real, rid)
+    assert cli.main(["archive-raw"]) == 1
+    assert Path(m.current_file(rid)["path"]).exists() and m.get(rid).state == "ingested"
+
+
+def test_the_command_deletes_the_measurement_copy_only_when_asked(ct):
+    from astroseeing import cli
+
+    for rid in (ct.a, ct.b, ct.c):  # leave only the measurement (no store) in the plan
+        ct.m.transition(rid, ["ingested"], "verified")
+    assert cli.main(["archive-raw"]) == 0
     assert ct.staged(ct.meas).exists()
     assert cli.main(["archive-raw", "--delete-measured"]) == 0
     assert not ct.staged(ct.meas).exists()
@@ -604,3 +643,134 @@ def test_a_copy_flushed_in_steps_is_still_whole(w, monkeypatch):
     assert s.ok and s.copied == 4
     for rid in (w.a, w.b, w.c):
         done(w, rid)
+
+
+# --- the store check before each /staging delete (D12, Riley 2026-11-28) -------------
+def test_the_store_is_checked_before_each_staging_delete_and_never_for_a_measurement(w):
+    s = w.run()
+    assert s.ok and s.staging_deleted == 3
+    assert w.checked == [(w.a, w.staged(w.a)), (w.b, w.staged(w.b)), (w.c, w.staged(w.c))]
+
+
+def test_a_failed_store_check_keeps_the_staging_copy_and_the_archive_copy(w):
+    w.store_problems[w.b] = ["t: values differ"]
+    s = w.run()
+    assert s.refused == 1 and not s.ok and s.staging_deleted == 2
+    assert any("t: values differ" in p for p in s.problems)
+    assert w.staged(w.b).exists() and w.m.get(w.b).state == "ingested"
+    assert w.archived(w.b).read_bytes() == w.content[w.b]  # the archive copy stays recorded
+    assert w.m.raw_archive(w.m.latest_file(w.b)["id"]) is not None
+    del w.store_problems[w.b]
+    assert w.run().staging_deleted == 1  # once the store passes, the next run finishes
+    done(w, w.b)
+
+
+def test_recovery_checks_the_store_without_the_gone_staging_copy(w, monkeypatch):
+    real = Manifest.mark_staging_deleted_after_archive
+    monkeypatch.setattr(Manifest, "mark_staging_deleted_after_archive", lambda *a, **k: crash())
+    with pytest.raises(Crash):
+        w.run()  # w.a's /staging copy unlinked, not recorded
+    monkeypatch.setattr(Manifest, "mark_staging_deleted_after_archive", real)
+    w.checked.clear()
+    w.store_problems[w.a] = ["content sha256 differs"]
+    s = w.run()
+    assert s.refused == 1 and s.recovered == 0 and (w.a, None) in w.checked
+    assert w.m.get(w.a).state == "ingested"
+    del w.store_problems[w.a]
+    assert w.run().recovered == 1
+    done(w, w.a)
+
+
+def test_a_hung_store_read_stops_the_run_before_the_delete(w):
+    release = threading.Event()
+    w.store_check = lambda item, raw, read: read("store", lambda: release.wait(30) and [])
+    try:
+        s = w.run()
+    finally:
+        release.set()
+    assert s.hung and s.staging_deleted == 0
+    assert all(w.staged(r).exists() for r in (w.a, w.b, w.c))
+    time.sleep(0.2)
+
+
+# --- the real store check, on real GRIB and Zarr stores --------------------------------
+@pytest.fixture
+def real(tmp_path):
+    """Three requests downloaded (fake CDS), verified and ingested by the real pipeline."""
+    m = Manifest(tmp_path / "state" / "manifest.sqlite")
+    specs = plan_requests(
+        "pl", "paranal", dt.date(2023, 6, 20), dt.date(2023, 6, 21), AREA, hours=(0, 12)
+    ) + plan_requests("sl", "paranal", dt.date(2023, 6, 20), dt.date(2023, 6, 20), AREA,
+                      hours=(0, 12))  # fmt: skip
+    fake = FakeCdsBackend({FakeCdsBackend.req_key(x.cds_request()): x.expected() for x in specs})
+    ids = [m.add_request(x) for x in specs]
+    dl = Downloader(m, fake, tmp_path / "staging" / "grib", now=Clock())
+    for _ in range(50):
+        dl.step()
+        dl.now.advance(hours=5)
+        if not m.by_state("planned", "submitted"):
+            break
+    (tmp_path / "data").mkdir()
+    assert verify_pending(m)["verified"] == 3
+    assert ingest_pending(m, tmp_path / "data", {})["ingested"] == 3
+    settings = ArchiveSettings(root=tmp_path / "data" / "raw-archive", timeout_base_s=30,
+                               stall_s=5, poll_s=0.01)  # fmt: skip
+    yield {"m": m, "ids": ids, "tmp": tmp_path, "settings": settings}
+    m.close()
+
+
+def run_real(real, **kw):
+    kw.setdefault("store_check", IngestStoreCheck(real["m"], mask_fn=None))
+    return archive_raw(real["m"], real["tmp"] / "staging", real["settings"], **kw)
+
+
+def tamper(real, rid):
+    import zarr
+
+    req = real["m"].get(rid)
+    g = zarr.open_group(str(store_path(real["tmp"] / "data", req)), mode="r+", zarr_format=3)
+    name = "t" if req.kind == "pl" else "t2m" if "t2m" in g else sorted(g.array_keys())[-1]
+    g[name][(0,) * g[name].ndim] = g[name][(0,) * g[name].ndim] + 1.0
+
+
+def test_real_stores_that_match_their_grib_let_the_staging_copies_go(real):
+    m = real["m"]
+    raws = [Path(m.current_file(r)["path"]) for r in real["ids"]]
+    s = run_real(real)
+    assert s.ok and (s.copied, s.staging_deleted) == (3, 3)
+    assert m.counts() == {"raw_deleted": 3} and not any(p.exists() for p in raws)
+
+
+def test_a_real_store_that_no_longer_matches_its_grib_keeps_the_staging_copy(real):
+    m, rid = real["m"], real["ids"][0]
+    tamper(real, rid)
+    s = run_real(real)
+    assert s.refused == 1 and s.staging_deleted == 2
+    assert any("values differ" in p for p in s.problems)
+    assert Path(m.current_file(rid)["path"]).exists() and m.get(rid).state == "ingested"
+
+
+def test_a_cells_layout_store_is_not_deleted_without_the_ingest_mask(real):
+    m, rid = real["m"], real["ids"][0]
+    f = m.current_file(rid)
+    m.conn.execute(  # as the validation areas' stores are recorded (D31)
+        "UPDATE ingests SET report_json = json_set(report_json, '$.layout', 'cells')"
+        " WHERE file_id=?", (f["id"],))  # fmt: skip
+    s = run_real(real)
+    assert s.refused == 1 and any("mask" in p for p in s.problems)
+    assert Path(f["path"]).exists() and m.get(rid).state == "ingested"
+
+
+def test_recovery_on_real_stores_uses_the_recorded_content_hash(real, monkeypatch):
+    m, (r1, r2, _r3) = real["m"], real["ids"]
+    raw1, raw2 = (Path(m.current_file(r)["path"]) for r in (r1, r2))
+    real_mark = Manifest.mark_staging_deleted_after_archive
+    monkeypatch.setattr(Manifest, "mark_staging_deleted_after_archive", lambda *a, **k: crash())
+    with pytest.raises(Crash):
+        run_real(real)  # r1 archived, its /staging copy unlinked, not recorded
+    monkeypatch.setattr(Manifest, "mark_staging_deleted_after_archive", real_mark)
+    assert not raw1.exists() and raw2.exists()
+    tamper(real, r1)
+    s = run_real(real)
+    assert s.recovered == 0 and s.refused == 1 and m.get(r1).state == "ingested"
+    assert any("content sha256" in p for p in s.problems)
